@@ -1,0 +1,64 @@
+version: '3.9'
+
+services:
+  auth-service:
+    build: ./backend/auth-service
+    container_name: aha-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      PORT: 3001
+      NODE_ENV: development
+      DB_HOST: auth-db
+      DB_PORT: 5432
+      DB_NAME: auth_db
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET: dev_jwt_secret_change_in_prod
+      JWT_EXPIRES_IN: 7d
+      JWT_REFRESH_SECRET: dev_refresh_secret_change_in_prod
+      JWT_REFRESH_EXPIRES_IN: 30d
+      OTP_MOCK_MODE: "true"
+      OTP_MOCK_CODE: "123456"
+      OTP_EXPIRES_IN_MINUTES: 5
+    depends_on:
+      auth-db:
+        condition: service_healthy
+    networks:
+      - aha-network
+    restart: unless-stopped
+
+  auth-db:
+    image: postgres:16-alpine
+    container_name: aha-auth-db
+    environment:
+      POSTGRES_DB: auth_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - auth-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d auth_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aha-network
+
+  # reminder-service:      # เปิดใช้ตอน Sprint 2-3
+  #   build: ./backend/reminder-service
+  #   ...
+
+  # notification-service:  # เปิดใช้ตอน Sprint 4
+  #   build: ./backend/notification-service
+  #   ...
+
+networks:
+  aha-network:
+    name: aha-network
+    driver: bridge
+
+volumes:
+  auth-db-data:
