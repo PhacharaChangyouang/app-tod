@@ -4,6 +4,7 @@
  * รันด้วย: npm run migrate
  */
 
+require('dotenv').config();
 const pool = require('./db');
 const logger = require('../utils/logger');
 
@@ -26,7 +27,9 @@ async function migrate() {
 
     logger.info('Migration completed successfully');
   } catch (err) {
-    logger.error('Migration failed', { error: err.message });
+    logger.error('Migration failed', { error: err.message, stack: err.stack });
+    // Also print to console for dev visibility
+    console.error('Migration failed', err);
     process.exit(1);
   } finally {
     await pool.end();
