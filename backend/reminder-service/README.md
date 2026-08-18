@@ -7,3 +7,14 @@
 
 จะ mount เป็น container แยกใน docker-compose เหมือน auth-service
 เชื่อม auth ผ่าน JWT ที่ auth-service ออกให้ (verify ผ่าน shared JWT_SECRET)
+
+reminder-service/
+├── package.json
+├── Dockerfile
+└── src/
+    ├── server.js
+    ├── config/
+    │   ├── db.js
+    │   └── migrate.js
+    └── middlewares/
+        └── authenticate.js
