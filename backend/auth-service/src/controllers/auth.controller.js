@@ -56,7 +56,7 @@ async function register(req, res, next) {
     otpService.clearPhoneVerification(phone);
 
     const accessToken = tokenService.generateAccessToken(user);
-    const refreshToken = tokenService.generateRefreshToken(user);
+    const refreshToken = await tokenService.generateRefreshToken(user);
 
     res.status(201).json({
       success: true,
@@ -90,7 +90,7 @@ async function login(req, res, next) {
     }
 
     const accessToken = tokenService.generateAccessToken(user);
-    const refreshToken = tokenService.generateRefreshToken(user);
+    const refreshToken = await tokenService.generateRefreshToken(user);
 
     res.json({
       success: true,
@@ -114,7 +114,7 @@ async function refresh(req, res, next) {
     const { refreshToken } = req.body;
     const payload = tokenService.verifyRefreshToken(refreshToken);
 
-    if (!payload || !tokenService.isRefreshTokenValid(refreshToken)) {
+    if (!payload || !(await tokenService.isRefreshTokenValid(refreshToken))) {
       return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
     }
 
@@ -123,10 +123,10 @@ async function refresh(req, res, next) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
 
-    tokenService.revokeRefreshToken(refreshToken);
+    await tokenService.revokeRefreshToken(refreshToken);
 
     const accessToken = tokenService.generateAccessToken(user);
-    const newRefreshToken = tokenService.generateRefreshToken(user);
+    const newRefreshToken = await tokenService.generateRefreshToken(user);
 
     res.json({ success: true, accessToken, refreshToken: newRefreshToken });
   } catch (err) {
@@ -137,7 +137,7 @@ async function refresh(req, res, next) {
 async function logout(req, res, next) {
   try {
     const { refreshToken } = req.body;
-    tokenService.revokeRefreshToken(refreshToken);
+    await tokenService.revokeRefreshToken(refreshToken);
     res.json({ success: true, message: 'Logged out' });
   } catch (err) {
     next(err);
