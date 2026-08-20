@@ -1,6 +1,6 @@
 import { getAccessToken } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
 
 // ใช้กับ endpoint ที่ไม่ต้อง login (request-otp, verify-otp, register, login)
 async function post(path, body) {
@@ -8,6 +8,7 @@ async function post(path, body) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    credentials: 'include',
   });
   return res.json();
 }
@@ -16,13 +17,12 @@ async function post(path, body) {
 // เดิม: ไม่มีฟังก์ชันนี้เลย -> เรียก protected API แล้วโดน 401 ตลอด
 // เพราะ auth-service middleware เช็ค Authorization header ทุกครั้ง
 async function authFetch(path, { method = 'GET', body } = {}) {
-  const accessToken = getAccessToken();
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     },
+    credentials: 'include',
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 

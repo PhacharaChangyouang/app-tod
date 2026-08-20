@@ -14,4 +14,4 @@ USER appuser
 
 EXPOSE 3002
 
-CMD ["node", "src/server.js"]
+CMD ["sh", "-c", "npm run migrate && npm start"]

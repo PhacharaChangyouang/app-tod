@@ -58,6 +58,14 @@ async function register(req, res, next) {
     const accessToken = tokenService.generateAccessToken(user);
     const refreshToken = await tokenService.generateRefreshToken(user);
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 }); // 30 days
+
     res.status(201).json({
       success: true,
       user: {
@@ -68,7 +76,7 @@ async function register(req, res, next) {
         role: user.role,
       },
       accessToken,
-      refreshToken,
+      refreshToken
     });
   } catch (err) {
     next(err);
@@ -92,6 +100,14 @@ async function login(req, res, next) {
     const accessToken = tokenService.generateAccessToken(user);
     const refreshToken = await tokenService.generateRefreshToken(user);
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+
     res.json({
       success: true,
       user: {
@@ -102,7 +118,7 @@ async function login(req, res, next) {
         role: user.role,
       },
       accessToken,
-      refreshToken,
+      refreshToken
     });
   } catch (err) {
     next(err);
@@ -111,7 +127,15 @@ async function login(req, res, next) {
 
 async function refresh(req, res, next) {
   try {
-    const { refreshToken } = req.body;
+    let refreshToken = req.body.refreshToken;
+    if (!refreshToken && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=').map(c => c.trim());
+        acc[name] = decodeURIComponent(value);
+        return acc;
+      }, {});
+      refreshToken = cookies.refreshToken;
+    }
     const payload = tokenService.verifyRefreshToken(refreshToken);
 
     if (!payload || !(await tokenService.isRefreshTokenValid(refreshToken))) {
@@ -128,6 +152,14 @@ async function refresh(req, res, next) {
     const accessToken = tokenService.generateAccessToken(user);
     const newRefreshToken = await tokenService.generateRefreshToken(user);
 
+    const cookieOptions = {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
+    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+    res.cookie('refreshToken', newRefreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+
     res.json({ success: true, accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     next(err);
@@ -136,8 +168,22 @@ async function refresh(req, res, next) {
 
 async function logout(req, res, next) {
   try {
-    const { refreshToken } = req.body;
-    await tokenService.revokeRefreshToken(refreshToken);
+    let refreshToken = req.body.refreshToken;
+    if (!refreshToken && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [name, value] = cookie.split('=').map(c => c.trim());
+        acc[name] = decodeURIComponent(value);
+        return acc;
+      }, {});
+      refreshToken = cookies.refreshToken;
+    }
+    
+    if (refreshToken) {
+      await tokenService.revokeRefreshToken(refreshToken);
+    }
+    
+    res.clearCookie('accessToken');
+    res.clearCookie('refreshToken');
     res.json({ success: true, message: 'Logged out' });
   } catch (err) {
     next(err);

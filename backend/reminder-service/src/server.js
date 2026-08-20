@@ -10,7 +10,10 @@ const authenticate = require('./middlewares/authenticate');
 const app = express();
 
 app.use(helmet());
-app.use(cors());
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  credentials: true
+}));
 app.use(express.json());
 
 /*
@@ -341,11 +344,14 @@ app.delete('/api/reminders/:id', authenticate, async (req, res) => {
   }
 });
 
+const { startScheduler } = require('./scheduler');
+
 const PORT = process.env.PORT || 3002;
 
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Reminder service running on port ${PORT}`);
+    startScheduler();
   });
 }
 
