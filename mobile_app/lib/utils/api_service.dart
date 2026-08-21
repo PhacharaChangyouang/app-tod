@@ -17,6 +17,16 @@ class ApiService {
     };
   }
 
+  static dynamic _decode(http.Response response) {
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (!body.containsKey('message') &&
+        body['errors'] is List &&
+        (body['errors'] as List).isNotEmpty) {
+      body['message'] = body['errors'][0]['msg'] ?? 'ข้อมูลไม่ถูกต้อง';
+    }
+    return body;
+  }
+
   // ---------- AUTH ----------
   static Future<Map<String, dynamic>> requestOtp(String phone) async {
     final res = await http
@@ -26,7 +36,7 @@ class ApiService {
           body: jsonEncode({'phone': phone}),
         )
         .timeout(const Duration(seconds: 8));
-    return jsonDecode(res.body);
+    return _decode(res);
   }
 
   static Future<Map<String, dynamic>> verifyOtp(
@@ -38,7 +48,7 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'code': code}),
     );
-    return jsonDecode(res.body);
+    return _decode(res);
   }
 
   static Future<Map<String, dynamic>> register({
@@ -59,7 +69,7 @@ class ApiService {
         'pin': pin,
       }),
     );
-    return jsonDecode(res.body);
+    return _decode(res);
   }
 
   static Future<Map<String, dynamic>> login(String phone, String pin) async {
@@ -68,7 +78,7 @@ class ApiService {
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({'phone': phone, 'pin': pin}),
     );
-    return jsonDecode(res.body);
+    return _decode(res);
   }
 
   static Future<void> logout() async {
@@ -88,7 +98,10 @@ class ApiService {
       headers: await _authHeaders(),
     );
     final body = jsonDecode(res.body);
-    return body['reminders'] ?? [];
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(body['message'] ?? 'ไม่สามารถโหลดรายการยาได้');
+    }
+    return body['data'] ?? [];
   }
 
   static Future<Map<String, dynamic>> createReminder({
@@ -104,10 +117,15 @@ class ApiService {
         'medicine_name': medicineName,
         'dosage': dosage,
         'reminder_time': reminderTime,
+        'frequency': daysOfWeek.length == 7 ? 'daily' : 'weekly',
         'days_of_week': daysOfWeek,
       }),
     );
-    return jsonDecode(res.body);
+    final body = jsonDecode(res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(body['message'] ?? 'ไม่สามารถเพิ่มยาได้');
+    }
+    return body;
   }
 
   static Future<Map<String, dynamic>> deleteReminder(String id) async {
@@ -129,6 +147,51 @@ class ApiService {
         'message': 'ผู้สูงอายุกดปุ่ม SOS ต้องการความช่วยเหลือทันที!',
       }),
     );
-    return jsonDecode(res.body);
+    return _decode(res);
+  }
+
+  static Future<List<dynamic>> getNotifications() async {
+    final res = await http.get(
+      Uri.parse('$_baseUrl/api/notifications'),
+      headers: await _authHeaders(),
+    );
+    final body = _decode(res) as Map<String, dynamic>;
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(body['message'] ?? 'ไม่สามารถโหลดประวัติได้');
+    }
+    return body['data'] ?? [];
+  }
+
+  static Future<List<dynamic>> getFamilyConnections() async {
+    final res = await http.get(
+      Uri.parse('$_baseUrl/auth/family/connections'),
+      headers: await _authHeaders(),
+    );
+    final body = _decode(res) as Map<String, dynamic>;
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw Exception(body['message'] ?? 'ไม่สามารถโหลดคนในครอบครัวได้');
+    }
+    return body['data'] ?? [];
+  }
+
+  static Future<Map<String, dynamic>> connectFamily(String phone) async {
+    final res = await http.post(
+      Uri.parse('$_baseUrl/auth/family/connections'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'phone': phone}),
+    );
+    return _decode(res);
+  }
+
+  static Future<Map<String, dynamic>> updateFamilyConnection(
+    String id,
+    String status,
+  ) async {
+    final res = await http.patch(
+      Uri.parse('$_baseUrl/auth/family/connections/$id'),
+      headers: await _authHeaders(),
+      body: jsonEncode({'status': status}),
+    );
+    return _decode(res);
   }
 }

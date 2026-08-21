@@ -4,7 +4,17 @@ async function checkAndTriggerReminders() {
   try {
     // Note: In production, consider timezone, idempotency (flagging as sent), and message queues
     const now = new Date();
-    const currentTime = now.toTimeString().substring(0, 5); // "HH:MM"
+    const thailandTime = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Bangkok',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(now);
+    const currentTime = `${thailandTime.find(part => part.type === 'hour').value}:${thailandTime.find(part => part.type === 'minute').value}`;
+    const currentDay = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Bangkok',
+      weekday: 'long'
+    }).format(now).toLowerCase();
 
     const result = await pool.query(
       `
@@ -12,8 +22,9 @@ async function checkAndTriggerReminders() {
       FROM reminders
       WHERE is_active = true
         AND reminder_time = $1
+        AND $2 = ANY(days_of_week)
       `,
-      [currentTime]
+      [currentTime, currentDay]
     );
 
     for (const reminder of result.rows) {
@@ -26,6 +37,7 @@ async function checkAndTriggerReminders() {
             'x-internal-api-key': process.env.INTERNAL_API_KEY
           },
           body: JSON.stringify({
+            user_id: reminder.user_id,
             type: 'reminder',
             title: 'ได้เวลาทานยาแล้ว!',
             message: `กรุณาทานยา ${reminder.medicine_name} ${reminder.dosage || ''}`,

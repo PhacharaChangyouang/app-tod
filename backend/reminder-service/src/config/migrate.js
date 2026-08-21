@@ -21,6 +21,8 @@ async function migrate() {
         frequency VARCHAR(20) NOT NULL DEFAULT 'daily'
           CHECK (frequency IN ('daily', 'weekly')),
 
+        days_of_week TEXT[] NOT NULL DEFAULT ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
+
         start_date DATE,
 
         end_date DATE,
@@ -31,6 +33,11 @@ async function migrate() {
 
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
+    `);
+
+    await pool.query(`
+      ALTER TABLE reminders
+      ADD COLUMN IF NOT EXISTS days_of_week TEXT[] NOT NULL DEFAULT ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     `);
 
     await pool.query(`

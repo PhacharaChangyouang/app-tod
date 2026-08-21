@@ -4,11 +4,14 @@ import 'screens/splash_screen.dart';
 import 'screens/otp_request_screen.dart';
 import 'screens/otp_verify_screen.dart';
 import 'screens/pin_setup_screen.dart';
+import 'screens/pin_login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/reminder_screen.dart';
 import 'screens/sos_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/caregiver_home_screen.dart';
+import 'screens/family_screen.dart';
+import 'screens/history_screen.dart';
 import 'utils/app_theme.dart';
 
 void main() async {
@@ -35,11 +38,14 @@ class AHAApp extends StatelessWidget {
         '/otp-request': (_) => const OtpRequestScreen(),
         '/otp-verify': (_) => const OtpVerifyScreen(),
         '/pin-setup': (_) => const PinSetupScreen(),
+        '/pin-login': (_) => const PinLoginScreen(),
         '/home': (_) => const HomeScreen(),
         '/caregiver-home': (_) => const CaregiverHomeScreen(),
         '/reminders': (_) => const ReminderScreen(),
         '/sos': (_) => const SosScreen(),
         '/profile': (_) => const ProfileScreen(),
+        '/family': (_) => const FamilyScreen(),
+        '/history': (_) => const HistoryScreen(),
       },
     );
   }

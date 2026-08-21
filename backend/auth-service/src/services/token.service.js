@@ -21,6 +21,7 @@ function generateAccessToken(user) {
       id: user.id,
       phone: user.phone,
       role: user.role,
+      jti: crypto.randomUUID(),
     },
     process.env.JWT_SECRET,
     {

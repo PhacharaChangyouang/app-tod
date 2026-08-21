@@ -31,7 +31,12 @@ async function verifyOtp(req, res, next) {
       await userModel.setPhoneVerified(user.id);
     }
 
-    res.json({ success: true, verified: true });
+    res.json({
+      success: true,
+      verified: true,
+      existingUser: Boolean(user),
+      role: user?.role ?? null,
+    });
   } catch (err) {
     next(err);
   }

@@ -46,6 +46,7 @@ app.get('/api/reminders', authenticate, async (req, res) => {
         dosage,
         reminder_time,
         frequency,
+        days_of_week,
         start_date,
         end_date,
         is_active,
@@ -117,6 +118,7 @@ app.post('/api/reminders', authenticate, async (req, res) => {
     dosage,
     reminder_time,
     frequency = 'daily',
+    days_of_week = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
     start_date,
     end_date
   } = req.body;
@@ -144,10 +146,11 @@ app.post('/api/reminders', authenticate, async (req, res) => {
         dosage,
         reminder_time,
         frequency,
+        days_of_week,
         start_date,
         end_date
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       RETURNING *
       `,
       [
@@ -156,6 +159,7 @@ app.post('/api/reminders', authenticate, async (req, res) => {
         dosage || null,
         reminder_time,
         frequency,
+        days_of_week,
         start_date || null,
         end_date || null
       ]

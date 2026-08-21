@@ -14,7 +14,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   // Registration form
   final _nameCtrl = TextEditingController();
   String _selectedRole = 'elderly';
-  int _age = 65;
+  int _age = 18;
   String _pin = '';
   String _pinConfirm = '';
   int _step = 0; // 0=info, 1=pin, 2=confirm
@@ -241,7 +241,7 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                               Expanded(
                                 child: Slider(
                                   value: _age.toDouble(),
-                                  min: 40,
+                                  min: 0,
                                   max: 100,
                                   divisions: 60,
                                   label: '$_age ปี',

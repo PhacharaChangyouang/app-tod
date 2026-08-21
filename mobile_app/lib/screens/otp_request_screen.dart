@@ -18,8 +18,8 @@ class _OtpRequestScreenState extends State<OtpRequestScreen> {
 
   Future<void> _sendOtp() async {
     final phone = _phoneCtrl.text.trim();
-    if (phone.length < 9) {
-      setState(() => _error = 'กรุณากรอกเบอร์โทรให้ครบ');
+    if (!RegExp(r'^0\d{9}$').hasMatch(phone)) {
+      setState(() => _error = 'กรุณากรอกเบอร์โทร 10 หลัก เช่น 0812345678');
       return;
     }
     setState(() {

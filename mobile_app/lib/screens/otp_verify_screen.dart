@@ -18,16 +18,20 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
   Future<void> _verify() async {
     final phone = ModalRoute.of(context)!.settings.arguments as String;
     final code = _codeCtrl.text.trim();
-    if (code.length < 4) {
-      setState(() => _error = 'กรุณากรอกรหัส OTP ให้ครบ');
+    if (code.length != 6) {
+      setState(() => _error = 'กรุณากรอกรหัส OTP 6 หลัก');
       return;
     }
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await ApiService.verifyOtp(phone, code);
       if (res['success'] == true && res['verified'] == true) {
         if (!mounted) return;
-        Navigator.pushNamed(context, '/pin-setup', arguments: phone);
+        final route = res['existingUser'] == true ? '/pin-login' : '/pin-setup';
+        Navigator.pushNamed(context, route, arguments: phone);
       } else {
         setState(() => _error = res['message'] ?? 'รหัสไม่ถูกต้อง');
       }
@@ -55,21 +59,35 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 28),
+                      icon: const Icon(
+                        Icons.arrow_back_ios_rounded,
+                        color: Colors.white,
+                        size: 28,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 const Icon(Icons.sms_rounded, size: 80, color: Colors.white),
                 const SizedBox(height: 20),
-                const Text('ยืนยันรหัส OTP',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.white)),
+                const Text(
+                  'ยืนยันรหัส OTP',
+                  style: TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
                 const SizedBox(height: 8),
-                Text('รหัสถูกส่งไปยัง $phone',
-                    style: const TextStyle(fontSize: 16, color: Colors.white70)),
+                Text(
+                  'รหัสถูกส่งไปยัง $phone',
+                  style: const TextStyle(fontSize: 16, color: Colors.white70),
+                ),
                 const SizedBox(height: 40),
                 Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   elevation: 8,
                   child: Padding(
                     padding: const EdgeInsets.all(28),
@@ -83,20 +101,32 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
                             LengthLimitingTextInputFormatter(6),
                           ],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold,
-                              letterSpacing: 12),
-                          decoration: const InputDecoration(hintText: '• • • • • •'),
+                          style: const TextStyle(
+                            fontSize: 36,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 12,
+                          ),
+                          decoration: const InputDecoration(
+                            hintText: '• • • • • •',
+                          ),
                         ),
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!,
-                              style: const TextStyle(color: AppTheme.sosRed, fontSize: 16)),
+                          Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: AppTheme.sosRed,
+                              fontSize: 16,
+                            ),
+                          ),
                         ],
                         const SizedBox(height: 24),
                         ElevatedButton(
                           onPressed: _loading ? null : _verify,
                           child: _loading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
                               : const Text('ยืนยัน'),
                         ),
                       ],

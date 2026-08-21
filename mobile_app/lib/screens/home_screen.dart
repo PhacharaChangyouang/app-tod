@@ -32,12 +32,36 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _updateTime() {
     final now = DateTime.now();
-    final days = ['อาทิตย์','จันทร์','อังคาร','พุธ','พฤหัสบดี','ศุกร์','เสาร์'];
-    final months = ['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+    final days = [
+      'อาทิตย์',
+      'จันทร์',
+      'อังคาร',
+      'พุธ',
+      'พฤหัสบดี',
+      'ศุกร์',
+      'เสาร์',
+    ];
+    final months = [
+      '',
+      'ม.ค.',
+      'ก.พ.',
+      'มี.ค.',
+      'เม.ย.',
+      'พ.ค.',
+      'มิ.ย.',
+      'ก.ค.',
+      'ส.ค.',
+      'ก.ย.',
+      'ต.ค.',
+      'พ.ย.',
+      'ธ.ค.',
+    ];
     if (!mounted) return;
     setState(() {
-      _timeStr = '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} น.';
-      _dateStr = 'วัน${days[now.weekday % 7]}ที่ ${now.day} ${months[now.month]}';
+      _timeStr =
+          '${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} น.';
+      _dateStr =
+          'วัน${days[now.weekday % 7]}ที่ ${now.day} ${months[now.month]}';
     });
   }
 
@@ -53,15 +77,24 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierDismissible: false,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('🚨 ขอความช่วยเหลือ?',
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
-        content: const Text('ระบบจะส่งสัญญาณฉุกเฉินไปยังผู้ดูแลของคุณทันที',
-            style: TextStyle(fontSize: 18), textAlign: TextAlign.center),
+        title: const Text(
+          '🚨 ขอความช่วยเหลือ?',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+        ),
+        content: const Text(
+          'ระบบจะส่งสัญญาณฉุกเฉินไปยังผู้ดูแลของคุณทันที',
+          style: TextStyle(fontSize: 18),
+          textAlign: TextAlign.center,
+        ),
         actionsAlignment: MainAxisAlignment.spaceEvenly,
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('ยกเลิก', style: TextStyle(fontSize: 20, color: Colors.grey)),
+            child: const Text(
+              'ยกเลิก',
+              style: TextStyle(fontSize: 20, color: Colors.grey),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.sosRed),
@@ -87,15 +120,33 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               // Top bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.favorite_rounded, color: Colors.white, size: 32),
+                    const Icon(
+                      Icons.favorite_rounded,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                     const SizedBox(width: 8),
-                    const Text('AHA', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'AHA',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const Spacer(),
                     IconButton(
-                      icon: const Icon(Icons.account_circle_outlined, color: Colors.white, size: 32),
+                      icon: const Icon(
+                        Icons.account_circle_outlined,
+                        color: Colors.white,
+                        size: 32,
+                      ),
                       onPressed: () => Navigator.pushNamed(context, '/profile'),
                     ),
                   ],
@@ -107,7 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 24,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(24),
@@ -115,13 +169,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Column(
                     children: [
-                      Text('สวัสดี $_userName',
-                          style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white)),
+                      Text(
+                        'สวัสดี $_userName',
+                        style: const TextStyle(
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
                       const SizedBox(height: 4),
-                      Text(_dateStr, style: const TextStyle(fontSize: 16, color: Colors.white70)),
+                      Text(
+                        _dateStr,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          color: Colors.white70,
+                        ),
+                      ),
                       const SizedBox(height: 12),
-                      Text(_timeStr,
-                          style: const TextStyle(fontSize: 48, fontWeight: FontWeight.w900, color: Colors.white)),
+                      Text(
+                        _timeStr,
+                        style: const TextStyle(
+                          fontSize: 48,
+                          fontWeight: FontWeight.w900,
+                          color: Colors.white,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -134,7 +206,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Container(
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(32),
+                    ),
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -144,11 +218,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Voice Assistant button
                         _BigButton(
                           icon: Icons.mic_rounded,
-                          label: '🎙️ พูดกับผู้ช่วย',
+                          label: 'พูดกับผู้ช่วย',
                           color: AppTheme.primaryBlue,
                           onTap: () {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('กำลังฟัง... พูดได้เลย')),
+                              const SnackBar(
+                                content: Text('กำลังฟัง... พูดได้เลย'),
+                              ),
                             );
                           },
                         ),
@@ -157,16 +233,17 @@ class _HomeScreenState extends State<HomeScreen> {
                         // Reminders button
                         _BigButton(
                           icon: Icons.calendar_month_rounded,
-                          label: '📅 นัดและยาของฉัน',
+                          label: 'นัดและยาของฉัน',
                           color: AppTheme.primaryBlueMid,
-                          onTap: () => Navigator.pushNamed(context, '/reminders'),
+                          onTap: () =>
+                              Navigator.pushNamed(context, '/reminders'),
                         ),
                         const SizedBox(height: 16),
 
                         // SOS button
                         _BigButton(
                           icon: Icons.sos_rounded,
-                          label: '🆘 ไม่สบาย ฉุกเฉิน',
+                          label: 'ไม่สบาย ฉุกเฉิน',
                           color: AppTheme.sosRed,
                           onTap: _triggerSos,
                           isLarge: true,
@@ -222,11 +299,14 @@ class _BigButton extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.white, size: isLarge ? 36 : 30),
             const SizedBox(width: 12),
-            Text(label,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isLarge ? 24 : 22,
-                    fontWeight: FontWeight.bold)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: isLarge ? 24 : 22,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ],
         ),
       ),

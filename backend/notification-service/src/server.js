@@ -188,6 +188,7 @@ app.post(
   authenticate,
   async (req, res) => {
     const {
+      user_id,
       type,
       title,
       message,
@@ -215,7 +216,7 @@ app.post(
         RETURNING *
         `,
         [
-          req.user.id,
+          req.user.role === 'system' ? user_id : req.user.id,
           type,
           title,
           message,

@@ -6,6 +6,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 
 const authRoutes = require('./routes/auth.routes');
+const familyRoutes = require('./routes/family.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
@@ -35,6 +36,7 @@ app.get('/health', (req, res) => {
 
 // รับ Route โดยไม่ต้องมี Prefix เพราะ Gateway ตัด /auth ออกให้แล้ว
 app.use('/', authRoutes);
+app.use('/family', familyRoutes);
 
 // 404
 app.use((req, res) => {
