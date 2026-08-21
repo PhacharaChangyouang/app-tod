@@ -119,7 +119,7 @@ class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
                       top: Radius.circular(32),
                     ),
                   ),
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,

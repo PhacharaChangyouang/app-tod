@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/app_theme.dart';
 import '../utils/secure_storage.dart';
 import '../utils/api_service.dart';
+import '../widgets/medication_alert_dialog.dart';
 import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
@@ -16,6 +17,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _timeStr = '';
   String _dateStr = '';
   Timer? _timer;
+  Timer? _notificationTimer;
+  final Set<String> _knownNotificationIds = {};
+  bool _alertVisible = false;
 
   @override
   void initState() {
@@ -23,6 +27,11 @@ class _HomeScreenState extends State<HomeScreen> {
     _loadUser();
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
+    _notificationTimer = Timer.periodic(
+      const Duration(seconds: 15),
+      (_) => _checkMedicationNotifications(),
+    );
+    _checkMedicationNotifications();
   }
 
   Future<void> _loadUser() async {
@@ -68,7 +77,40 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _notificationTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _checkMedicationNotifications() async {
+    try {
+      final notifications = await ApiService.getNotifications();
+      if (!mounted) return;
+
+      if (_knownNotificationIds.isEmpty) {
+        _knownNotificationIds.addAll(
+          notifications.map((item) => item['id'].toString()),
+        );
+        return;
+      }
+
+      for (final item in notifications.reversed) {
+        final id = item['id'].toString();
+        if (_knownNotificationIds.contains(id)) continue;
+        _knownNotificationIds.add(id);
+        if (item['type'] != 'reminder' || _alertVisible) continue;
+
+        _alertVisible = true;
+        await showMedicationAlert(
+          context,
+          title: item['title'] ?? 'ถึงเวลาทานยาแล้ว',
+          message: item['message'] ?? 'กรุณาทานยาตามเวลาที่ตั้งไว้',
+        );
+        _alertVisible = false;
+        break;
+      }
+    } catch (_) {
+      // Notification polling should never block the main screen.
+    }
   }
 
   Future<void> _triggerSos() async {
@@ -210,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       top: Radius.circular(32),
                     ),
                   ),
-                  child: Padding(
+                  child: SingleChildScrollView(
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

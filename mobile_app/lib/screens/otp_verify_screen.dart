@@ -50,7 +50,7 @@ class _OtpVerifyScreenState extends State<OtpVerifyScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               children: [

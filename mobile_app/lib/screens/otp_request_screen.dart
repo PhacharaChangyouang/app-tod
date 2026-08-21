@@ -51,7 +51,7 @@ class _OtpRequestScreenState extends State<OtpRequestScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 28),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -71,7 +71,7 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
       body: Container(
         decoration: const BoxDecoration(gradient: AppTheme.bgGradient),
         child: SafeArea(
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(28),
             child: Column(
               children: [
