@@ -5,9 +5,8 @@ import 'secure_storage.dart';
 
 class ApiService {
   // In production, change this to your server's domain
-  static const String _baseUrl = kIsWeb
-      ? 'http://localhost:8080'
-      : 'http://10.0.2.2:8080';
+  static String get _baseUrl =>
+      kIsWeb ? 'http://${Uri.base.host}:8080' : 'http://10.0.2.2:8080';
 
   static Future<Map<String, String>> _authHeaders() async {
     final token = await SecureStorage.getAccessToken();
@@ -73,11 +72,13 @@ class ApiService {
   }
 
   static Future<Map<String, dynamic>> login(String phone, String pin) async {
-    final res = await http.post(
-      Uri.parse('$_baseUrl/auth/login'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'pin': pin}),
-    );
+    final res = await http
+        .post(
+          Uri.parse('$_baseUrl/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': phone, 'pin': pin}),
+        )
+        .timeout(const Duration(seconds: 8));
     return _decode(res);
   }
 

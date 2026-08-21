@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../utils/api_service.dart';
 import '../utils/app_theme.dart';
 import '../utils/secure_storage.dart';
@@ -56,8 +57,10 @@ class _PinLoginScreenState extends State<PinLoginScreen> {
           ? '/caregiver-home'
           : '/home';
       Navigator.pushNamedAndRemoveUntil(context, route, (_) => false);
-    } catch (_) {
-      setState(() => _error = 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้');
+    } on TimeoutException {
+      setState(() => _error = 'เซิร์ฟเวอร์ใช้เวลานานเกินไป กรุณาลองใหม่');
+    } catch (error) {
+      setState(() => _error = 'เชื่อมต่อไม่ได้: $error');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
