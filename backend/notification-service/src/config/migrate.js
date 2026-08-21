@@ -25,7 +25,14 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
         read_at TIMESTAMPTZ
+
+        ,dedupe_key VARCHAR(255) UNIQUE
       );
+    `);
+
+    await pool.query(`
+      ALTER TABLE notifications
+      ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(255) UNIQUE;
     `);
 
     await pool.query(`

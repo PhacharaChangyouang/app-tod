@@ -29,6 +29,8 @@ async function migrate() {
 
         is_active BOOLEAN NOT NULL DEFAULT true,
 
+        last_triggered_key VARCHAR(32),
+
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
 
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -38,6 +40,11 @@ async function migrate() {
     await pool.query(`
       ALTER TABLE reminders
       ADD COLUMN IF NOT EXISTS days_of_week TEXT[] NOT NULL DEFAULT ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+    `);
+
+    await pool.query(`
+      ALTER TABLE reminders
+      ADD COLUMN IF NOT EXISTS last_triggered_key VARCHAR(32);
     `);
 
     await pool.query(`

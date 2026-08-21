@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import '../utils/app_theme.dart';
 import '../utils/secure_storage.dart';
+import '../utils/api_service.dart';
+import '../widgets/medication_alert_dialog.dart';
 
 class CaregiverHomeScreen extends StatefulWidget {
   const CaregiverHomeScreen({super.key});
@@ -11,16 +14,64 @@ class CaregiverHomeScreen extends StatefulWidget {
 
 class _CaregiverHomeScreenState extends State<CaregiverHomeScreen> {
   String _name = '';
+  Timer? _notificationTimer;
+  final Set<String> _knownNotificationIds = {};
+  bool _alertVisible = false;
+  bool _checkingNotifications = false;
 
   @override
   void initState() {
     super.initState();
     _load();
+    _notificationTimer = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => _checkMedicationNotifications(),
+    );
+    _checkMedicationNotifications();
   }
 
   Future<void> _load() async {
     final user = await SecureStorage.getUser();
     setState(() => _name = user['name'] ?? 'ผู้ดูแล');
+  }
+
+  @override
+  void dispose() {
+    _notificationTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _checkMedicationNotifications() async {
+    if (_checkingNotifications) return;
+    _checkingNotifications = true;
+    try {
+      final notifications = await ApiService.getNotifications();
+      if (!mounted) return;
+      if (_knownNotificationIds.isEmpty) {
+        _knownNotificationIds.addAll(
+          notifications.map((item) => item['id'].toString()),
+        );
+        return;
+      }
+      for (final item in notifications.reversed) {
+        final id = item['id'].toString();
+        if (_knownNotificationIds.contains(id)) continue;
+        _knownNotificationIds.add(id);
+        if (item['type'] != 'reminder' || _alertVisible) continue;
+        _alertVisible = true;
+        await showMedicationAlert(
+          context,
+          title: item['title'] ?? 'ได้เวลาทานยาแล้ว',
+          message: item['message'] ?? 'กรุณาทานยาตามเวลาที่ตั้งไว้',
+        );
+        _alertVisible = false;
+        break;
+      }
+    } catch (_) {
+      // Notification polling should never block the caregiver screen.
+    } finally {
+      _checkingNotifications = false;
+    }
   }
 
   @override

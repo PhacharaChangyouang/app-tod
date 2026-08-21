@@ -192,7 +192,8 @@ app.post(
       type,
       title,
       message,
-      related_id
+      related_id,
+      dedupe_key
     } = req.body;
 
     if (!type || !title || !message) {
@@ -210,9 +211,11 @@ app.post(
           type,
           title,
           message,
-          related_id
+          related_id,
+          dedupe_key
         )
-        VALUES ($1, $2, $3, $4, $5)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        ON CONFLICT (dedupe_key) DO NOTHING
         RETURNING *
         `,
         [
@@ -220,13 +223,15 @@ app.post(
           type,
           title,
           message,
-          related_id || null
+          related_id || null,
+          dedupe_key || null
         ]
       );
 
       res.status(201).json({
         success: true,
-        data: result.rows[0]
+        duplicate: result.rowCount === 0,
+        data: result.rows[0] || null
       });
     } catch (error) {
       console.error(error);

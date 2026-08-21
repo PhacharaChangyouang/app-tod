@@ -5,6 +5,7 @@ const authenticate = require('../middlewares/authenticate');
 const router = express.Router();
 
 router.use(authenticate);
+router.get('/internal/:userId/recipients', familyController.listRecipientIds);
 router.get('/connections', familyController.listConnections);
 router.post('/connections', familyController.createConnection);
 router.patch('/connections/:id', familyController.updateConnection);

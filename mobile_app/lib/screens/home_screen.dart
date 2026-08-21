@@ -20,6 +20,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Timer? _notificationTimer;
   final Set<String> _knownNotificationIds = {};
   bool _alertVisible = false;
+  bool _checkingNotifications = false;
 
   @override
   void initState() {
@@ -28,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _updateTime();
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => _updateTime());
     _notificationTimer = Timer.periodic(
-      const Duration(seconds: 15),
+      const Duration(seconds: 1),
       (_) => _checkMedicationNotifications(),
     );
     _checkMedicationNotifications();
@@ -82,6 +83,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _checkMedicationNotifications() async {
+    if (_checkingNotifications) return;
+    _checkingNotifications = true;
     try {
       final notifications = await ApiService.getNotifications();
       if (!mounted) return;
@@ -110,6 +113,8 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } catch (_) {
       // Notification polling should never block the main screen.
+    } finally {
+      _checkingNotifications = false;
     }
   }
 

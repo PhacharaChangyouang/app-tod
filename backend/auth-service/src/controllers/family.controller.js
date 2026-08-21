@@ -81,4 +81,26 @@ async function updateConnection(req, res, next) {
   }
 }
 
-module.exports = { listConnections, createConnection, updateConnection };
+async function listRecipientIds(req, res, next) {
+  try {
+    const result = await pool.query(
+      `
+      SELECT requester_id AS user_id
+      FROM family_connections
+      WHERE requested_id = $1 AND status = 'accepted'
+      UNION
+      SELECT requested_id AS user_id
+      FROM family_connections
+      WHERE requester_id = $1 AND status = 'accepted'
+      UNION
+      SELECT $1::uuid AS user_id
+      `,
+      [req.params.userId]
+    );
+    res.json({ success: true, data: result.rows.map((row) => row.user_id) });
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { listConnections, createConnection, updateConnection, listRecipientIds };
