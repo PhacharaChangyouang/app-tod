@@ -24,15 +24,19 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
 
   void _addDigit(String d) {
     setState(() {
-      if (_step == 1 && _pin.length < 6) _pin += d;
-      if (_step == 2 && _pinConfirm.length < 6) _pinConfirm += d;
+      if (_step == 1 && _pin.length < 4) _pin += d;
+      if (_step == 2 && _pinConfirm.length < 4) _pinConfirm += d;
     });
   }
 
   void _delDigit() {
     setState(() {
-      if (_step == 1 && _pin.isNotEmpty) _pin = _pin.substring(0, _pin.length - 1);
-      if (_step == 2 && _pinConfirm.isNotEmpty) _pinConfirm = _pinConfirm.substring(0, _pinConfirm.length - 1);
+      if (_step == 1 && _pin.isNotEmpty) {
+        _pin = _pin.substring(0, _pin.length - 1);
+      }
+      if (_step == 2 && _pinConfirm.isNotEmpty) {
+        _pinConfirm = _pinConfirm.substring(0, _pinConfirm.length - 1);
+      }
     });
   }
 
@@ -42,25 +46,39 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
         setState(() => _error = 'กรุณากรอกชื่อ');
         return;
       }
-      setState(() { _step = 1; _error = null; });
+      setState(() {
+        _step = 1;
+        _error = null;
+      });
       return;
     }
     if (_step == 1) {
-      if (_pin.length < 6) {
-        setState(() => _error = 'PIN ต้องมี 6 หลัก');
+      if (_pin.length < 4) {
+        setState(() => _error = 'PIN ต้องมี 4 หลัก');
         return;
       }
-      setState(() { _step = 2; _error = null; });
+      setState(() {
+        _step = 2;
+        _error = null;
+      });
       return;
     }
     if (_step == 2) {
       if (_pin != _pinConfirm) {
-        setState(() { _error = 'PIN ไม่ตรงกัน กรุณาลองใหม่'; _pin = ''; _pinConfirm = ''; _step = 1; });
+        setState(() {
+          _error = 'PIN ไม่ตรงกัน กรุณาลองใหม่';
+          _pin = '';
+          _pinConfirm = '';
+          _step = 1;
+        });
         return;
       }
       // Register
       final phone = ModalRoute.of(context)!.settings.arguments as String;
-      setState(() { _loading = true; _error = null; });
+      setState(() {
+        _loading = true;
+        _error = null;
+      });
       try {
         final res = await ApiService.register(
           phone: phone,
@@ -81,7 +99,9 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             phone: res['user']['phone'],
           );
           if (!mounted) return;
-          final route = _selectedRole == 'caregiver' ? '/caregiver-home' : '/home';
+          final route = _selectedRole == 'caregiver'
+              ? '/caregiver-home'
+              : '/home';
           Navigator.pushNamedAndRemoveUntil(context, route, (_) => false);
         } else {
           setState(() => _error = res['message'] ?? 'เกิดข้อผิดพลาด');
@@ -97,19 +117,25 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
   Widget _buildPinDots(String pinVal) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(6, (i) => Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        width: 18, height: 18,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: i < pinVal.length ? AppTheme.primaryBlue : Colors.grey.shade300,
+      children: List.generate(
+        4,
+        (i) => Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8),
+          width: 18,
+          height: 18,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: i < pinVal.length
+                ? AppTheme.primaryBlue
+                : Colors.grey.shade300,
+          ),
         ),
-      )),
+      ),
     );
   }
 
   Widget _buildNumPad() {
-    final keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+    final keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,
@@ -121,11 +147,14 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
           onTap: () => k == '⌫' ? _delDigit() : _addDigit(k),
           borderRadius: BorderRadius.circular(16),
           child: Center(
-            child: Text(k,
-                style: TextStyle(
-                    fontSize: k == '⌫' ? 22 : 28,
-                    fontWeight: FontWeight.bold,
-                    color: AppTheme.textDark)),
+            child: Text(
+              k,
+              style: TextStyle(
+                fontSize: k == '⌫' ? 22 : 28,
+                fontWeight: FontWeight.bold,
+                color: AppTheme.textDark,
+              ),
+            ),
           ),
         );
       }).toList(),
@@ -143,25 +172,45 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
             child: Column(
               children: [
                 const SizedBox(height: 30),
-                Row(children: [
-                  if (_step > 0)
-                    IconButton(
-                      onPressed: () => setState(() { _step--; _error = null; }),
-                      icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-                    ),
-                  const Spacer(),
-                ]),
-                const Icon(Icons.person_add_rounded, size: 64, color: Colors.white),
+                Row(
+                  children: [
+                    if (_step > 0)
+                      IconButton(
+                        onPressed: () => setState(() {
+                          _step--;
+                          _error = null;
+                        }),
+                        icon: const Icon(
+                          Icons.arrow_back_ios_rounded,
+                          color: Colors.white,
+                        ),
+                      ),
+                    const Spacer(),
+                  ],
+                ),
+                const Icon(
+                  Icons.person_add_rounded,
+                  size: 64,
+                  color: Colors.white,
+                ),
                 const SizedBox(height: 12),
                 Text(
-                  _step == 0 ? 'ข้อมูลของคุณ'
-                      : _step == 1 ? 'ตั้งรหัส PIN 6 หลัก'
+                  _step == 0
+                      ? 'ข้อมูลของคุณ'
+                      : _step == 1
+                      ? 'ตั้งรหัส PIN 4 หลัก'
                       : 'ยืนยัน PIN อีกครั้ง',
-                  style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: const TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Card(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   elevation: 8,
                   child: Padding(
                     padding: const EdgeInsets.all(24),
@@ -172,48 +221,78 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                             controller: _nameCtrl,
                             style: const TextStyle(fontSize: 20),
                             decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.person_rounded, color: AppTheme.primaryBlue),
+                              prefixIcon: Icon(
+                                Icons.person_rounded,
+                                color: AppTheme.primaryBlue,
+                              ),
                               hintText: 'ชื่อ-นามสกุล',
                             ),
                           ),
                           const SizedBox(height: 20),
-                          Row(children: [
-                            const Text('อายุ: ', style: TextStyle(fontSize: 18, color: AppTheme.textGrey)),
-                            Expanded(
-                              child: Slider(
-                                value: _age.toDouble(),
-                                min: 40, max: 100,
-                                divisions: 60,
-                                label: '$_age ปี',
-                                activeColor: AppTheme.primaryBlue,
-                                onChanged: (v) => setState(() => _age = v.round()),
+                          Row(
+                            children: [
+                              const Text(
+                                'อายุ: ',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: AppTheme.textGrey,
+                                ),
                               ),
-                            ),
-                            Text('$_age ปี', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                          ]),
+                              Expanded(
+                                child: Slider(
+                                  value: _age.toDouble(),
+                                  min: 40,
+                                  max: 100,
+                                  divisions: 60,
+                                  label: '$_age ปี',
+                                  activeColor: AppTheme.primaryBlue,
+                                  onChanged: (v) =>
+                                      setState(() => _age = v.round()),
+                                ),
+                              ),
+                              Text(
+                                '$_age ปี',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                           const SizedBox(height: 16),
                           const Align(
                             alignment: Alignment.centerLeft,
-                            child: Text('คุณคือ:', style: TextStyle(fontSize: 18, color: AppTheme.textGrey)),
+                            child: Text(
+                              'คุณคือ:',
+                              style: TextStyle(
+                                fontSize: 18,
+                                color: AppTheme.textGrey,
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 10),
-                          Row(children: [
-                            Expanded(
-                              child: _RoleCard(
-                                label: '👴 ผู้สูงอายุ',
-                                selected: _selectedRole == 'elderly',
-                                onTap: () => setState(() => _selectedRole = 'elderly'),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _RoleCard(
+                                  label: '👴 ผู้สูงอายุ',
+                                  selected: _selectedRole == 'elderly',
+                                  onTap: () =>
+                                      setState(() => _selectedRole = 'elderly'),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _RoleCard(
-                                label: '👨‍⚕️ ผู้ดูแล',
-                                selected: _selectedRole == 'caregiver',
-                                onTap: () => setState(() => _selectedRole = 'caregiver'),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: _RoleCard(
+                                  label: '👨‍⚕️ ผู้ดูแล',
+                                  selected: _selectedRole == 'caregiver',
+                                  onTap: () => setState(
+                                    () => _selectedRole = 'caregiver',
+                                  ),
+                                ),
                               ),
-                            ),
-                          ]),
+                            ],
+                          ),
                         ],
                         if (_step == 1 || _step == 2) ...[
                           const SizedBox(height: 10),
@@ -223,18 +302,27 @@ class _PinSetupScreenState extends State<PinSetupScreen> {
                         ],
                         if (_error != null) ...[
                           const SizedBox(height: 12),
-                          Text(_error!,
-                              style: const TextStyle(color: AppTheme.sosRed, fontSize: 16),
-                              textAlign: TextAlign.center),
+                          Text(
+                            _error!,
+                            style: const TextStyle(
+                              color: AppTheme.sosRed,
+                              fontSize: 16,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
                         ],
                         const SizedBox(height: 20),
                         ElevatedButton(
-                          onPressed: (_loading ||
-                              (_step == 1 && _pin.length < 6) ||
-                              (_step == 2 && _pinConfirm.length < 6))
-                              ? null : _submit,
+                          onPressed:
+                              (_loading ||
+                                  (_step == 1 && _pin.length < 4) ||
+                                  (_step == 2 && _pinConfirm.length < 4))
+                              ? null
+                              : _submit,
                           child: _loading
-                              ? const CircularProgressIndicator(color: Colors.white)
+                              ? const CircularProgressIndicator(
+                                  color: Colors.white,
+                                )
                               : Text(_step == 2 ? 'สมัครสมาชิก' : 'ถัดไป'),
                         ),
                       ],
@@ -255,7 +343,11 @@ class _RoleCard extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  const _RoleCard({required this.label, required this.selected, required this.onTap});
+  const _RoleCard({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -272,12 +364,15 @@ class _RoleCard extends StatelessWidget {
             width: 2,
           ),
         ),
-        child: Text(label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: selected ? Colors.white : AppTheme.textDark)),
+        child: Text(
+          label,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : AppTheme.textDark,
+          ),
+        ),
       ),
     );
   }

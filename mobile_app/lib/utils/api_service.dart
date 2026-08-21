@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'secure_storage.dart';
 
 class ApiService {
   // In production, change this to your server's domain
-  static const String _baseUrl = 'http://10.0.2.2:8080'; // Android emulator -> localhost
+  static const String _baseUrl = kIsWeb
+      ? 'http://localhost:8080'
+      : 'http://10.0.2.2:8080';
 
   static Future<Map<String, String>> _authHeaders() async {
     final token = await SecureStorage.getAccessToken();
@@ -16,15 +19,20 @@ class ApiService {
 
   // ---------- AUTH ----------
   static Future<Map<String, dynamic>> requestOtp(String phone) async {
-    final res = await http.post(
-      Uri.parse('$_baseUrl/auth/request-otp'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone}),
-    );
+    final res = await http
+        .post(
+          Uri.parse('$_baseUrl/auth/request-otp'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': phone}),
+        )
+        .timeout(const Duration(seconds: 8));
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> verifyOtp(String phone, String code) async {
+  static Future<Map<String, dynamic>> verifyOtp(
+    String phone,
+    String code,
+  ) async {
     final res = await http.post(
       Uri.parse('$_baseUrl/auth/verify-otp'),
       headers: {'Content-Type': 'application/json'},
@@ -43,7 +51,13 @@ class ApiService {
     final res = await http.post(
       Uri.parse('$_baseUrl/auth/register'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'name': name, 'age': age, 'role': role, 'pin': pin}),
+      body: jsonEncode({
+        'phone': phone,
+        'name': name,
+        'age': age,
+        'role': role,
+        'pin': pin,
+      }),
     );
     return jsonDecode(res.body);
   }
