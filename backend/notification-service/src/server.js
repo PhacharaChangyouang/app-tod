@@ -59,7 +59,9 @@ app.get(
           related_id,
           is_read,
           created_at,
-          read_at
+          read_at,
+          scheduled_at,
+          delivered_at
         FROM notifications
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -102,7 +104,9 @@ app.get(
           message,
           related_id,
           is_read,
-          created_at
+          created_at,
+          scheduled_at,
+          delivered_at
         FROM notifications
         WHERE user_id = $1
           AND is_read = false
@@ -193,7 +197,8 @@ app.post(
       title,
       message,
       related_id,
-      dedupe_key
+      dedupe_key,
+      scheduled_at
     } = req.body;
 
     if (!type || !title || !message) {
@@ -212,9 +217,11 @@ app.post(
           title,
           message,
           related_id,
-          dedupe_key
+          dedupe_key,
+          scheduled_at,
+          delivered_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, now())
         ON CONFLICT (dedupe_key) DO NOTHING
         RETURNING *
         `,
@@ -224,7 +231,8 @@ app.post(
           title,
           message,
           related_id || null,
-          dedupe_key || null
+          dedupe_key || null,
+          scheduled_at || null
         ]
       );
 

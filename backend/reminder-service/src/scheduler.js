@@ -34,7 +34,9 @@ async function sendNotification(userId, reminder, occurrenceKey) {
     body: JSON.stringify({
       user_id: userId, type: 'reminder', title: 'ได้เวลาทานยาแล้ว!',
       message: `กรุณาทานยา ${reminder.medicine_name} ${reminder.dosage || ''}`,
-      related_id: reminder.id, dedupe_key: `${userId}:${reminder.id}:${occurrenceKey}`
+      related_id: reminder.id,
+      dedupe_key: `${userId}:${reminder.id}:${occurrenceKey}`,
+      scheduled_at: `${occurrenceKey.replace('T', 'T')}+07:00`
     })
   });
   if (!response.ok) throw new Error(`Notification failed: ${response.status}`);

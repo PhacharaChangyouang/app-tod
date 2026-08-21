@@ -26,13 +26,23 @@ async function migrate() {
 
         read_at TIMESTAMPTZ
 
-        ,dedupe_key VARCHAR(255) UNIQUE
+        ,dedupe_key VARCHAR(255) UNIQUE,
+
+        scheduled_at TIMESTAMPTZ,
+
+        delivered_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
 
     await pool.query(`
       ALTER TABLE notifications
       ADD COLUMN IF NOT EXISTS dedupe_key VARCHAR(255) UNIQUE;
+    `);
+
+    await pool.query(`
+      ALTER TABLE notifications
+      ADD COLUMN IF NOT EXISTS scheduled_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ NOT NULL DEFAULT now();
     `);
 
     await pool.query(`
