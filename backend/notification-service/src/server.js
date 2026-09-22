@@ -392,7 +392,7 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
       `, [
         userId,
         `${message}${locationText}`,
-        `emergency:${req.user.id}:${new Date().toISOString().slice(0,16)}`
+        `emergency:${req.user.id}:${userId}:${new Date().toISOString().slice(0,16)}`
       ]);
       if (result.rowCount) created.push(result.rows[0]);
     }
