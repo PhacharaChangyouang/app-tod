@@ -20,23 +20,6 @@ function shortTime(value) {
   return String(value || '').slice(0, 5) || '--:--';
 }
 
-function ElderPortrait() {
-  return (
-    <svg className="home-portrait-svg" viewBox="0 0 250 250" aria-label="ภาพประกอบผู้สูงอายุ" role="img">
-      <path d="M24 250c7-69 52-93 101-93s94 24 101 93" fill="#7bc7df" />
-      <path d="M48 177c18-33 32-47 49-53h60c20 8 36 24 48 53" fill="#bdeaf2" />
-      <ellipse cx="125" cy="92" rx="62" ry="72" fill="#ffd4b1" />
-      <path d="M68 89c-4-55 31-77 63-77 38 0 61 26 53 76-10-20-20-30-39-38-25 23-50 30-77 39Z" fill="#f0f4f4" />
-      <path d="M73 73c7-37 34-52 62-52 25 0 44 13 53 38-31-14-67-8-115 14Z" fill="#c4d0d3" />
-      <path d="M97 106c9 8 46 8 56 0" stroke="#b36c5b" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="101" cy="91" r="4" fill="#173f70" />
-      <circle cx="151" cy="91" r="4" fill="#173f70" />
-      <path d="M84 152c24 20 59 19 82 0" fill="#4bafcb" />
-      <path d="M99 155h52v40H99z" fill="#ecffff" />
-    </svg>
-  );
-}
-
 function BrandMark() {
   return (
     <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
@@ -219,7 +202,11 @@ export default function HomePage() {
                 <br />
                 ไปด้วยกัน
               </span>
-              <ElderPortrait />
+              <img
+                className="home-elder-photo"
+                src="/elderly-hero.jpg"
+                alt="ผู้สูงอายุ"
+              />
             </div>
           </section>
 
