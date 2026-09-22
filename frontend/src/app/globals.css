@@ -333,3 +333,34 @@
 :global(.aha-v3-care-card-large){grid-column:1/-1;min-height:79px!important}
 :global(.aha-v3-bottom-grid){grid-template-columns:1fr!important}
 }
+
+
+/* AHA voice assistant */
+.aha-voice-page{max-width:900px;margin:0 auto;padding:24px 18px 100px}
+.aha-voice-hero{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:32px;border-radius:24px;background:linear-gradient(135deg,#eaf8fe,#d9f1fa);border:1px solid #d2ebf5}
+.aha-voice-hero h1{margin:8px 0;font-size:38px;color:#124477}
+.aha-voice-hero p{margin:0;color:#5b8198;font-size:17px}
+.aha-voice-orb{width:112px;height:112px;border-radius:50%;display:grid;place-items:center;background:#29abe2;color:#fff;box-shadow:0 14px 35px rgba(41,171,226,.28)}
+.aha-voice-orb.listening{animation:ahaPulse 1.2s infinite}
+.aha-voice-card{margin-top:16px;padding:24px;border-radius:24px;background:#fff;border:1px solid #dceef5;box-shadow:0 12px 35px rgba(30,110,145,.08)}
+.aha-voice-state{text-align:center;font-weight:800;color:#168fd0;margin-bottom:14px}
+.aha-voice-button{width:100%;min-height:150px;border:0;border-radius:20px;background:#f0f9fd;color:#128ed0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;cursor:pointer}
+.aha-voice-button strong{font-size:25px}.aha-voice-button span{font-size:14px;color:#6d8795}.aha-voice-button:disabled{opacity:.7}
+.aha-voice-transcript,.aha-voice-response{margin-top:14px;padding:16px;border-radius:16px;display:flex;gap:12px;align-items:flex-start}
+.aha-voice-transcript{background:#f6fbfe;flex-direction:column}.aha-voice-transcript span{font-size:12px;color:#77909e}.aha-voice-transcript strong{font-size:19px}
+.aha-voice-response{background:#eef9f6;color:#226f61}
+.aha-voice-examples{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}.aha-voice-examples h2{grid-column:1/-1;font-size:20px;margin:5px 0}
+.aha-voice-examples button{min-height:76px;border:1px solid #dceef5;background:#fff;border-radius:16px;padding:12px;text-align:left;font-weight:750;color:#31576a;display:flex;align-items:center;gap:9px;cursor:pointer}.aha-voice-examples button:hover{border-color:#29abe2;color:#128ed0}
+.aha-danger-mark{background:linear-gradient(145deg,#ef4e4a,#bd2521)!important;color:#fff!important}
+.aha-emergency-page{max-width:760px;margin:0 auto;padding:24px 18px 100px}
+.aha-emergency-hero{text-align:center;padding:32px 22px;border-radius:26px;background:linear-gradient(145deg,#fff7f7,#fff);border:1px solid #f3d4d4}
+.aha-emergency-hero h1{font-size:38px;margin:8px 0;color:#6f2422}.aha-emergency-hero>p{max-width:600px;margin:0 auto;color:#7c7777;line-height:1.7}
+.aha-sos-wrap{display:grid;place-items:center;margin:28px 0}
+.aha-sos-button{width:190px;height:190px;border-radius:50%;border:12px solid #ffd8d5;background:#e84f4b;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;box-shadow:0 16px 40px rgba(229,57,53,.25);cursor:pointer;touch-action:none}.aha-sos-button strong{font-size:34px}.aha-sos-button span{font-size:13px}
+.aha-sos-wrap.holding .aha-sos-button{transform:scale(.94);box-shadow:0 0 0 18px rgba(229,57,53,.12),0 16px 40px rgba(229,57,53,.25)}
+.aha-emergency-message{display:flex;gap:10px;align-items:center;text-align:left;margin:12px 0}
+.aha-location-card{padding:16px;border-radius:17px;background:#eef9fd;text-align:left;margin-top:12px}.aha-location-card>div{display:flex;gap:9px;align-items:center;color:#146f99}.aha-location-card>span{display:block;color:#718997;font-size:13px;margin:6px 0 10px}
+.aha-emergency-call{margin-top:18px;text-align:left;padding:18px;border-radius:18px;background:#f7fafb}.aha-emergency-call>div{display:flex;gap:10px;margin-top:7px}.aha-emergency-call input{flex:1;min-width:0;border:1px solid #cfe1e9;border-radius:12px;padding:12px 14px;font-size:18px}.aha-emergency-call small{display:block;color:#82939b;margin-top:8px}
+.aha-v3-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}.aha-v3-take-button{border:1px solid #b9e7d8;background:#effaf6;color:#17805e;border-radius:9px;padding:6px 10px;font-weight:800;cursor:pointer}
+@keyframes ahaPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+@media(max-width:700px){.aha-voice-hero{padding:24px}.aha-voice-hero h1,.aha-emergency-hero h1{font-size:29px}.aha-voice-orb{width:80px;height:80px}.aha-voice-examples{grid-template-columns:1fr}.aha-emergency-page{padding-left:12px;padding-right:12px}.aha-sos-button{width:165px;height:165px}.aha-emergency-call>div{flex-direction:column}}
