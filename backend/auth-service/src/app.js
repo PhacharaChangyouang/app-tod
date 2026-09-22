@@ -15,10 +15,15 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:8080',
+
+  // Railway frontend
   'https://aha-frontend-production.up.railway.app',
+
+  // Custom frontend domain
+  'https://aha.up.railway.app',
+
   process.env.FRONTEND_URL,
 ].filter(Boolean);
-
 app.use(
   cors({
     origin: (origin, callback) => {
