@@ -56,6 +56,20 @@ export const notificationApi = {
   remove: id => request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, { method:'DELETE', auth:true }),
 };
 
+export const familyApi = {
+  connections: () => request(AUTH_API_BASE, '/family/connections', { auth: true }),
+  connect: phone => request(AUTH_API_BASE, '/family/connections', { method: 'POST', body: { phone }, auth: true }),
+  updateConnection: (id, status) => request(AUTH_API_BASE, `/family/connections/${id}`, { method: 'PATCH', body: { status }, auth: true }),
+};
+
+export const emergencyApi = {
+  notify: payload => request(NOTIFICATION_API_BASE, '/api/notifications/emergency', {
+    method: 'POST',
+    body: payload,
+    auth: true,
+  }),
+};
+
 export async function authFetch(path,{method='GET',body,service='auth'}={}) {
   const base=service==='reminder'?REMINDER_API_BASE:service==='notification'?NOTIFICATION_API_BASE:AUTH_API_BASE;
   return request(base,path,{method,body,auth:true});
