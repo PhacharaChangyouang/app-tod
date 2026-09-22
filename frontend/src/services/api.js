@@ -39,6 +39,8 @@ export const authApi = {
 
 export const reminderApi = {
   list: () => request(REMINDER_API_BASE, '/api/reminders', { auth:true }),
+  today: () => request(REMINDER_API_BASE, '/api/reminders/today', { auth:true }),
+  markTaken: id => request(REMINDER_API_BASE, `/api/reminders/${id}/taken`, { method:'POST', auth:true }),
   create: payload => request(REMINDER_API_BASE, '/api/reminders', { method:'POST', body:payload, auth:true }),
   get: id => request(REMINDER_API_BASE, `/api/reminders/${id}`, { auth:true }),
   update: (id,payload) => request(REMINDER_API_BASE, `/api/reminders/${id}`, { method:'PUT', body:payload, auth:true }),
