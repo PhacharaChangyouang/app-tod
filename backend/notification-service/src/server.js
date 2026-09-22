@@ -348,6 +348,69 @@ app.post(
 
 /*
 |--------------------------------------------------------------------------
+| POST /api/notifications/emergency
+|--------------------------------------------------------------------------
+| Authenticated user -> self + accepted family recipients
+|--------------------------------------------------------------------------
+*/
+app.post('/api/notifications/emergency', authenticate, async (req, res) => {
+  const { message = 'มีการขอความช่วยเหลือฉุกเฉินจากผู้ใช้ AHA', latitude, longitude, accuracy } = req.body;
+  const authUrl = process.env.AUTH_SERVICE_URL;
+  const internalKey = process.env.INTERNAL_API_KEY;
+
+  if (!authUrl || !internalKey) {
+    return res.status(500).json({ success: false, message: 'Emergency service integration is not configured' });
+  }
+
+  try {
+    const recipientsResponse = await fetch(
+      `${authUrl.replace(/\/$/, '')}/family/internal/${req.user.id}/recipients`,
+      { headers: { 'x-internal-api-key': internalKey } }
+    );
+
+    if (!recipientsResponse.ok) {
+      return res.status(502).json({ success: false, message: 'Unable to load emergency recipients' });
+    }
+
+    const recipientsPayload = await recipientsResponse.json();
+    const recipientIds = Array.isArray(recipientsPayload.data)
+      ? [...new Set(recipientsPayload.data)]
+      : [req.user.id];
+
+    const locationText = latitude != null && longitude != null
+      ? ` ตำแหน่ง: https://www.google.com/maps?q=${latitude},${longitude}${accuracy ? ` (คลาดเคลื่อนประมาณ ${Math.round(accuracy)} ม.)` : ''}`
+      : ' ไม่พบตำแหน่ง GPS';
+
+    const created = [];
+    for (const userId of recipientIds) {
+      const result = await pool.query(`
+        INSERT INTO notifications
+          (user_id, type, title, message, dedupe_key, delivered_at)
+        VALUES ($1, 'emergency', 'แจ้งเหตุฉุกเฉิน', $2, $3, now())
+        ON CONFLICT (dedupe_key) DO NOTHING
+        RETURNING id, user_id, created_at
+      `, [
+        userId,
+        `${message}${locationText}`,
+        `emergency:${req.user.id}:${new Date().toISOString().slice(0,16)}`
+      ]);
+      if (result.rowCount) created.push(result.rows[0]);
+    }
+
+    res.status(201).json({
+      success: true,
+      notified: created.length,
+      recipients: recipientIds.length,
+      data: created,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to send emergency notification' });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
 | MARK READ
 |--------------------------------------------------------------------------
 */
