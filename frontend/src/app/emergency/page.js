@@ -1,15 +1,158 @@
 'use client';
-import {useEffect,useRef,useState} from 'react';
-import {useRouter} from 'next/navigation';
-import AhaIcon from '../../components/AhaIcon';
-import {getSession} from '../../services/auth';
 
-export default function EmergencyPage(){
- const router=useRouter(),timer=useRef(null);const[holding,setHolding]=useState(false),[location,setLocation]=useState(null),[message,setMessage]=useState(''),[phone,setPhone]=useState('1669');
- useEffect(()=>{if(!getSession()?.accessToken)router.replace('/login')},[router]);
- const getLocation=()=>new Promise((resolve,reject)=>{if(!navigator.geolocation)return reject(new Error('เบราว์เซอร์ไม่รองรับตำแหน่ง'));navigator.geolocation.getCurrentPosition(resolve,reject,{enableHighAccuracy:true,timeout:10000,maximumAge:30000})});
- const start=()=>{setHolding(true);setMessage('กดค้างต่ออีกเล็กน้อยเพื่อยืนยัน');timer.current=setTimeout(async()=>{setHolding(false);try{const p=await getLocation();setLocation({lat:p.coords.latitude,lon:p.coords.longitude,accuracy:Math.round(p.coords.accuracy)});setMessage('เตรียมข้อมูลฉุกเฉินแล้ว สามารถกดโทรได้ทันที')}catch(e){setMessage('ไม่สามารถอ่านตำแหน่งได้: '+e.message)}},2000)};
- const stop=()=>{if(timer.current)clearTimeout(timer.current);setHolding(false)};
- const maps=location?'https://www.google.com/maps?q='+location.lat+','+location.lon:'';
- return <div className="aha-page"><div className="aha-shell"><header className="topbar"><div className="brand"><button className="icon-btn" onClick={()=>router.push('/home')}><AhaIcon name="arrow" size={21}/></button><div className="brand-mark" style={{background:'linear-gradient(145deg,#ef4e4a,#bd2521)'}}><AhaIcon name="warning"/></div><span>ฉุกเฉิน</span></div><button className="btn btn-soft" onClick={()=>router.push('/home')}>กลับหน้าหลัก</button></header><section className="card danger-panel center"><div className="eyebrow" style={{color:'#c82d2a'}}>EMERGENCY CENTER</div><h1 style={{fontSize:34,margin:'8px 0'}}>ต้องการความช่วยเหลือ?</h1><p className="muted" style={{lineHeight:1.7}}>กดปุ่มค้างประมาณ 2 วินาที ระบบจะเตรียมตำแหน่งปัจจุบันให้ก่อนเปิดการโทร</p><div className="sos-ring"><button className="sos-core" onPointerDown={start} onPointerUp={stop} onPointerLeave={stop} onPointerCancel={stop}>{holding?'ยืนยัน…':'SOS'}</button></div>{message&&<div className="success" style={{textAlign:'left',marginBottom:15}}>{message}</div>}<div className="field" style={{textAlign:'left',marginBottom:15}}><label>หมายเลขฉุกเฉิน</label><input value={phone} onChange={e=>setPhone(e.target.value.replace(/\D/g,''))} inputMode="numeric"/></div>{location&&<div className="location-box"><div style={{display:'flex',gap:10,alignItems:'center',fontWeight:850}}><AhaIcon name="location"/> ตำแหน่งพร้อมใช้งาน</div><div className="muted small" style={{marginTop:6}}>ละติจูด {location.lat.toFixed(6)} · ลองจิจูด {location.lon.toFixed(6)} · ความคลาดเคลื่อนประมาณ {location.accuracy} ม.</div><a className="btn btn-soft full" style={{marginTop:10}} href={maps} target="_blank" rel="noreferrer">เปิดแผนที่</a></div>}<button className="btn btn-danger btn-lg full" style={{marginTop:15}} onClick={()=>{window.location.href='tel:'+(phone||'1669')}}><AhaIcon name="phone"/> โทร {phone||'ฉุกเฉิน'}</button><p className="muted small" style={{marginTop:14}}>เว็บสามารถเปิดการโทรและอ่านตำแหน่งได้เมื่อได้รับสิทธิ์จากอุปกรณ์ การส่ง SMS อัตโนมัติต้องเชื่อมบริการภายนอกเพิ่มเติม</p></section><nav className="footer-nav"><div className="footer-nav-inner"><button className="footer-link" onClick={()=>router.push('/home')}><AhaIcon name="home" size={20}/><span>หน้าหลัก</span></button><button className="footer-link" onClick={()=>router.push('/reminders')}><AhaIcon name="pill" size={20}/><span>ยา</span></button><button className="footer-link" onClick={()=>router.push('/notifications')}><AhaIcon name="bell" size={20}/><span>แจ้งเตือน</span></button><button className="footer-link active"><AhaIcon name="warning" size={20}/><span>ฉุกเฉิน</span></button></div></nav></div></div>
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import AhaIcon from '../../components/AhaIcon';
+import { getSession } from '../../services/auth';
+import { emergencyApi } from '../../services/api';
+
+export default function EmergencyPage() {
+  const router = useRouter();
+  const timer = useRef(null);
+  const [holding, setHolding] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [location, setLocation] = useState(null);
+  const [message, setMessage] = useState('');
+  const [phone, setPhone] = useState('1669');
+
+  useEffect(() => {
+    if (!getSession()?.accessToken) router.replace('/login');
+    return () => timer.current && clearTimeout(timer.current);
+  }, [router]);
+
+  const getLocation = () => new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('อุปกรณ์นี้ไม่รองรับตำแหน่ง GPS'));
+    navigator.geolocation.getCurrentPosition(resolve, reject, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 30000,
+    });
+  });
+
+  const confirmEmergency = async () => {
+    setSending(true);
+    setMessage('');
+    try {
+      let coords = null;
+      try {
+        const position = await getLocation();
+        coords = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracy: position.coords.accuracy,
+        };
+        setLocation(coords);
+      } catch {
+        setLocation(null);
+      }
+
+      await emergencyApi.notify({
+        message: 'ผู้ใช้ AHA กดขอความช่วยเหลือฉุกเฉิน',
+        ...(coords || {}),
+      });
+
+      setSent(true);
+      setMessage('ส่งการแจ้งเหตุไปยังผู้ใช้ที่เชื่อมต่อแล้ว สามารถโทร 1669 ต่อได้ทันที');
+    } catch (error) {
+      setMessage(error.message || 'ส่งการแจ้งเหตุไม่สำเร็จ');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const start = () => {
+    if (sending) return;
+    setHolding(true);
+    setSent(false);
+    setMessage('กดค้างต่ออีกเล็กน้อยเพื่อยืนยัน');
+    timer.current = setTimeout(() => {
+      setHolding(false);
+      confirmEmergency();
+    }, 2000);
+  };
+
+  const stop = () => {
+    if (timer.current) clearTimeout(timer.current);
+    setHolding(false);
+  };
+
+  const maps = location
+    ? `https://www.google.com/maps?q=${location.latitude},${location.longitude}`
+    : '';
+
+  return (
+    <div className="aha-page">
+      <div className="aha-shell">
+        <header className="topbar">
+          <div className="brand">
+            <button className="icon-btn" onClick={() => router.push('/home')} aria-label="กลับหน้าหลัก">
+              <AhaIcon name="arrow" size={21} />
+            </button>
+            <div className="brand-mark aha-danger-mark"><AhaIcon name="warning" /></div>
+            <span>ฉุกเฉิน</span>
+          </div>
+          <button className="btn btn-soft" onClick={() => router.push('/home')}>กลับหน้าหลัก</button>
+        </header>
+
+        <main className="aha-emergency-page">
+          <section className="aha-emergency-hero">
+            <div className="eyebrow">EMERGENCY CENTER</div>
+            <h1>ต้องการความช่วยเหลือ?</h1>
+            <p>กดปุ่มค้าง 2 วินาทีเพื่อยืนยัน AHA จะส่งแจ้งเหตุพร้อมตำแหน่งให้ผู้ดูแลที่เชื่อมต่อ</p>
+
+            <div className={`aha-sos-wrap ${holding ? 'holding' : ''}`}>
+              <button
+                className="aha-sos-button"
+                onPointerDown={start}
+                onPointerUp={stop}
+                onPointerLeave={stop}
+                onPointerCancel={stop}
+                aria-label="กดค้างเพื่อขอความช่วยเหลือ"
+              >
+                <AhaIcon name="warning" size={42} />
+                <strong>{sending ? 'กำลังส่ง' : holding ? 'ยืนยัน...' : 'SOS'}</strong>
+                <span>{sent ? 'แจ้งเหตุแล้ว' : 'กดค้าง 2 วินาที'}</span>
+              </button>
+            </div>
+
+            {message && (
+              <div className={sent ? 'success aha-emergency-message' : 'error aha-emergency-message'}>
+                <AhaIcon name={sent ? 'check' : 'warning'} size={20} />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {location && (
+              <div className="aha-location-card">
+                <div><AhaIcon name="location" size={22} /><strong>ส่งตำแหน่ง GPS แล้ว</strong></div>
+                <span>คลาดเคลื่อนประมาณ {Math.round(location.accuracy)} เมตร</span>
+                <a href={maps} target="_blank" rel="noreferrer" className="btn btn-soft full">เปิดตำแหน่งบนแผนที่</a>
+              </div>
+            )}
+
+            <div className="aha-emergency-call">
+              <label>สายฉุกเฉิน</label>
+              <div>
+                <input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} inputMode="numeric" />
+                <button className="btn btn-danger btn-lg" onClick={() => { window.location.href = `tel:${phone || '1669'}`; }}>
+                  <AhaIcon name="phone" /> โทรทันที
+                </button>
+              </div>
+              <small>ประเทศไทยใช้ 1669 สำหรับบริการการแพทย์ฉุกเฉิน</small>
+            </div>
+          </section>
+        </main>
+
+        <nav className="footer-nav">
+          <div className="footer-nav-inner">
+            <button className="footer-link" onClick={() => router.push('/home')}><AhaIcon name="home" size={20} /><span>หน้าหลัก</span></button>
+            <button className="footer-link" onClick={() => router.push('/reminders')}><AhaIcon name="pill" size={20} /><span>ยา</span></button>
+            <button className="footer-link" onClick={() => router.push('/voice')}><AhaIcon name="mic" size={20} /><span>พูดกับ AHA</span></button>
+            <button className="footer-link active danger"><AhaIcon name="warning" size={20} /><span>ฉุกเฉิน</span></button>
+          </div>
+        </nav>
+      </div>
+    </div>
+  );
 }
