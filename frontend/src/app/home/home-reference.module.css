@@ -1,0 +1,47 @@
+/* AHA Home Reference UI overrides */
+.aha-v3-page{background:#edf8fd!important}
+.aha-v3-content{width:min(1120px,calc(100% - 44px))!important;max-width:1120px}
+.aha-v3-hero{height:238px!important;border-radius:18px!important;background:linear-gradient(100deg,#e6f7fd 0%,#d5eff9 52%,#c8e8f6 100%)!important}
+.aha-v3-hero-copy{width:53%!important;padding-left:40px!important}
+.aha-v3-hero-copy h1{font-size:46px!important;color:#124477!important}
+.aha-v3-hero-copy p{font-size:18px!important;color:#5b8198!important}
+.aha-v3-hero-photo{width:58%!important}
+.aha-v3-hero-photo img{object-position:72% 43%!important;filter:saturate(.92) brightness(1.03)!important;mask-image:linear-gradient(to right,transparent 0%,rgba(0,0,0,.18) 14%,#000 31%,#000 100%)!important}
+.aha-v3-hero-note{right:25px!important;top:40px!important;color:#176da0!important;font-size:18px!important}
+.aha-v3-feature-row{display:grid;grid-template-columns:1fr 1.8fr;gap:12px;margin-top:12px}
+.aha-v3-feature-row>.aha-v3-next{min-height:120px}
+.aha-v3-action-stack{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.aha-v3-action-stack .aha-v3-action{height:120px!important}
+.aha-v3-action.blue{background:linear-gradient(135deg,#39b7ef,#1597dc)!important}
+.aha-v3-action.red{background:linear-gradient(135deg,#ff7771,#ed5752)!important}
+.aha-v3-metrics-row{display:grid;grid-template-columns:1fr 1.2fr 1.05fr;gap:12px;margin-top:12px}
+.aha-v3-metrics-row .aha-v3-card{min-height:178px}
+.aha-v3-care-card-large{min-height:178px!important;align-items:flex-start!important;padding-top:20px!important}
+.aha-v3-today-card{margin-top:12px!important}
+.aha-v3-bottom-grid{grid-template-columns:1fr 1.2fr!important}
+.aha-v3-wellness-photo{background:linear-gradient(100deg,#e4f7fd,#c9ebf7)!important}
+.aha-v3-wellness-photo:after{content:"";position:absolute;right:0;bottom:0;width:55%;height:100%;background:linear-gradient(90deg,transparent,rgba(180,225,240,.45));pointer-events:none}
+@media(max-width:900px){
+  .aha-v3-content{width:calc(100% - 28px)!important}
+  .aha-v3-feature-row{grid-template-columns:1fr!important}
+  .aha-v3-action-stack{grid-template-columns:repeat(3,1fr)}
+  .aha-v3-metrics-row{grid-template-columns:1fr 1fr}
+  .aha-v3-care-card-large{grid-column:1/-1}
+}
+@media(max-width:760px){
+  .aha-v3-content{width:100%!important}
+  .aha-v3-hero{height:255px!important}
+  .aha-v3-hero-copy{width:58%!important;padding-left:20px!important}
+  .aha-v3-hero-copy h1{font-size:31px!important}
+  .aha-v3-hero-photo{width:67%!important;height:74%!important}
+  .aha-v3-hero-note{font-size:11px!important;right:12px!important;top:12px!important}
+  .aha-v3-feature-row{display:block;margin-top:9px}
+  .aha-v3-feature-row>.aha-v3-next{min-height:156px}
+  .aha-v3-action-stack{grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+  .aha-v3-action-stack .aha-v3-action{height:142px!important;padding:12px 6px!important}
+  .aha-v3-action-stack .aha-v3-action strong{font-size:14px!important}
+  .aha-v3-metrics-row{grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
+  .aha-v3-metrics-row .aha-v3-card{min-height:174px}
+  .aha-v3-care-card-large{grid-column:1/-1;min-height:79px!important}
+  .aha-v3-bottom-grid{grid-template-columns:1fr!important}
+}
