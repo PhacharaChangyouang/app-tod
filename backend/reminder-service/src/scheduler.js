@@ -65,7 +65,7 @@ async function notifyRecipients(reminder, triggerKey) {
           title: 'ถึงเวลาเตือนยา',
           message: `ถึงเวลาทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''}`,
           related_id: reminder.id,
-          dedupe_key: `reminder:${reminder.id}:${triggerKey}`,
+          dedupe_key: `reminder:${reminder.id}:${userId}:${triggerKey}`,
         }),
       }
     );
