@@ -6,26 +6,76 @@ import AhaIcon from '../../components/AhaIcon';
 import { getSession, clearSession } from '../../services/auth';
 import { reminderApi, notificationApi } from '../../services/api';
 
-const dayNames = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 
-function normalizeList(response, keys = []) {
+function listOf(response, key) {
   if (Array.isArray(response)) return response;
-  for (const key of ['data', ...keys]) {
-    if (Array.isArray(response?.[key])) return response[key];
-  }
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.[key])) return response[key];
   return [];
 }
 
-function shortTime(value) {
+function timeOf(value) {
   return String(value || '').slice(0, 5) || '--:--';
 }
 
-function BrandMark() {
+function Brand() {
   return (
-    <svg viewBox="0 0 60 60" fill="none" aria-hidden="true">
-      <path d="M5 34c8 0 8-19 16-19s8 30 16 30 8-25 18-25" stroke="#159fe0" strokeWidth="8" strokeLinecap="round" />
-      <path d="M39 40c7 0 8-13 16-13" stroke="#20b6a6" strokeWidth="8" strokeLinecap="round" />
-    </svg>
+    <div className="aha-v3-brand">
+      <span className="aha-v3-brand-mark">
+        <svg viewBox="0 0 60 42" fill="none" aria-hidden="true">
+          <path d="M3 25C12 25 12 5 21 5s9 30 18 30 9-25 18-25" stroke="#159FE0" strokeWidth="8" strokeLinecap="round" />
+          <path d="M40 29c7 0 8-13 17-13" stroke="#22B8AA" strokeWidth="8" strokeLinecap="round" />
+        </svg>
+      </span>
+      <span>
+        <strong>AHA</strong>
+        <small>AI Health Assistant</small>
+      </span>
+    </div>
+  );
+}
+
+function SideNav({ active, router }) {
+  const items = [
+    ['home', 'หน้าหลัก', '/home'],
+    ['pill', 'ยา', '/reminders'],
+    ['bell', 'แจ้งเตือน', '/notifications'],
+    ['warning', 'ฉุกเฉิน', '/emergency'],
+  ];
+
+  return (
+    <aside className="aha-v3-sidebar">
+      <Brand />
+      <nav className="aha-v3-side-links">
+        {items.map(([icon, label, path]) => (
+          <button
+            key={path}
+            className={active === path ? 'active' : ''}
+            onClick={() => router.push(path)}
+          >
+            <AhaIcon name={icon} size={24} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
+
+      <div className="aha-v3-side-spacer" />
+
+      <div className="aha-v3-side-care">
+        <AhaIcon name="users" size={25} />
+        <div>
+          <strong>ผู้ดูแล</strong>
+          <span><i /> เชื่อมต่อแล้ว</span>
+        </div>
+      </div>
+
+      <div className="aha-v3-side-wellness">
+        <AhaIcon name="heart" size={31} />
+        <strong>สุขภาพดี<br />เริ่มได้ทุกวัน</strong>
+        <span className="aha-v3-wave">〰</span>
+      </div>
+    </aside>
   );
 }
 
@@ -35,43 +85,29 @@ export default function HomePage() {
   const [reminders, setReminders] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [now, setNow] = useState(new Date());
-  const [loading, setLoading] = useState(true);
   const [voice, setVoice] = useState(false);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const session = getSession();
-
     if (!session?.accessToken) {
       router.replace('/login');
-      return undefined;
+      return;
     }
 
     setUser(session.user || null);
     let mounted = true;
 
-    Promise.allSettled([reminderApi.list(), notificationApi.unread()]).then((results) => {
+    Promise.allSettled([reminderApi.list(), notificationApi.unread()]).then(([r, n]) => {
       if (!mounted) return;
-
-      const [reminderResult, notificationResult] = results;
-
-      if (reminderResult.status === 'fulfilled') {
-        setReminders(normalizeList(reminderResult.value, ['reminders']));
-      }
-
-      if (notificationResult.status === 'fulfilled') {
-        setNotifications(normalizeList(notificationResult.value, ['notifications']));
-      }
-
-      if (reminderResult.status === 'rejected' && notificationResult.status === 'rejected') {
-        setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
-      }
-
+      if (r.status === 'fulfilled') setReminders(listOf(r.value, 'reminders'));
+      if (n.status === 'fulfilled') setNotifications(listOf(n.value, 'notifications'));
+      if (r.status === 'rejected' && n.status === 'rejected') setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
       setLoading(false);
     });
 
     const timer = setInterval(() => setNow(new Date()), 30000);
-
     return () => {
       mounted = false;
       clearInterval(timer);
@@ -79,43 +115,30 @@ export default function HomePage() {
   }, [router]);
 
   const activeReminders = useMemo(
-    () =>
-      reminders
-        .filter((item) => item.is_active !== false)
-        .sort((a, b) =>
-          String(a.reminder_time || '').localeCompare(String(b.reminder_time || '')),
-        ),
+    () => reminders.filter((x) => x.is_active !== false).sort((a, b) =>
+      String(a.reminder_time || '').localeCompare(String(b.reminder_time || ''))
+    ),
     [reminders],
   );
 
   const nextReminder = activeReminders[0];
-  const completedCount = activeReminders.filter(
-    (item) => item.completed || item.taken || item.is_taken,
-  ).length;
-  const displayName = user?.name || 'ผู้ใช้';
-  const dateText = `${dayNames[now.getDay()]} ${new Intl.DateTimeFormat('th-TH', {
+  const completed = activeReminders.filter((x) => x.completed || x.taken || x.is_taken).length;
+  const total = activeReminders.length;
+  const displayName = user?.name || 'คุณสมชาย';
+  const dateText = `${days[now.getDay()]} ${new Intl.DateTimeFormat('th-TH', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   }).format(now)}`;
 
-  const speak = (text) => {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
-
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-  };
-
-  const handleVoice = () => {
-    if (voice) {
-      setVoice(false);
-      return;
-    }
-
-    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const startVoice = () => {
+    const Recognition = typeof window !== 'undefined'
+      ? window.SpeechRecognition || window.webkitSpeechRecognition
+      : null;
 
     if (!Recognition) {
-      speak('เบราว์เซอร์นี้ยังไม่รองรับการสั่งงานด้วยเสียง');
+      setVoice(true);
+      window.setTimeout(() => setVoice(false), 1200);
       return;
     }
 
@@ -123,19 +146,11 @@ export default function HomePage() {
     recognition.lang = 'th-TH';
     recognition.interimResults = false;
     setVoice(true);
-
     recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || '';
+      const text = event.results?.[0]?.[0]?.transcript || '';
       setVoice(false);
-
-      if (/เตือน|ยา|กินยา/.test(transcript)) {
-        speak('กำลังเปิดรายการยา');
-        router.push('/reminders');
-      } else {
-        speak(`คุณพูดว่า ${transcript}`);
-      }
+      if (/ยา|เตือน|กิน/.test(text)) router.push('/reminders');
     };
-
     recognition.onerror = () => setVoice(false);
     recognition.onend = () => setVoice(false);
     recognition.start();
@@ -147,301 +162,172 @@ export default function HomePage() {
   };
 
   return (
-    <div className="aha-page home-page">
-      <div className="aha-shell home-shell">
-        <header className="home-header">
-          <div className="home-brand">
-            <span className="home-logo">
-              <BrandMark />
-            </span>
-            <span>
-              <strong>AHA</strong>
-              <small>AI Health Assistant</small>
-            </span>
-          </div>
+    <div className="aha-v3-page">
+      <div className="aha-v3-layout">
+        <SideNav active="/home" router={router} />
 
-          <div className="home-header-actions">
-            <span className="home-date">{dateText}</span>
+        <div className="aha-v3-main">
+          <header className="aha-v3-topbar">
+            <Brand />
 
-            <button
-              className="home-icon-button"
-              onClick={() => router.push('/notifications')}
-              aria-label="การแจ้งเตือน"
-            >
-              <AhaIcon name="bell" />
-              {notifications.length > 0 && (
-                <b className="notification-badge">
-                  {notifications.length > 9 ? '9+' : notifications.length}
-                </b>
-              )}
-            </button>
-
-            <button className="home-profile" onClick={logout} aria-label="ออกจากระบบ">
-              <span className="home-avatar">{displayName.trim().slice(0, 1)}</span>
-              <span className="home-profile-name">{displayName}</span>
-              <AhaIcon name="logout" size={17} />
-            </button>
-          </div>
-        </header>
-
-        <main>
-          <section className="home-welcome">
-            <div className="home-welcome-copy">
-              <h1>
-                สวัสดี
-                <br />
-                {displayName}
-              </h1>
-              <p>วันนี้ AHA ช่วยดูแลเรื่องสำคัญให้คุณ</p>
-            </div>
-
-            <div className="home-portrait">
-              <div className="home-portrait-halo" />
-              <span className="home-welcome-badge">
-                สุขภาพดี
-                <br />
-                ไปด้วยกัน
-              </span>
-              <img
-                className="home-elder-photo"
-                src="/elderly-hero.svg"
-                alt="ผู้สูงอายุ"
-              />
-            </div>
-          </section>
-
-          {error && <div className="error home-error">{error}</div>}
-
-          <section className="home-next-card" aria-label="ยาครั้งถัดไป">
-            <div className="home-pill-icon">
-              <AhaIcon name="pill" size={54} />
-            </div>
-
-            <div>
-              <div className="home-label">ยาครั้งถัดไป</div>
-              <div className="home-next-time">
-                {nextReminder ? shortTime(nextReminder.reminder_time) : '--:--'}
-              </div>
-              <div className="home-medicine">
-                {nextReminder?.medicine_name || 'ยังไม่มีรายการยา'}
-              </div>
-            </div>
-
-            <button className="home-next-side" onClick={() => router.push('/reminders')}>
-              <span>
-                เหลืออีก
-                <br />
-                <b>{activeReminders.length} รายการ</b>
-              </span>
-              <AhaIcon name="chevron" size={25} />
-            </button>
-          </section>
-
-          <section className="home-actions" aria-label="เมนูด่วน">
-            <button
-              className="home-action home-action-blue"
-              onClick={() => router.push('/reminders')}
-            >
-              <span className="home-action-icon">
-                <AhaIcon name="pill" size={35} />
-              </span>
-              <strong>จัดการยา</strong>
-              <small>รายการยาและการกินยา</small>
-              <span className="home-arrow">›</span>
-            </button>
-
-            <button className="home-action home-action-green" onClick={handleVoice}>
-              <span className="home-action-icon">
-                <AhaIcon name="mic" size={35} />
-              </span>
+            <button className={`aha-v3-voice-pill ${voice ? 'listening' : ''}`} onClick={startVoice}>
+              <span><AhaIcon name="mic" size={23} /></span>
               <strong>{voice ? 'กำลังฟัง…' : 'พูดกับ AHA'}</strong>
-              <small>สั่งงานด้วยเสียง</small>
-              <span className="home-arrow">›</span>
             </button>
 
-            <button
-              className="home-action home-action-red"
-              onClick={() => router.push('/emergency')}
-            >
-              <span className="home-action-icon">
-                <AhaIcon name="phone" size={35} />
-              </span>
-              <strong>ฉุกเฉิน SOS</strong>
-              <small>ขอความช่วยเหลือ</small>
-              <span className="home-arrow">›</span>
-            </button>
-          </section>
+            <div className="aha-v3-top-message">
+              <strong>ถามได้ทุกเรื่องสุขภาพ</strong>
+              <span>AHA พร้อมดูแลคุณ</span>
+            </div>
 
-          <section className="home-two-col">
-            <article className="home-card">
-              <h2>วันนี้กินยาแล้ว</h2>
-
-              <div className="home-progress-wrap">
-                <div className="home-ring">
-                  <span>
-                    <b>{completedCount}/{activeReminders.length || 0}</b>
-                    รายการ
-                  </span>
-                </div>
-
-                <div>
-                  <strong>
-                    {activeReminders.length
-                      ? completedCount
-                        ? 'เยี่ยมมาก'
-                        : 'เริ่มต้นได้เลย'
-                      : 'ยังไม่มีรายการ'}
-                  </strong>
-                  <small>ติดตามการกินยา</small>
-                </div>
-              </div>
-            </article>
-
-            <article className="home-card home-care-card">
-              <h2>
-                ผู้ดูแล
-                <br />
-                {user?.caregiver_name ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}
-                {user?.caregiver_name && (
-                  <span className="home-online-dot">●</span>
-                )}
-              </h2>
-
-              <div className="home-care-row">
-                <span className="home-care-avatar">
-                  {user?.caregiver_name?.slice(0, 1) || 'ค'}
-                </span>
-
-                <div>
-                  <strong>{user?.caregiver_name || 'ครอบครัวของคุณ'}</strong>
-                  <small>ดูแลร่วมกัน</small>
-                </div>
-
-                <AhaIcon name="chevron" size={24} />
-              </div>
-            </article>
-          </section>
-
-          <section className="home-card home-timeline-card">
-            <div className="home-card-head">
-              <h2>รายการยาวันนี้</h2>
-              <button onClick={() => router.push('/reminders')}>
-                ดูทั้งหมด
-                <AhaIcon name="chevron" size={18} />
+            <div className="aha-v3-top-actions">
+              <button onClick={() => router.push('/notifications')} aria-label="แจ้งเตือน">
+                <AhaIcon name="bell" size={22} />
+                {notifications.length > 0 && <b>{notifications.length > 9 ? '9+' : notifications.length}</b>}
               </button>
+              <button onClick={logout} aria-label="ออกจากระบบ">
+                <span className="aha-v3-user-avatar">{displayName.slice(0, 1)}</span>
+              </button>
+              <button aria-label="ตั้งค่า"><AhaIcon name="activity" size={21} /></button>
             </div>
+          </header>
 
-            {loading ? (
-              <div className="empty">กำลังโหลดข้อมูล…</div>
-            ) : activeReminders.length === 0 ? (
-              <div className="empty">
-                ยังไม่มีรายการยา
-                <br />
-                <button
-                  className="btn btn-primary"
-                  style={{ marginTop: 14 }}
-                  onClick={() => router.push('/reminders')}
-                >
-                  <AhaIcon name="plus" />
-                  เพิ่มรายการแรก
+          <main className="aha-v3-content">
+            {error && <div className="error">{error}</div>}
+
+            <section className="aha-v3-hero">
+              <div className="aha-v3-hero-copy">
+                <h1>สวัสดี {displayName}</h1>
+                <p>สุขภาพดีในวันนี้ คือพลังสำคัญสำหรับวันพรุ่งนี้</p>
+                <span className="aha-v3-hero-line" />
+              </div>
+
+              <div className="aha-v3-hero-photo">
+                <img src="/elderly-hero.svg" alt="ผู้สูงอายุ" />
+                <div className="aha-v3-hero-note">ดูแลตัวเอง<br />ไปด้วยกัน<br /><b>ในทุกวัน</b></div>
+              </div>
+            </section>
+
+            <section className="aha-v3-actions">
+              <button className="aha-v3-action blue" onClick={() => router.push('/reminders')}>
+                <span className="aha-v3-action-icon"><AhaIcon name="pill" size={33} /></span>
+                <strong>จัดการยา</strong>
+                <span className="aha-v3-arrow">›</span>
+              </button>
+
+              <button className="aha-v3-action green" onClick={startVoice}>
+                <span className="aha-v3-action-icon"><AhaIcon name="mic" size={33} /></span>
+                <strong>{voice ? 'กำลังฟัง…' : 'พูดกับ AHA'}</strong>
+                <span className="aha-v3-arrow">›</span>
+              </button>
+
+              <button className="aha-v3-action red" onClick={() => router.push('/emergency')}>
+                <span className="aha-v3-action-icon"><AhaIcon name="phone" size={33} /></span>
+                <strong>ฉุกเฉิน SOS</strong>
+                <span className="aha-v3-arrow">›</span>
+              </button>
+            </section>
+
+            <section className="aha-v3-grid-3">
+              <article className="aha-v3-card aha-v3-next">
+                <div className="aha-v3-card-title">ยาครั้งถัดไป <button onClick={() => router.push('/reminders')}>ดูทั้งหมด <AhaIcon name="arrow" size={15} /></button></div>
+                <div className="aha-v3-next-inner">
+                  <span className="aha-v3-clock"><AhaIcon name="clock" size={42} /></span>
+                  <div>
+                    <strong>{nextReminder ? timeOf(nextReminder.reminder_time) : '--:--'}</strong>
+                    <span>{nextReminder?.medicine_name || 'ยังไม่มีรายการยา'}</span>
+                    <small>{nextReminder?.dosage || 'เพิ่มรายการยาเพื่อเริ่มติดตาม'}</small>
+                  </div>
+                </div>
+                <button className="aha-v3-primary-button" onClick={() => router.push('/reminders')}>
+                  <AhaIcon name="bell" size={18} /> {nextReminder ? 'เตือนยาเมื่อถึงเวลา' : 'เพิ่มรายการยา'}
                 </button>
-              </div>
-            ) : (
-              <div className="home-timeline">
-                {activeReminders.slice(0, 4).map((item, index) => {
-                  const completed = item.completed || item.taken || item.is_taken;
+              </article>
 
-                  return (
-                    <div
-                      className="home-timeline-row"
-                      key={item.id || `${item.medicine_name}-${item.reminder_time}`}
-                    >
-                      <span className="home-row-time">
-                        {shortTime(item.reminder_time)}
-                      </span>
+              <article className="aha-v3-card aha-v3-progress">
+                <div className="aha-v3-card-title">ความคืบหน้าการกินยา วันนี้</div>
+                <div className="aha-v3-progress-inner">
+                  <div className="aha-v3-ring" style={{ '--progress': total ? `${Math.round((completed / total) * 100)}%` : '0%' }}>
+                    <span><b>{completed}/{total}</b>รายการ</span>
+                  </div>
+                  <div>
+                    <strong>{completed ? 'เยี่ยมมาก!' : 'เริ่มต้นได้เลย'}</strong>
+                    <span>คุณดูแลตัวเองได้ดีมากในวันนี้</span>
+                  </div>
+                </div>
+                <div className="aha-v3-mini-note"><AhaIcon name="check" size={18} /> ติดตามการกินยาได้จากรายการด้านล่าง</div>
+              </article>
 
-                      <span className="home-timeline-line">
-                        <i className={completed ? 'done' : ''} />
-                      </span>
-
-                      <div>
-                        <strong>{item.medicine_name}</strong>
-                        <small>{item.dosage || 'ไม่ได้ระบุขนาดยา'}</small>
+              <article className="aha-v3-card aha-v3-today">
+                <div className="aha-v3-card-title">ไทม์ไลน์การกินยา วันนี้</div>
+                <div className="aha-v3-mini-timeline">
+                  {activeReminders.slice(0, 3).map((item, i) => {
+                    const isDone = item.completed || item.taken || item.is_taken;
+                    return (
+                      <div className="aha-v3-mini-row" key={item.id || `${item.medicine_name}-${item.reminder_time}`}>
+                        <span className={isDone ? 'done' : i === 0 ? 'current' : ''} />
+                        <time>{timeOf(item.reminder_time)}</time>
+                        <div><strong>{item.medicine_name}</strong><small>{isDone ? 'กินแล้ว' : i === 0 ? 'รอถึงเวลา' : 'รออยู่'}</small></div>
                       </div>
+                    );
+                  })}
+                  {!activeReminders.length && <div className="aha-v3-empty-mini">ยังไม่มีรายการยา</div>}
+                </div>
+              </article>
+            </section>
 
-                      <span
-                        className={`home-status ${
-                          completed
-                            ? 'home-status-done'
-                            : index === 0
-                              ? 'home-status-wait'
-                              : 'home-status-later'
-                        }`}
-                      >
-                        {completed ? 'กินแล้ว' : index === 0 ? 'รอถึงเวลา' : 'รออยู่'}
-                      </span>
-                    </div>
-                  );
-                })}
+            <section className="aha-v3-today-card">
+              <div className="aha-v3-section-title">
+                <h2>รายการยาวันนี้</h2>
+                <button onClick={() => router.push('/reminders')}>ดูทั้งหมด <AhaIcon name="arrow" size={17} /></button>
               </div>
-            )}
-          </section>
 
-          <section className="home-wellness-banner">
-            <div>
-              <h2>ดูแลสุขภาพ เริ่มได้วันนี้</h2>
-              <p>AHA อยู่เคียงข้างคุณ</p>
-            </div>
+              {loading ? (
+                <div className="aha-v3-empty">กำลังโหลดข้อมูล…</div>
+              ) : !activeReminders.length ? (
+                <div className="aha-v3-empty">ยังไม่มีรายการยา <button onClick={() => router.push('/reminders')}>+ เพิ่มรายการยา</button></div>
+              ) : (
+                <div className="aha-v3-table">
+                  {activeReminders.slice(0, 4).map((item, i) => {
+                    const isDone = item.completed || item.taken || item.is_taken;
+                    return (
+                      <div className="aha-v3-med-row" key={item.id || i}>
+                        <time>{timeOf(item.reminder_time)}</time>
+                        <span className={`aha-v3-dot ${isDone ? 'done' : i === 0 ? 'current' : ''}`} />
+                        <div><strong>{item.medicine_name}</strong><small>{item.dosage || '1 รายการ'}</small></div>
+                        <span className={`aha-v3-status ${isDone ? 'done' : i === 0 ? 'wait' : 'later'}`}>{isDone ? 'กินแล้ว' : i === 0 ? 'รอถึงเวลา' : 'รออยู่'}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </section>
 
-            <svg viewBox="0 0 400 110" fill="none" aria-hidden="true">
-              <path
-                d="M0 100c55-39 75-28 126-3 46 22 68-40 120-29 59 12 83 41 154 2v45H0Z"
-                fill="#6fc7b0"
-              />
-              <path
-                d="M0 98c68-48 105-5 153-17 55-14 72-51 126-30 42 16 76 28 121-3v52H0Z"
-                fill="#6cb9df"
-              />
-            </svg>
+            <section className="aha-v3-bottom-grid">
+              <article className="aha-v3-care-card">
+                <div className="aha-v3-care-icon"><AhaIcon name="users" size={32} /></div>
+                <div>
+                  <h2>ผู้ดูแล: <span>เชื่อมต่อแล้ว</span> <i>●</i></h2>
+                  <p>ครอบครัวของคุณสามารถดูแลและติดตามได้</p>
+                </div>
+                <AhaIcon name="chevron" size={25} />
+              </article>
 
-            <button aria-label="ดูข้อมูลสุขภาพเพิ่มเติม">
-              <AhaIcon name="chevron" size={25} />
-            </button>
-          </section>
-        </main>
+              <article className="aha-v3-wellness">
+                <AhaIcon name="heart" size={34} />
+                <div><h2>สุขภาพดี... ทำได้ทุกวัน</h2><p>AHA อยู่เคียงข้างคุณเสมอ</p></div>
+                <span>〰</span>
+              </article>
+            </section>
+          </main>
 
-        <nav className="footer-nav home-footer-nav" aria-label="เมนูหลัก">
-          <div className="footer-nav-inner">
-            <button className="footer-link active">
-              <AhaIcon name="home" size={21} />
-              <span>หน้าหลัก</span>
-            </button>
-
-            <button
-              className="footer-link"
-              onClick={() => router.push('/reminders')}
-            >
-              <AhaIcon name="pill" size={21} />
-              <span>ยา</span>
-            </button>
-
-            <button
-              className="footer-link"
-              onClick={() => router.push('/notifications')}
-            >
-              <AhaIcon name="bell" size={21} />
-              <span>แจ้งเตือน</span>
-            </button>
-
-            <button
-              className="footer-link home-footer-danger"
-              onClick={() => router.push('/emergency')}
-            >
-              <AhaIcon name="warning" size={21} />
-              <span>ฉุกเฉิน</span>
-            </button>
-          </div>
-        </nav>
+          <nav className="aha-v3-mobile-nav">
+            <button className="active"><AhaIcon name="home" size={23} /><span>หน้าหลัก</span></button>
+            <button onClick={() => router.push('/reminders')}><AhaIcon name="pill" size={23} /><span>ยา</span></button>
+            <button onClick={() => router.push('/notifications')}><AhaIcon name="bell" size={23} /><span>แจ้งเตือน</span></button>
+            <button className="danger" onClick={() => router.push('/emergency')}><AhaIcon name="phone" size={23} /><span>ฉุกเฉิน</span></button>
+          </nav>
+        </div>
       </div>
     </div>
   );
