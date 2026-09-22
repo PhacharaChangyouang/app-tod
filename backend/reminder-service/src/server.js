@@ -8,6 +8,23 @@ const authenticate = require('./middlewares/authenticate');
 const { startScheduler } = require('./scheduler');
 
 const app = express();
+
+async function ensureRuntimeSchema() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS reminder_logs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      reminder_id UUID NOT NULL,
+      user_id UUID NOT NULL,
+      scheduled_date DATE NOT NULL,
+      scheduled_time TIME NOT NULL,
+      status VARCHAR(20) NOT NULL DEFAULT 'taken'
+        CHECK (status IN ('taken', 'skipped')),
+      taken_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (reminder_id, scheduled_date, scheduled_time)
+    )
+  `);
+}
+
 app.use(helmet());
 
 const allowedOrigins = [
@@ -234,9 +251,16 @@ app.use((error, req, res, next) => {
 
 const PORT = process.env.PORT || 3002;
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Reminder service running on port ${PORT}`);
-    startScheduler();
-  });
+  ensureRuntimeSchema()
+    .then(() => {
+      app.listen(PORT, () => {
+        console.log(`Reminder service running on port ${PORT}`);
+        startScheduler();
+      });
+    })
+    .catch((error) => {
+      console.error('Reminder runtime schema failed:', error);
+      process.exit(1);
+    });
 }
 module.exports = app;
