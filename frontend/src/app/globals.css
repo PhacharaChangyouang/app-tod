@@ -298,8 +298,8 @@
 :global(.aha-v3-hero-note){right:25px!important;top:40px!important;color:#176da0!important;font-size:18px!important}
 :global(.aha-v3-feature-row){display:grid;grid-template-columns:1fr 1.8fr;gap:12px;margin-top:12px}
 :global(.aha-v3-feature-row>.aha-v3-next){min-height:120px}
-:global(.aha-v3-action-stack){display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-:global(.aha-v3-action-stack .aha-v3-action){height:120px!important}
+:global(.aha-v3-action-stack){display:flex!important;flex-direction:row!important;align-items:stretch;gap:10px;width:100%}
+:global(.aha-v3-action-stack .aha-v3-action){height:120px!important;flex:1 1 0;min-width:0}
 :global(.aha-v3-action.blue){background:linear-gradient(135deg,#39b7ef,#1597dc)!important}
 :global(.aha-v3-action.red){background:linear-gradient(135deg,#ff7771,#ed5752)!important}
 :global(.aha-v3-metrics-row){display:grid;grid-template-columns:1fr 1.2fr 1.05fr;gap:12px;margin-top:12px}
@@ -312,7 +312,7 @@
 @media(max-width:900px){
 :global(.aha-v3-content){width:calc(100% - 28px)!important}
 :global(.aha-v3-feature-row){grid-template-columns:1fr!important}
-:global(.aha-v3-action-stack){grid-template-columns:repeat(3,1fr)}
+:global(.aha-v3-action-stack){display:flex!important;flex-direction:row!important}
 :global(.aha-v3-metrics-row){grid-template-columns:1fr 1fr}
 :global(.aha-v3-care-card-large){grid-column:1/-1}
 }
@@ -325,8 +325,8 @@
 :global(.aha-v3-hero-note){font-size:11px!important;right:12px!important;top:12px!important}
 :global(.aha-v3-feature-row){display:block;margin-top:9px}
 :global(.aha-v3-feature-row>.aha-v3-next){min-height:156px}
-:global(.aha-v3-action-stack){grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
-:global(.aha-v3-action-stack .aha-v3-action){height:142px!important;padding:12px 6px!important}
+:global(.aha-v3-action-stack){display:flex!important;flex-direction:row!important;gap:7px;margin-top:9px}
+:global(.aha-v3-action-stack .aha-v3-action){height:142px!important;padding:12px 6px!important;flex:1 1 0;min-width:0}
 :global(.aha-v3-action-stack .aha-v3-action strong){font-size:14px!important}
 :global(.aha-v3-metrics-row){grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}
 :global(.aha-v3-metrics-row .aha-v3-card){min-height:174px}
