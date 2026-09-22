@@ -364,3 +364,39 @@
 .aha-v3-row-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px}.aha-v3-take-button{border:1px solid #b9e7d8;background:#effaf6;color:#17805e;border-radius:9px;padding:6px 10px;font-weight:800;cursor:pointer}
 @keyframes ahaPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
 @media(max-width:700px){.aha-voice-hero{padding:24px}.aha-voice-hero h1,.aha-emergency-hero h1{font-size:29px}.aha-voice-orb{width:80px;height:80px}.aha-voice-examples{grid-template-columns:1fr}.aha-emergency-page{padding-left:12px;padding-right:12px}.aha-sos-button{width:165px;height:165px}.aha-emergency-call>div{flex-direction:column}}
+
+
+/* FORCE AHA primary actions: always horizontal on desktop + mobile */
+.aha-v3-action-stack{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  width:100%!important;
+  gap:10px!important;
+}
+.aha-v3-action-stack > .aha-v3-action{
+  display:flex!important;
+  flex:1 1 0!important;
+  width:0!important;
+  min-width:0!important;
+  height:120px!important;
+}
+@media(max-width:760px){
+  .aha-v3-feature-row{
+    display:block!important;
+  }
+  .aha-v3-action-stack{
+    display:flex!important;
+    flex-direction:row!important;
+    flex-wrap:nowrap!important;
+    width:100%!important;
+    gap:7px!important;
+  }
+  .aha-v3-action-stack > .aha-v3-action{
+    display:flex!important;
+    flex:1 1 0!important;
+    width:0!important;
+    min-width:0!important;
+    height:142px!important;
+  }
+}
