@@ -86,21 +86,24 @@ async function processDueReminders() {
     if (!isDue(reminder, now)) continue;
 
     const triggerKey = `${now.date}:${now.time}`;
-    const claimed = await pool.query(`
-      UPDATE reminders
-      SET last_triggered_key = $1, updated_at = now()
-      WHERE id = $2 AND is_active = true
-        AND (last_triggered_key IS DISTINCT FROM $1)
-      RETURNING *
-    `, [triggerKey, reminder.id]);
-
-    if (!claimed.rowCount) continue;
+    // ส่งก่อน แล้วค่อยบันทึก last_triggered_key
+    // เพื่อให้ถ้า Notification Service ล่ม ระบบจะ retry ในรอบถัดไป
+    // Notification Service มี dedupe_key ป้องกันการส่งซ้ำ
+    if (reminder.last_triggered_key === triggerKey) continue;
 
     try {
-      await notifyRecipients(claimed.rows[0], triggerKey);
-      console.log(`Reminder sent: ${claimed.rows[0].id} ${triggerKey}`);
+      await notifyRecipients(reminder, triggerKey);
+
+      await pool.query(`
+        UPDATE reminders
+        SET last_triggered_key = $1, updated_at = now()
+        WHERE id = $2 AND is_active = true
+          AND (last_triggered_key IS DISTINCT FROM $1)
+      `, [triggerKey, reminder.id]);
+
+      console.log(`Reminder sent: ${reminder.id} ${triggerKey}`);
     } catch (error) {
-      console.error('Reminder notification failed:', error.message);
+      console.error('Reminder notification failed (will retry):', error.message);
     }
   }
 }
