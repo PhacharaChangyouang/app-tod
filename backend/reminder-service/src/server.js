@@ -56,6 +56,55 @@ app.get('/api/reminders', authenticate, async (req, res) => {
   }
 });
 
+app.get('/api/reminders/today', authenticate, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        r.*,
+        CASE WHEN l.id IS NOT NULL AND l.status = 'taken' THEN true ELSE false END AS taken,
+        l.taken_at
+      FROM reminders r
+      LEFT JOIN reminder_logs l
+        ON l.reminder_id = r.id
+       AND l.user_id = r.user_id
+       AND l.scheduled_date = (now() AT TIME ZONE 'Asia/Bangkok')::date
+       AND l.scheduled_time = r.reminder_time
+      WHERE r.user_id = $1
+        AND r.is_active = true
+        AND (r.start_date IS NULL OR r.start_date <= (now() AT TIME ZONE 'Asia/Bangkok')::date)
+        AND (r.end_date IS NULL OR r.end_date >= (now() AT TIME ZONE 'Asia/Bangkok')::date)
+      ORDER BY r.reminder_time ASC
+    `, [req.user.id]);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to fetch today reminders' });
+  }
+});
+
+app.post('/api/reminders/:id/taken', authenticate, async (req, res) => {
+  try {
+    const reminder = await pool.query(
+      'SELECT * FROM reminders WHERE id = $1 AND user_id = $2 AND is_active = true',
+      [req.params.id, req.user.id]
+    );
+    if (!reminder.rowCount) return res.status(404).json({ success: false, message: 'Reminder not found' });
+
+    const result = await pool.query(`
+      INSERT INTO reminder_logs (reminder_id, user_id, scheduled_date, scheduled_time, status, taken_at)
+      VALUES ($1, $2, (now() AT TIME ZONE 'Asia/Bangkok')::date, $3, 'taken', now())
+      ON CONFLICT (reminder_id, scheduled_date, scheduled_time)
+      DO UPDATE SET status='taken', taken_at=now()
+      RETURNING *
+    `, [req.params.id, req.user.id, reminder.rows[0].reminder_time]);
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to mark medicine as taken' });
+  }
+});
+
 app.get('/api/reminders/:id', authenticate, async (req, res) => {
   try {
     const result = await pool.query(
