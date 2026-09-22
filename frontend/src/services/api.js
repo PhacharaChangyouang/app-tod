@@ -1,32 +1,36 @@
 import { getAccessToken } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+const AUTH_API_BASE =
+  process.env.NEXT_PUBLIC_AUTH_API_URL ||
+  'http://localhost:3001';
 
-// ใช้กับ endpoint ที่ไม่ต้อง login (request-otp, verify-otp, register, login)
-async function post(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    credentials: 'include',
-  });
-  return res.json();
-}
+const REMINDER_API_BASE =
+  process.env.NEXT_PUBLIC_REMINDER_API_URL ||
+  'http://localhost:3002';
 
-// ใช้กับ endpoint ที่ต้อง login เท่านั้น (reminders, emergency, profile, ฯลฯ)
-// เดิม: ไม่มีฟังก์ชันนี้เลย -> เรียก protected API แล้วโดน 401 ตลอด
-// เพราะ auth-service middleware เช็ค Authorization header ทุกครั้ง
-async function authFetch(path, { method = 'GET', body } = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+const NOTIFICATION_API_BASE =
+  process.env.NEXT_PUBLIC_NOTIFICATION_API_URL ||
+  'http://localhost:3003';
+
+async function request(baseUrl, path, {
+  method = 'GET',
+  body,
+  auth = false,
+} = {}) {
+  const token = auth ? getAccessToken() : null;
+
+  const res = await fetch(`${baseUrl}${path}`, {
     method,
     headers: {
       'Content-Type': 'application/json',
+      ...(token
+        ? { Authorization: `Bearer ${token}` }
+        : {}),
     },
     credentials: 'include',
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 
-  // access token หมดอายุ -> ปล่อยให้ผู้เรียกจัดการ (เช่น เด้งไป refresh หรือ login ใหม่)
   if (res.status === 401) {
     const err = new Error('unauthorized');
     err.status = 401;
@@ -36,19 +40,167 @@ async function authFetch(path, { method = 'GET', body } = {}) {
   return res.json();
 }
 
+/* =========================
+   AUTH SERVICE
+========================= */
+
 export const authApi = {
-  requestOtp: (phone) => post('/auth/request-otp', { phone }),
-  verifyOtp: (phone, code) => post('/auth/verify-otp', { phone, code }),
-  register: (payload) => post('/auth/register', payload),
-  login: (phone, pin) => post('/auth/login', { phone, pin }),
-  refresh: (refreshToken) => post('/auth/refresh', { refreshToken }),
-  logout: (refreshToken) => post('/auth/logout', { refreshToken }),
+  requestOtp: (phone) =>
+    request(AUTH_API_BASE, '/auth/request-otp', {
+      method: 'POST',
+      body: { phone },
+    }),
+
+  verifyOtp: (phone, code) =>
+    request(AUTH_API_BASE, '/auth/verify-otp', {
+      method: 'POST',
+      body: { phone, code },
+    }),
+
+  register: (payload) =>
+    request(AUTH_API_BASE, '/auth/register', {
+      method: 'POST',
+      body: payload,
+    }),
+
+  login: (phone, pin) =>
+    request(AUTH_API_BASE, '/auth/login', {
+      method: 'POST',
+      body: { phone, pin },
+    }),
+
+  refresh: (refreshToken) =>
+    request(AUTH_API_BASE, '/auth/refresh', {
+      method: 'POST',
+      body: { refreshToken },
+    }),
+
+  logout: (refreshToken) =>
+    request(AUTH_API_BASE, '/auth/logout', {
+      method: 'POST',
+      body: { refreshToken },
+    }),
 };
 
-// ตัวอย่างการใช้งานสำหรับ reminder-service ในอนาคต:
-// export const reminderApi = {
-//   list: () => authFetch('/reminders'),
-//   create: (payload) => authFetch('/reminders', { method: 'POST', body: payload }),
-// };
+/* =========================
+   REMINDER SERVICE
+========================= */
 
-export { authFetch };
+export const reminderApi = {
+  list: () =>
+    request(REMINDER_API_BASE, '/reminders', {
+      auth: true,
+    }),
+
+  create: (payload) =>
+    request(REMINDER_API_BASE, '/reminders', {
+      method: 'POST',
+      body: payload,
+      auth: true,
+    }),
+
+  get: (id) =>
+    request(REMINDER_API_BASE, `/reminders/${id}`, {
+      auth: true,
+    }),
+
+  update: (id, payload) =>
+    request(REMINDER_API_BASE, `/reminders/${id}`, {
+      method: 'PATCH',
+      body: payload,
+      auth: true,
+    }),
+
+  remove: (id) =>
+    request(REMINDER_API_BASE, `/reminders/${id}`, {
+      method: 'DELETE',
+      auth: true,
+    }),
+};
+
+/* =========================
+   NOTIFICATION SERVICE
+========================= */
+
+export const notificationApi = {
+  list: () =>
+    request(NOTIFICATION_API_BASE, '/api/notifications', {
+      auth: true,
+    }),
+
+  unread: () =>
+    request(NOTIFICATION_API_BASE, '/api/notifications/unread', {
+      auth: true,
+    }),
+
+  get: (id) =>
+    request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, {
+      auth: true,
+    }),
+
+  create: (payload) =>
+    request(NOTIFICATION_API_BASE, '/api/notifications', {
+      method: 'POST',
+      body: payload,
+      auth: true,
+    }),
+
+  markRead: (id) =>
+    request(
+      NOTIFICATION_API_BASE,
+      `/api/notifications/${id}/read`,
+      {
+        method: 'PATCH',
+        auth: true,
+      }
+    ),
+
+  markAllRead: () =>
+    request(
+      NOTIFICATION_API_BASE,
+      '/api/notifications/read-all',
+      {
+        method: 'PATCH',
+        auth: true,
+      }
+    ),
+
+  remove: (id) =>
+    request(
+      NOTIFICATION_API_BASE,
+      `/api/notifications/${id}`,
+      {
+        method: 'DELETE',
+        auth: true,
+      }
+    ),
+};
+
+/* =========================
+   GENERIC AUTH FETCH
+========================= */
+
+export async function authFetch(
+  path,
+  {
+    method = 'GET',
+    body,
+    service = 'auth',
+  } = {}
+) {
+  let baseUrl = AUTH_API_BASE;
+
+  if (service === 'reminder') {
+    baseUrl = REMINDER_API_BASE;
+  }
+
+  if (service === 'notification') {
+    baseUrl = NOTIFICATION_API_BASE;
+  }
+
+  return request(baseUrl, path, {
+    method,
+    body,
+    auth: true,
+  });
+}

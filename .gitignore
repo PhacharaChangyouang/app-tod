@@ -3,7 +3,8 @@ node_modules/
 *.log
 coverage/
 dist/
-
+.env.local
+.next/
 # Flutter generated files; keep mobile_app/lib, android, ios, and pubspec files tracked.
 mobile_app/.dart_tool/
 mobile_app/build/
