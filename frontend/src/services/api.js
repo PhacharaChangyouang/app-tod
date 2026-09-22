@@ -12,138 +12,251 @@ const NOTIFICATION_API_BASE =
   process.env.NEXT_PUBLIC_NOTIFICATION_API_URL ||
   'http://localhost:3003';
 
-async function request(baseUrl, path, {
-  method = 'GET',
-  body,
-  auth = false,
-} = {}) {
-  const token = auth ? getAccessToken() : null;
+async function request(
+  baseUrl,
+  path,
+  {
+    method = 'GET',
+    body,
+    auth = false,
+  } = {}
+) {
+  const token =
+    auth ? getAccessToken() : null;
 
-  const res = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token
-        ? { Authorization: `Bearer ${token}` }
+  const res = await fetch(
+    `${baseUrl}${path}`,
+    {
+      method,
+
+      headers: {
+        'Content-Type':
+          'application/json',
+
+        ...(token
+          ? {
+              Authorization:
+                `Bearer ${token}`,
+            }
+          : {}),
+      },
+
+      credentials: 'include',
+
+      ...(body
+        ? {
+            body:
+              JSON.stringify(body),
+          }
         : {}),
-    },
-    credentials: 'include',
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
+    }
+  );
 
   if (res.status === 401) {
-    const err = new Error('unauthorized');
+    const err =
+      new Error('unauthorized');
+
     err.status = 401;
+
     throw err;
   }
 
   return res.json();
 }
 
-/* =========================
-   AUTH SERVICE
-========================= */
+/*
+|--------------------------------------------------------------------------
+| AUTH
+|--------------------------------------------------------------------------
+*/
 
 export const authApi = {
   requestOtp: (phone) =>
-    request(AUTH_API_BASE, '/auth/request-otp', {
-      method: 'POST',
-      body: { phone },
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/request-otp',
+      {
+        method: 'POST',
+        body: { phone },
+      }
+    ),
 
   verifyOtp: (phone, code) =>
-    request(AUTH_API_BASE, '/auth/verify-otp', {
-      method: 'POST',
-      body: { phone, code },
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/verify-otp',
+      {
+        method: 'POST',
+        body: {
+          phone,
+          code,
+        },
+      }
+    ),
 
   register: (payload) =>
-    request(AUTH_API_BASE, '/auth/register', {
-      method: 'POST',
-      body: payload,
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/register',
+      {
+        method: 'POST',
+        body: payload,
+      }
+    ),
 
   login: (phone, pin) =>
-    request(AUTH_API_BASE, '/auth/login', {
-      method: 'POST',
-      body: { phone, pin },
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/login',
+      {
+        method: 'POST',
+        body: {
+          phone,
+          pin,
+        },
+      }
+    ),
 
   refresh: (refreshToken) =>
-    request(AUTH_API_BASE, '/auth/refresh', {
-      method: 'POST',
-      body: { refreshToken },
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/refresh',
+      {
+        method: 'POST',
+        body: {
+          refreshToken,
+        },
+      }
+    ),
 
   logout: (refreshToken) =>
-    request(AUTH_API_BASE, '/auth/logout', {
-      method: 'POST',
-      body: { refreshToken },
-    }),
+    request(
+      AUTH_API_BASE,
+      '/auth/logout',
+      {
+        method: 'POST',
+        body: {
+          refreshToken,
+        },
+      }
+    ),
 };
 
-/* =========================
-   REMINDER SERVICE
-========================= */
+/*
+|--------------------------------------------------------------------------
+| REMINDER
+|--------------------------------------------------------------------------
+*/
 
 export const reminderApi = {
   list: () =>
-    request(REMINDER_API_BASE, '/reminders', {
-      auth: true,
-    }),
+    request(
+      REMINDER_API_BASE,
+      '/api/reminders',
+      {
+        auth: true,
+      }
+    ),
 
   create: (payload) =>
-    request(REMINDER_API_BASE, '/reminders', {
-      method: 'POST',
-      body: payload,
-      auth: true,
-    }),
+    request(
+      REMINDER_API_BASE,
+      '/api/reminders',
+      {
+        method: 'POST',
+        body: payload,
+        auth: true,
+      }
+    ),
 
   get: (id) =>
-    request(REMINDER_API_BASE, `/reminders/${id}`, {
-      auth: true,
-    }),
+    request(
+      REMINDER_API_BASE,
+      `/api/reminders/${id}`,
+      {
+        auth: true,
+      }
+    ),
 
   update: (id, payload) =>
-    request(REMINDER_API_BASE, `/reminders/${id}`, {
-      method: 'PATCH',
-      body: payload,
-      auth: true,
-    }),
+    request(
+      REMINDER_API_BASE,
+      `/api/reminders/${id}`,
+      {
+        method: 'PUT',
+        body: payload,
+        auth: true,
+      }
+    ),
+
+  updateStatus: (id, isActive) =>
+    request(
+      REMINDER_API_BASE,
+      `/api/reminders/${id}/status`,
+      {
+        method: 'PATCH',
+        body: {
+          is_active: isActive,
+        },
+        auth: true,
+      }
+    ),
 
   remove: (id) =>
-    request(REMINDER_API_BASE, `/reminders/${id}`, {
-      method: 'DELETE',
-      auth: true,
-    }),
+    request(
+      REMINDER_API_BASE,
+      `/api/reminders/${id}`,
+      {
+        method: 'DELETE',
+        auth: true,
+      }
+    ),
 };
 
-/* =========================
-   NOTIFICATION SERVICE
-========================= */
+/*
+|--------------------------------------------------------------------------
+| NOTIFICATION
+|--------------------------------------------------------------------------
+*/
 
 export const notificationApi = {
   list: () =>
-    request(NOTIFICATION_API_BASE, '/api/notifications', {
-      auth: true,
-    }),
+    request(
+      NOTIFICATION_API_BASE,
+      '/api/notifications',
+      {
+        auth: true,
+      }
+    ),
 
   unread: () =>
-    request(NOTIFICATION_API_BASE, '/api/notifications/unread', {
-      auth: true,
-    }),
+    request(
+      NOTIFICATION_API_BASE,
+      '/api/notifications/unread',
+      {
+        auth: true,
+      }
+    ),
 
   get: (id) =>
-    request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, {
-      auth: true,
-    }),
+    request(
+      NOTIFICATION_API_BASE,
+      `/api/notifications/${id}`,
+      {
+        auth: true,
+      }
+    ),
 
   create: (payload) =>
-    request(NOTIFICATION_API_BASE, '/api/notifications', {
-      method: 'POST',
-      body: payload,
-      auth: true,
-    }),
+    request(
+      NOTIFICATION_API_BASE,
+      '/api/notifications',
+      {
+        method: 'POST',
+        body: payload,
+        auth: true,
+      }
+    ),
 
   markRead: (id) =>
     request(
@@ -176,9 +289,11 @@ export const notificationApi = {
     ),
 };
 
-/* =========================
-   GENERIC AUTH FETCH
-========================= */
+/*
+|--------------------------------------------------------------------------
+| GENERIC AUTH FETCH
+|--------------------------------------------------------------------------
+*/
 
 export async function authFetch(
   path,
@@ -188,19 +303,26 @@ export async function authFetch(
     service = 'auth',
   } = {}
 ) {
-  let baseUrl = AUTH_API_BASE;
+  let baseUrl =
+    AUTH_API_BASE;
 
   if (service === 'reminder') {
-    baseUrl = REMINDER_API_BASE;
+    baseUrl =
+      REMINDER_API_BASE;
   }
 
   if (service === 'notification') {
-    baseUrl = NOTIFICATION_API_BASE;
+    baseUrl =
+      NOTIFICATION_API_BASE;
   }
 
-  return request(baseUrl, path, {
-    method,
-    body,
-    auth: true,
-  });
+  return request(
+    baseUrl,
+    path,
+    {
+      method,
+      body,
+      auth: true,
+    }
+  );
 }

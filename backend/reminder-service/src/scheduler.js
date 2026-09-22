@@ -1,85 +1,540 @@
+require('dotenv').config();
+
+const express = require('express');
+const helmet = require('helmet');
+const cors = require('cors');
+
 const pool = require('./config/db');
+const authenticate = require('./middlewares/authenticate');
 
-function getThailandParts(now = new Date()) {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Bangkok', year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit', weekday: 'long', hourCycle: 'h23'
-  }).formatToParts(now).reduce((result, part) => {
-    result[part.type] = part.value;
-    return result;
-  }, {});
-  return {
-    date: `${parts.year}-${parts.month}-${parts.day}`,
-    time: `${parts.hour}:${parts.minute}`,
-    day: parts.weekday.toLowerCase()
-  };
-}
+const app = express();
 
-async function getRecipients(userId) {
-  const response = await fetch(`http://aha-auth-service:3001/family/internal/${userId}/recipients`, {
-    headers: { 'x-internal-api-key': process.env.INTERNAL_API_KEY }
-  });
-  if (!response.ok) throw new Error(`Recipient lookup failed: ${response.status}`);
-  const body = await response.json();
-  return body.data || [userId];
-}
+app.use(helmet());
 
-async function sendNotification(userId, reminder, occurrenceKey) {
-  const response = await fetch('http://aha-notification-service:3003/api/notifications', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-internal-api-key': process.env.INTERNAL_API_KEY
+/*
+|--------------------------------------------------------------------------
+| CORS
+|--------------------------------------------------------------------------
+*/
+
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://localhost:8080',
+  'https://aha-frontend-production.up.railway.app',
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
     },
-    body: JSON.stringify({
-      user_id: userId, type: 'reminder', title: 'ได้เวลาทานยาแล้ว!',
-      message: `กรุณาทานยา ${reminder.medicine_name} ${reminder.dosage || ''}`,
-      related_id: reminder.id,
-      dedupe_key: `${userId}:${reminder.id}:${occurrenceKey}`,
-      scheduled_at: `${occurrenceKey.replace('T', 'T')}+07:00`
-    })
-  });
-  if (!response.ok) throw new Error(`Notification failed: ${response.status}`);
-}
 
-async function checkAndTriggerReminders() {
-  const thailand = getThailandParts();
+    credentials: true,
+
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+      'OPTIONS',
+    ],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-internal-api-key',
+    ],
+  })
+);
+
+app.use(express.json());
+
+/*
+|--------------------------------------------------------------------------
+| HEALTH
+|--------------------------------------------------------------------------
+*/
+
+app.get('/health', async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT id, user_id, medicine_name, dosage, reminder_time, last_triggered_key
-       FROM reminders
-       WHERE is_active = true AND reminder_time <= $1::time AND $2 = ANY(days_of_week)
-         AND (start_date IS NULL OR start_date <= $3::date)
-         AND (end_date IS NULL OR end_date >= $3::date)
-       ORDER BY reminder_time ASC`,
-      [thailand.time, thailand.day, thailand.date]
+    await pool.query('SELECT 1');
+
+    res.json({
+      success: true,
+      service: 'reminder-service',
+      status: 'ok',
+    });
+  } catch (error) {
+    console.error(error);
+
+    res.status(503).json({
+      success: false,
+      service: 'reminder-service',
+      status: 'database_unavailable',
+    });
+  }
+});
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/reminders
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/reminders',
+  authenticate,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `
+        SELECT
+          id,
+          medicine_name,
+          dosage,
+          reminder_time,
+          frequency,
+          days_of_week,
+          start_date,
+          end_date,
+          is_active,
+          created_at,
+          updated_at
+        FROM reminders
+        WHERE user_id = $1
+        ORDER BY reminder_time ASC
+        `,
+        [req.user.id]
+      );
+
+      res.json({
+        success: true,
+        data: result.rows,
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch reminders',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| GET /api/reminders/:id
+|--------------------------------------------------------------------------
+*/
+
+app.get(
+  '/api/reminders/:id',
+  authenticate,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `
+        SELECT *
+        FROM reminders
+        WHERE id = $1
+          AND user_id = $2
+        `,
+        [
+          req.params.id,
+          req.user.id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Reminder not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to fetch reminder',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| POST /api/reminders
+|--------------------------------------------------------------------------
+*/
+
+app.post(
+  '/api/reminders',
+  authenticate,
+  async (req, res) => {
+    const {
+      medicine_name,
+      dosage,
+      reminder_time,
+      frequency = 'daily',
+      days_of_week = [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday',
+      ],
+      start_date,
+      end_date,
+    } = req.body;
+
+    if (!medicine_name || !reminder_time) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'medicine_name and reminder_time are required',
+      });
+    }
+
+    if (!['daily', 'weekly'].includes(frequency)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'frequency must be daily or weekly',
+      });
+    }
+
+    if (
+      !Array.isArray(days_of_week) ||
+      days_of_week.length === 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'days_of_week must be a non-empty array',
+      });
+    }
+
+    try {
+      const result = await pool.query(
+        `
+        INSERT INTO reminders (
+          user_id,
+          medicine_name,
+          dosage,
+          reminder_time,
+          frequency,
+          days_of_week,
+          start_date,
+          end_date
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          $4,
+          $5,
+          $6,
+          $7,
+          $8
+        )
+        RETURNING *
+        `,
+        [
+          req.user.id,
+          medicine_name,
+          dosage || null,
+          reminder_time,
+          frequency,
+          days_of_week,
+          start_date || null,
+          end_date || null,
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to create reminder',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| PUT /api/reminders/:id
+|--------------------------------------------------------------------------
+*/
+
+app.put(
+  '/api/reminders/:id',
+  authenticate,
+  async (req, res) => {
+    const {
+      medicine_name,
+      dosage,
+      reminder_time,
+      frequency,
+      days_of_week,
+      start_date,
+      end_date,
+    } = req.body;
+
+    if (
+      frequency &&
+      !['daily', 'weekly'].includes(frequency)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message:
+          'frequency must be daily or weekly',
+      });
+    }
+
+    try {
+      const result = await pool.query(
+        `
+        UPDATE reminders
+        SET
+          medicine_name = COALESCE($1, medicine_name),
+          dosage = COALESCE($2, dosage),
+          reminder_time = COALESCE($3, reminder_time),
+          frequency = COALESCE($4, frequency),
+          days_of_week = COALESCE($5, days_of_week),
+          start_date = COALESCE($6, start_date),
+          end_date = COALESCE($7, end_date),
+          updated_at = now()
+        WHERE id = $8
+          AND user_id = $9
+        RETURNING *
+        `,
+        [
+          medicine_name,
+          dosage,
+          reminder_time,
+          frequency,
+          days_of_week,
+          start_date,
+          end_date,
+          req.params.id,
+          req.user.id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Reminder not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to update reminder',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| PATCH /api/reminders/:id/status
+|--------------------------------------------------------------------------
+*/
+
+app.patch(
+  '/api/reminders/:id/status',
+  authenticate,
+  async (req, res) => {
+    const { is_active } = req.body;
+
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({
+        success: false,
+        message: 'is_active must be boolean',
+      });
+    }
+
+    try {
+      const result = await pool.query(
+        `
+        UPDATE reminders
+        SET
+          is_active = $1,
+          updated_at = now()
+        WHERE id = $2
+          AND user_id = $3
+        RETURNING *
+        `,
+        [
+          is_active,
+          req.params.id,
+          req.user.id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Reminder not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        data: result.rows[0],
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message:
+          'Failed to update reminder status',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| DELETE /api/reminders/:id
+|--------------------------------------------------------------------------
+*/
+
+app.delete(
+  '/api/reminders/:id',
+  authenticate,
+  async (req, res) => {
+    try {
+      const result = await pool.query(
+        `
+        DELETE FROM reminders
+        WHERE id = $1
+          AND user_id = $2
+        RETURNING id
+        `,
+        [
+          req.params.id,
+          req.user.id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Reminder not found',
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Reminder deleted',
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        success: false,
+        message: 'Failed to delete reminder',
+      });
+    }
+  }
+);
+
+/*
+|--------------------------------------------------------------------------
+| 404
+|--------------------------------------------------------------------------
+*/
+
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    message: 'Not found',
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| ERROR HANDLER
+|--------------------------------------------------------------------------
+*/
+
+app.use((error, req, res, next) => {
+  console.error(error);
+
+  if (error.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      success: false,
+      message: 'CORS origin not allowed',
+    });
+  }
+
+  res.status(500).json({
+    success: false,
+    message: 'Internal server error',
+  });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Scheduler
+|--------------------------------------------------------------------------
+*/
+
+const {
+  startScheduler,
+} = require('./scheduler');
+
+/*
+|--------------------------------------------------------------------------
+| START SERVER
+|--------------------------------------------------------------------------
+*/
+
+const PORT = process.env.PORT || 3002;
+
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(
+      `Reminder service running on port ${PORT}`
     );
 
-    for (const reminder of result.rows) {
-      const scheduledKey = `${thailand.date}T${String(reminder.reminder_time).slice(0, 5)}`;
-      if (reminder.last_triggered_key === scheduledKey) continue;
-      try {
-        const recipients = await getRecipients(reminder.user_id);
-        for (const recipientId of recipients) await sendNotification(recipientId, reminder, scheduledKey);
-        await pool.query(
-          `UPDATE reminders SET last_triggered_key = $1, updated_at = now()
-           WHERE id = $2 AND (last_triggered_key IS DISTINCT FROM $1)`,
-          [scheduledKey, reminder.id]
-        );
-        console.log(`Reminder delivered: ${reminder.id} ${scheduledKey}`);
-      } catch (error) {
-        console.error('Failed to deliver reminder; will retry', reminder.id, error);
-      }
-    }
-  } catch (error) {
-    console.error('Scheduler Error:', error);
-  }
+    startScheduler();
+  });
 }
 
-function startScheduler() {
-  console.log('Starting reminder scheduler with 5-second checks');
-  checkAndTriggerReminders();
-  setInterval(checkAndTriggerReminders, 5000);
-}
-
-module.exports = { startScheduler, checkAndTriggerReminders, getThailandParts };
+module.exports = app;
