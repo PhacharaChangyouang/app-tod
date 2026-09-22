@@ -57,7 +57,7 @@ app.get('/health', (req, res) => {
 });
 
 // Auth routes
-app.use('/', authRoutes);
+app.use('/auth', authRoutes);
 
 // Family routes
 app.use('/family', familyRoutes);
