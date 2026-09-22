@@ -102,7 +102,7 @@ export default function HomePage() {
     setUser(session.user || null);
     let mounted = true;
 
-    Promise.allSettled([reminderApi.list(), notificationApi.unread()]).then(([r, n]) => {
+    Promise.allSettled([reminderApi.today(), notificationApi.unread()]).then(([r, n]) => {
       if (!mounted) return;
       if (r.status === 'fulfilled') setReminders(listOf(r.value, 'reminders'));
       if (n.status === 'fulfilled') setNotifications(listOf(n.value, 'notifications'));
@@ -312,7 +312,7 @@ export default function HomePage() {
                         <time>{timeOf(item.reminder_time)}</time>
                         <span className={`aha-v3-dot ${done ? 'done' : index === 0 ? 'current' : ''}`} />
                         <div><strong>{item.medicine_name}</strong><small>{item.dosage || '1 รายการ'}</small></div>
-                        <StatusPill done={done} current={index === 0} />
+                        <div className="aha-v3-row-actions"><StatusPill done={done} current={index === 0} />{!done && <button className="aha-v3-take-button" onClick={async () => { try { await reminderApi.markTaken(item.id); setReminders((rows) => rows.map((row) => row.id === item.id ? { ...row, taken: true, completed: true } : row)); } catch (err) { setError(err.message || 'บันทึกการกินยาไม่สำเร็จ'); } }}>กินแล้ว</button>}</div>
                       </div>
                     );
                   })}
