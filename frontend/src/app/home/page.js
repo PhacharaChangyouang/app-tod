@@ -204,7 +204,7 @@ export default function HomePage() {
               </span>
               <img
                 className="home-elder-photo"
-                src="/elderly-hero.jpg"
+                src="/elderly-hero.svg"
                 alt="ผู้สูงอายุ"
               />
             </div>
