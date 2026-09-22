@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
 import { getSession, clearSession } from '../../services/auth';
 import { reminderApi, notificationApi } from '../../services/api';
-import './home-reference.module.css';
 
 const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 
