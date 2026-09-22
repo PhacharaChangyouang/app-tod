@@ -202,7 +202,7 @@ export default function HomePage() {
               </div>
 
               <div className="aha-v3-hero-photo">
-                <img src="/elderly-hero.jpg" alt="ผู้สูงอายุ" />
+                <img src="/elderly-hero.jpg" alt="ผู้สูงอายุ" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/elderly-hero.svg'; }} />
                 <div className="aha-v3-hero-note">ดูแลตัวเอง<br />ไปด้วยกัน<br /><b>ในทุกวัน</b></div>
               </div>
             </section>
