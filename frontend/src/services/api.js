@@ -36,6 +36,19 @@ async function refreshAccessToken() {
   return refreshPromise;
 }
 
+function getApiErrorMessage(data, status) {
+  if (data?.message) return data.message;
+
+  if (Array.isArray(data?.errors) && data.errors.length > 0) {
+    return data.errors
+      .map((item) => item?.msg || item?.message)
+      .filter(Boolean)
+      .join(' • ');
+  }
+
+  return `Request failed (${status})`;
+}
+
 async function request(baseUrl, path, { method = 'GET', body, auth = false, retry = true } = {}) {
   const token = auth ? getAccessToken() : null;
   const res = await fetch(`${baseUrl}${path}`, {
@@ -53,8 +66,10 @@ async function request(baseUrl, path, { method = 'GET', body, auth = false, retr
     if (await refreshAccessToken()) return request(baseUrl, path, { method, body, auth: true, retry: false });
   }
   if (!res.ok) {
-    const err = new Error(data.message || `Request failed (${res.status})`);
-    err.status = res.status; err.data = data; throw err;
+    const err = new Error(getApiErrorMessage(data, res.status));
+    err.status = res.status;
+    err.data = data;
+    throw err;
   }
   return data;
 }
