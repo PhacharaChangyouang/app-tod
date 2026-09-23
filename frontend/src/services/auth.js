@@ -30,6 +30,26 @@ export function getAccessToken() {
   return session?.accessToken || null;
 }
 
+export function getRefreshToken() {
+  const session = getSession();
+  return session?.refreshToken || null;
+}
+
 export function getUser() {
   return getSession()?.user || null;
+}
+
+export function updateAccessToken(accessToken, refreshToken = null, user = null) {
+  const current = getSession();
+  if (!current || !accessToken) return null;
+
+  const next = {
+    ...current,
+    accessToken,
+    ...(refreshToken ? { refreshToken } : {}),
+    ...(user ? { user } : {}),
+  };
+
+  saveSession(next);
+  return next;
 }
