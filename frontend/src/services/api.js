@@ -177,6 +177,13 @@ export const reminderApi = {
       auth: true,
     }),
 
+  snooze: (id, minutes = 10) =>
+    request(REMINDER_API_BASE, `/api/reminders/${id}/snooze`, {
+      method: 'POST',
+      body: { minutes },
+      auth: true,
+    }),
+
   create: (payload) =>
     request(REMINDER_API_BASE, '/api/reminders', {
       method: 'POST',
@@ -244,6 +251,23 @@ export const notificationApi = {
   remove: (id) =>
     request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, {
       method: 'DELETE',
+      auth: true,
+    }),
+
+  pushStatus: () =>
+    request(NOTIFICATION_API_BASE, '/api/push/status', { auth: true }),
+
+  pushSubscribe: (subscription) =>
+    request(NOTIFICATION_API_BASE, '/api/push/subscribe', {
+      method: 'POST',
+      body: subscription,
+      auth: true,
+    }),
+
+  pushUnsubscribe: (endpoint) =>
+    request(NOTIFICATION_API_BASE, '/api/push/subscribe', {
+      method: 'DELETE',
+      body: { endpoint },
       auth: true,
     }),
 };
