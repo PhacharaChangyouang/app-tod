@@ -1,4 +1,5 @@
 import './globals.css';
+import MedicationNotificationManager from '../components/MedicationNotificationManager';
 
 export const metadata = {
   title: 'AHA — AI Health Assistant',
@@ -15,7 +16,10 @@ export const viewport = {
 export default function RootLayout({ children }) {
   return (
     <html lang="th">
-      <body>{children}</body>
+      <body>
+        {children}
+        <MedicationNotificationManager />
+      </body>
     </html>
   );
 }
