@@ -3,7 +3,6 @@ require('dotenv').config();
 const pool = require('./config/db');
 
 const TZ = 'Asia/Bangkok';
-const DAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 
 function localParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -19,8 +18,17 @@ function localParts(date = new Date()) {
   };
 }
 
-function isDue(reminder, now) {
+function isSnoozeDue(reminder, nowDate = new Date()) {
+  return Boolean(
+    reminder.snooze_until &&
+    new Date(reminder.snooze_until).getTime() <= nowDate.getTime()
+  );
+}
+
+function isDue(reminder, now, nowDate = new Date()) {
   if (!reminder.is_active) return false;
+  if (isSnoozeDue(reminder, nowDate)) return true;
+  if (reminder.snooze_until) return false;
   if (reminder.start_date && String(reminder.start_date).slice(0,10) > now.date) return false;
   if (reminder.end_date && String(reminder.end_date).slice(0,10) < now.date) return false;
 
@@ -43,12 +51,19 @@ async function notifyRecipients(reminder, triggerKey) {
     `${authUrl.replace(/\/$/, '')}/family/internal/${reminder.user_id}/recipients`,
     { headers: { 'x-internal-api-key': internalKey } }
   );
+
   if (!recipientsResponse.ok) {
     throw new Error(`Recipient lookup failed: ${recipientsResponse.status}`);
   }
 
   const recipients = await recipientsResponse.json();
-  const ids = Array.isArray(recipients.data) ? [...new Set(recipients.data)] : [reminder.user_id];
+  const ids = Array.isArray(recipients.data)
+    ? [...new Set(recipients.data)]
+    : [reminder.user_id];
+
+  const isSnooze = triggerKey.startsWith('snooze:');
+  const title = isSnooze ? 'ถึงเวลาทานยาอีกครั้ง' : 'ถึงเวลาเตือนยา';
+  const message = `ถึงเวลาทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''}`;
 
   for (const userId of ids) {
     const response = await fetch(
@@ -62,19 +77,24 @@ async function notifyRecipients(reminder, triggerKey) {
         body: JSON.stringify({
           user_id: userId,
           type: 'medicine_reminder',
-          title: 'ถึงเวลาเตือนยา',
-          message: `ถึงเวลาทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''}`,
+          title,
+          message,
           related_id: reminder.id,
           dedupe_key: `reminder:${reminder.id}:${userId}:${triggerKey}`,
         }),
       }
     );
-    if (!response.ok) throw new Error(`Notification create failed: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`Notification create failed: ${response.status}`);
+    }
   }
 }
 
 async function processDueReminders() {
   const now = localParts();
+  const nowDate = new Date();
+
   const result = await pool.query(`
     SELECT * FROM reminders
     WHERE is_active = true
@@ -83,12 +103,13 @@ async function processDueReminders() {
   `, [now.date]);
 
   for (const reminder of result.rows) {
-    if (!isDue(reminder, now)) continue;
+    const snoozeDue = isSnoozeDue(reminder, nowDate);
+    if (!isDue(reminder, now, nowDate)) continue;
 
-    const triggerKey = `${now.date}:${now.time}`;
-    // ส่งก่อน แล้วค่อยบันทึก last_triggered_key
-    // เพื่อให้ถ้า Notification Service ล่ม ระบบจะ retry ในรอบถัดไป
-    // Notification Service มี dedupe_key ป้องกันการส่งซ้ำ
+    const triggerKey = snoozeDue
+      ? `snooze:${now.date}:${now.time}`
+      : `${now.date}:${now.time}`;
+
     if (reminder.last_triggered_key === triggerKey) continue;
 
     try {
@@ -96,10 +117,12 @@ async function processDueReminders() {
 
       await pool.query(`
         UPDATE reminders
-        SET last_triggered_key = $1, updated_at = now()
-        WHERE id = $2 AND is_active = true
+        SET last_triggered_key = $1,
+            snooze_until = CASE WHEN $2 THEN NULL ELSE snooze_until END,
+            updated_at = now()
+        WHERE id = $3 AND is_active = true
           AND (last_triggered_key IS DISTINCT FROM $1)
-      `, [triggerKey, reminder.id]);
+      `, [triggerKey, snoozeDue, reminder.id]);
 
       console.log(`Reminder sent: ${reminder.id} ${triggerKey}`);
     } catch (error) {
@@ -115,4 +138,10 @@ function startScheduler() {
   console.log('Reminder scheduler started (30s interval, Asia/Bangkok)');
 }
 
-module.exports = { startScheduler, processDueReminders, localParts, isDue };
+module.exports = {
+  startScheduler,
+  processDueReminders,
+  localParts,
+  isDue,
+  isSnoozeDue,
+};
