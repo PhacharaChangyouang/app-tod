@@ -5,6 +5,33 @@ const tokenService = require('../services/token.service');
 
 const SALT_ROUNDS = 10;
 
+function publicUser(user) {
+  return {
+    id: user.id,
+    phone: user.phone,
+    name: user.name,
+    age: user.age,
+    role: user.role,
+  };
+}
+
+function setAuthCookies(res, accessToken, refreshToken) {
+  const cookieOptions = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
+  };
+  res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+}
+
+async function issueSession(res, user) {
+  const accessToken = tokenService.generateAccessToken(user);
+  const refreshToken = await tokenService.generateRefreshToken(user);
+  setAuthCookies(res, accessToken, refreshToken);
+  return { accessToken, refreshToken };
+}
+
 async function requestOtp(req, res, next) {
   try {
     const { phone } = req.body;
@@ -60,29 +87,9 @@ async function register(req, res, next) {
     await userModel.setPhoneVerified(user.id);
     otpService.clearPhoneVerification(phone);
 
-    const accessToken = tokenService.generateAccessToken(user);
-    const refreshToken = await tokenService.generateRefreshToken(user);
+    const { accessToken, refreshToken } = await issueSession(res, user);
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    };
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 }); // 7 days
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 }); // 30 days
-
-    res.status(201).json({
-      success: true,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        age: user.age,
-        role: user.role,
-      },
-      accessToken,
-      refreshToken
-    });
+    res.status(201).json({ success: true, user: publicUser(user), accessToken, refreshToken });
   } catch (err) {
     next(err);
   }
@@ -102,29 +109,95 @@ async function login(req, res, next) {
       return res.status(401).json({ success: false, message: 'Invalid PIN' });
     }
 
-    const accessToken = tokenService.generateAccessToken(user);
-    const refreshToken = await tokenService.generateRefreshToken(user);
+    const { accessToken, refreshToken } = await issueSession(res, user);
+    res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+}
 
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    };
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+async function me(req, res, next) {
+  try {
+    const user = await userModel.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, user: publicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+}
 
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        phone: user.phone,
-        name: user.name,
-        age: user.age,
-        role: user.role,
-      },
-      accessToken,
-      refreshToken
+async function updateMe(req, res, next) {
+  try {
+    const { name, age, role } = req.body;
+
+    if (role !== undefined && !['elderly', 'caregiver'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role' });
+    }
+    if (age !== undefined && age !== null && (!Number.isInteger(Number(age)) || Number(age) < 1 || Number(age) > 120)) {
+      return res.status(400).json({ success: false, message: 'Invalid age' });
+    }
+
+    const user = await userModel.updateProfile(req.user.id, {
+      name: name === undefined ? null : String(name).trim().slice(0, 100),
+      age: age === undefined || age === null || age === '' ? null : Number(age),
+      role: role === undefined ? null : role,
     });
+
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Role/phone are embedded in JWT, so issue a fresh access token after profile changes.
+    const { accessToken, refreshToken } = await issueSession(res, user);
+    res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function changePin(req, res, next) {
+  try {
+    const { currentPin, newPin } = req.body;
+    if (!/^\d{4,6}$/.test(String(newPin || ''))) {
+      return res.status(400).json({ success: false, message: 'PIN must be 4-6 digits' });
+    }
+
+    const user = await userModel.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const valid = await bcrypt.compare(String(currentPin || ''), user.pin_hash);
+    if (!valid) return res.status(401).json({ success: false, message: 'Current PIN is incorrect' });
+
+    const pinHash = await bcrypt.hash(String(newPin), SALT_ROUNDS);
+    await userModel.updatePin(user.id, pinHash);
+    res.json({ success: true, message: 'PIN updated successfully' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function changePhone(req, res, next) {
+  try {
+    const { phone, code } = req.body;
+    if (!/^0\d{9}$/.test(String(phone || ''))) {
+      return res.status(400).json({ success: false, message: 'Invalid phone number' });
+    }
+
+    const existing = await userModel.findByPhone(phone);
+    if (existing && existing.id !== req.user.id) {
+      return res.status(409).json({ success: false, message: 'Phone number is already in use' });
+    }
+
+    const result = otpService.verifyOtp(phone, code);
+    if (!result.valid) {
+      return res.status(400).json({ success: false, message: result.reason });
+    }
+
+    otpService.markPhoneVerified(phone);
+    const user = await userModel.updatePhone(req.user.id, phone);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    otpService.clearPhoneVerification(phone);
+
+    const { accessToken, refreshToken } = await issueSession(res, user);
+    res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
   } catch (err) {
     next(err);
   }
@@ -148,24 +221,11 @@ async function refresh(req, res, next) {
     }
 
     const user = await userModel.findById(payload.id);
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'User not found' });
-    }
+    if (!user) return res.status(401).json({ success: false, message: 'User not found' });
 
     await tokenService.revokeRefreshToken(refreshToken);
-
-    const accessToken = tokenService.generateAccessToken(user);
-    const newRefreshToken = await tokenService.generateRefreshToken(user);
-
-    const cookieOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-    };
-    res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-    res.cookie('refreshToken', newRefreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
-
-    res.json({ success: true, accessToken, refreshToken: newRefreshToken });
+    const session = await issueSession(res, user);
+    res.json({ success: true, ...session, user: publicUser(user) });
   } catch (err) {
     next(err);
   }
@@ -182,11 +242,8 @@ async function logout(req, res, next) {
       }, {});
       refreshToken = cookies.refreshToken;
     }
-    
-    if (refreshToken) {
-      await tokenService.revokeRefreshToken(refreshToken);
-    }
-    
+
+    if (refreshToken) await tokenService.revokeRefreshToken(refreshToken);
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
     res.json({ success: true, message: 'Logged out' });
@@ -200,6 +257,10 @@ module.exports = {
   verifyOtp,
   register,
   login,
+  me,
+  updateMe,
+  changePin,
+  changePhone,
   refresh,
   logout,
 };
