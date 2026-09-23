@@ -28,17 +28,16 @@ const validatePin = body('pin')
 const validateRegister = [
   validatePhone,
   body('name').exists().withMessage('Name is required').trim().isLength({ min: 1 }),
-  body('age')
-    .exists()
-    .withMessage('Age is required')
-    .isInt({ min: 0, max: 120 })
-    .withMessage('Age must be a valid number'),
   body('role')
     .exists()
     .withMessage('Role is required')
     .trim()
     .isIn(['elderly', 'caregiver'])
     .withMessage('Role must be either elderly or caregiver'),
+  body('age')
+    .optional({ checkFalsy: true })
+    .isInt({ min: 0, max: 120 })
+    .withMessage('Age must be a valid number'),
   validatePin,
 ];
 
