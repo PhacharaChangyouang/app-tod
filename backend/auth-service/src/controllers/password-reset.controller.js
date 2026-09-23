@@ -13,9 +13,8 @@ function hashResetToken(token) { return crypto.createHash('sha256').update(token
 async function requestReset(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ success: false, message: 'กรุณากรอกอีเมลให้ถูกต้อง' });
     const user = await userModel.findByEmail(email);
-
-    // Do not reveal whether an email exists.
     if (!user) return res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้' });
 
     await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1 OR expires_at <= now()', [user.id]);
@@ -27,7 +26,7 @@ async function requestReset(req, res, next) {
       await emailService.sendPasswordResetEmail({ to: user.email, name: user.name, token: rawToken });
     } catch (emailError) {
       await pool.query('DELETE FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
-      emailError.status = 503;
+      emailError.statusCode = 503;
       throw emailError;
     }
 
