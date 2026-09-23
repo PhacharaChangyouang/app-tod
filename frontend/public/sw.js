@@ -12,15 +12,22 @@ async function getWindowClients() {
 
 async function postToClients(message) {
   const clients = await getWindowClients();
-  for (const client of clients) {
-    client.postMessage(message);
-  }
+  for (const client of clients) client.postMessage(message);
   return clients;
+}
+
+function normalizePayload(payload) {
+  return {
+    ...payload,
+    notificationId: payload.notificationId || payload.notification_id || payload.id || null,
+    relatedId: payload.relatedId || payload.related_id || null,
+    title: payload.title || 'AHA',
+    message: payload.message || payload.body || 'มีการแจ้งเตือนจาก AHA',
+  };
 }
 
 self.addEventListener('push', (event) => {
   let payload = {};
-
   try {
     payload = event.data ? event.data.json() : {};
   } catch {
@@ -30,6 +37,8 @@ self.addEventListener('push', (event) => {
     };
   }
 
+  payload = normalizePayload(payload);
+
   event.waitUntil((async () => {
     const clients = await getWindowClients();
     const hasVisibleClient = clients.some((client) => client.visibilityState === 'visible');
@@ -37,13 +46,17 @@ self.addEventListener('push', (event) => {
     if (payload.type === 'medicine_reminder') {
       await postToClients({
         type: 'AHA_MEDICINE_REMINDER',
-        notification: payload,
+        notification: {
+          id: payload.notificationId,
+          related_id: payload.relatedId,
+          type: payload.type,
+          title: payload.title,
+          message: payload.message,
+        },
       });
     }
 
-    if (hasVisibleClient) {
-      return;
-    }
+    if (hasVisibleClient) return;
 
     const actions = Array.isArray(payload.actions) && payload.actions.length
       ? payload.actions
@@ -56,14 +69,19 @@ self.addEventListener('push', (event) => {
 
     await self.registration.showNotification(payload.title || 'AHA', {
       body: payload.message || 'มีการแจ้งเตือนใหม่จาก AHA',
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
+      icon: '/icons/aha-icon.svg',
+      badge: '/icons/aha-icon.svg',
+      image: '/icons/aha-icon.svg',
       tag: payload.notificationId || `aha-${Date.now()}`,
       renotify: true,
       requireInteraction: payload.type === 'medicine_reminder',
       vibrate: payload.type === 'medicine_reminder' ? [300, 150, 300, 150, 500] : [200, 100, 200],
       actions,
-      data: payload,
+      data: {
+        ...payload,
+        related_id: payload.relatedId,
+        notification_id: payload.notificationId,
+      },
     });
   })());
 });
@@ -73,6 +91,8 @@ self.addEventListener('notificationclick', (event) => {
 
   const action = event.action || 'open';
   const data = event.notification.data || {};
+  const reminderId = data.related_id || data.relatedId || null;
+  const notificationId = data.notification_id || data.notificationId || null;
 
   event.waitUntil((async () => {
     const clients = await getWindowClients();
@@ -83,17 +103,22 @@ self.addEventListener('notificationclick', (event) => {
       target.postMessage({
         type: 'AHA_NOTIFICATION_ACTION',
         action,
-        notification: data,
+        notification: {
+          id: notificationId,
+          related_id: reminderId,
+          type: data.type,
+          title: data.title,
+          message: data.message,
+        },
       });
       return;
     }
 
     const url = new URL(data.url || '/', self.location.origin);
-
     if (action === 'taken' || action === 'snooze') {
       url.searchParams.set('aha_action', action);
-      if (data.relatedId) url.searchParams.set('reminderId', data.relatedId);
-      if (data.notificationId) url.searchParams.set('notificationId', data.notificationId);
+      if (reminderId) url.searchParams.set('reminderId', reminderId);
+      if (notificationId) url.searchParams.set('notificationId', notificationId);
     }
 
     await self.clients.openWindow(url.toString());
