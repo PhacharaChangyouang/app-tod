@@ -1,48 +1,39 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
 import LoginForm from '../../components/LoginForm';
 import { authApi } from '../../services/api';
 import { saveSession } from '../../services/auth';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [step, setStep] = useState('phone');
 
-  const handleSubmit = async ({ mode, phone, code, name, age, role, pin, setStep, setError }) => {
+  const handleSubmit = async ({ mode, phone, pin, code, identifier, password, setError, setOtpStep, ...registerData }) => {
     try {
-      if (mode === 'requestOtp') {
-        const response = await authApi.requestOtp(phone);
+      let response;
+
+      if (mode === 'loginPassword') {
+        response = await authApi.loginWithPassword(identifier, password);
+      } else if (mode === 'loginPin') {
+        response = await authApi.login(phone, pin);
+      } else if (mode === 'requestOtp') {
+        response = await authApi.requestOtp(phone);
         if (!response.success) throw new Error(response.message || 'ไม่สามารถขอ OTP ได้');
-        setStep('verify');
+        setOtpStep('code');
         return;
+      } else if (mode === 'loginOtp') {
+        response = await authApi.loginOtp(phone, code);
+      } else if (mode === 'registerPassword') {
+        response = await authApi.registerWithPassword(registerData);
+      } else {
+        throw new Error('ไม่พบวิธีเข้าสู่ระบบ');
       }
 
-      if (mode === 'verifyOtp') {
-        const response = await authApi.verifyOtp(phone, code);
-        if (!response.success) throw new Error(response.message || 'ไม่สามารถยืนยัน OTP ได้');
-        setStep('register');
-        return;
-      }
-
-      if (mode === 'register') {
-        const response = await authApi.register({ phone, name, age, role, pin });
-        if (!response.success) throw new Error(response.message || 'ไม่สามารถสมัครสมาชิกได้');
-        saveSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, user: response.user });
-        router.push('/home');
-        return;
-      }
-
-      if (mode === 'login') {
-        const response = await authApi.login(phone, pin);
-        if (!response.success) throw new Error(response.message || 'ไม่สามารถเข้าสู่ระบบได้');
-        saveSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, user: response.user });
-        router.push('/home');
-        return;
-      }
+      if (!response?.success) throw new Error(response?.message || 'ไม่สามารถดำเนินการได้');
+      saveSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, user: response.user });
+      router.push('/home');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     }
   };
 

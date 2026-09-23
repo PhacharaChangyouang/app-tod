@@ -62,8 +62,11 @@ async function request(baseUrl, path, { method = 'GET', body, auth = false, retr
 export const authApi = {
   requestOtp: (phone) => request(AUTH_API_BASE, '/auth/request-otp', { method: 'POST', body: { phone } }),
   verifyOtp: (phone, code) => request(AUTH_API_BASE, '/auth/verify-otp', { method: 'POST', body: { phone, code } }),
+  loginOtp: (phone, code) => request(AUTH_API_BASE, '/auth/login-otp', { method: 'POST', body: { phone, code } }),
   register: (payload) => request(AUTH_API_BASE, '/auth/register', { method: 'POST', body: payload }),
   login: (phone, pin) => request(AUTH_API_BASE, '/auth/login', { method: 'POST', body: { phone, pin } }),
+  registerWithPassword: (payload) => request(AUTH_API_BASE, '/auth/register-password', { method: 'POST', body: payload }),
+  loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
   refresh: (refreshToken) => request(AUTH_API_BASE, '/auth/refresh', { method: 'POST', body: { refreshToken } }),
   logout: (refreshToken) => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: { refreshToken } }),
   me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
