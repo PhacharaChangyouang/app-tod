@@ -12,6 +12,8 @@ function publicUser(user) {
     name: user.name,
     age: user.age,
     role: user.role,
+    username: user.username || null,
+    email: user.email || null,
   };
 }
 
@@ -47,23 +49,13 @@ async function verifyOtp(req, res, next) {
     const { phone, code } = req.body;
     const result = otpService.verifyOtp(phone, code);
 
-    if (!result.valid) {
-      return res.status(400).json({ success: false, message: result.reason });
-    }
+    if (!result.valid) return res.status(400).json({ success: false, message: result.reason });
 
     otpService.markPhoneVerified(phone);
-
     const user = await userModel.findByPhone(phone);
-    if (user && !user.phone_verified) {
-      await userModel.setPhoneVerified(user.id);
-    }
+    if (user && !user.phone_verified) await userModel.setPhoneVerified(user.id);
 
-    res.json({
-      success: true,
-      verified: true,
-      existingUser: Boolean(user),
-      role: user?.role ?? null,
-    });
+    res.json({ success: true, verified: true, existingUser: Boolean(user), role: user?.role ?? null });
   } catch (err) {
     next(err);
   }
@@ -72,15 +64,10 @@ async function verifyOtp(req, res, next) {
 async function register(req, res, next) {
   try {
     const { phone, name, age, role, pin } = req.body;
-
-    if (!otpService.isPhoneVerified(phone)) {
-      return res.status(400).json({ success: false, message: 'Phone number has not been verified' });
-    }
+    if (!otpService.isPhoneVerified(phone)) return res.status(400).json({ success: false, message: 'Phone number has not been verified' });
 
     const existingUser = await userModel.findByPhone(phone);
-    if (existingUser) {
-      return res.status(409).json({ success: false, message: 'User already exists' });
-    }
+    if (existingUser) return res.status(409).json({ success: false, message: 'User already exists' });
 
     const pinHash = await bcrypt.hash(pin, SALT_ROUNDS);
     const user = await userModel.create({ phone, name, age, role, pinHash });
@@ -88,7 +75,6 @@ async function register(req, res, next) {
     otpService.clearPhoneVerification(phone);
 
     const { accessToken, refreshToken } = await issueSession(res, user);
-
     res.status(201).json({ success: true, user: publicUser(user), accessToken, refreshToken });
   } catch (err) {
     next(err);
@@ -99,15 +85,10 @@ async function login(req, res, next) {
   try {
     const { phone, pin } = req.body;
     const user = await userModel.findByPhone(phone);
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const validPin = await bcrypt.compare(pin, user.pin_hash);
-    if (!validPin) {
-      return res.status(401).json({ success: false, message: 'Invalid PIN' });
-    }
+    if (!validPin) return res.status(401).json({ success: false, message: 'Invalid PIN' });
 
     const { accessToken, refreshToken } = await issueSession(res, user);
     res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
@@ -129,23 +110,16 @@ async function me(req, res, next) {
 async function updateMe(req, res, next) {
   try {
     const { name, age, role } = req.body;
-
-    if (role !== undefined && !['elderly', 'caregiver'].includes(role)) {
-      return res.status(400).json({ success: false, message: 'Invalid role' });
-    }
-    if (age !== undefined && age !== null && (!Number.isInteger(Number(age)) || Number(age) < 1 || Number(age) > 120)) {
-      return res.status(400).json({ success: false, message: 'Invalid age' });
-    }
+    if (role !== undefined && !['elderly', 'caregiver'].includes(role)) return res.status(400).json({ success: false, message: 'Invalid role' });
+    if (age !== undefined && age !== null && (!Number.isInteger(Number(age)) || Number(age) < 1 || Number(age) > 120)) return res.status(400).json({ success: false, message: 'Invalid age' });
 
     const user = await userModel.updateProfile(req.user.id, {
       name: name === undefined ? null : String(name).trim().slice(0, 100),
       age: age === undefined || age === null || age === '' ? null : Number(age),
       role: role === undefined ? null : role,
     });
-
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Role/phone are embedded in JWT, so issue a fresh access token after profile changes.
     const { accessToken, refreshToken } = await issueSession(res, user);
     res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
   } catch (err) {
@@ -156,9 +130,7 @@ async function updateMe(req, res, next) {
 async function changePin(req, res, next) {
   try {
     const { currentPin, newPin } = req.body;
-    if (!/^\d{4,6}$/.test(String(newPin || ''))) {
-      return res.status(400).json({ success: false, message: 'PIN must be 4-6 digits' });
-    }
+    if (!/^\d{4}$/.test(String(newPin || ''))) return res.status(400).json({ success: false, message: 'PIN must be exactly 4 digits' });
 
     const user = await userModel.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
@@ -177,19 +149,13 @@ async function changePin(req, res, next) {
 async function changePhone(req, res, next) {
   try {
     const { phone, code } = req.body;
-    if (!/^0\d{9}$/.test(String(phone || ''))) {
-      return res.status(400).json({ success: false, message: 'Invalid phone number' });
-    }
+    if (!/^0\d{9}$/.test(String(phone || ''))) return res.status(400).json({ success: false, message: 'Invalid phone number' });
 
     const existing = await userModel.findByPhone(phone);
-    if (existing && existing.id !== req.user.id) {
-      return res.status(409).json({ success: false, message: 'Phone number is already in use' });
-    }
+    if (existing && existing.id !== req.user.id) return res.status(409).json({ success: false, message: 'Phone number is already in use' });
 
     const result = otpService.verifyOtp(phone, code);
-    if (!result.valid) {
-      return res.status(400).json({ success: false, message: result.reason });
-    }
+    if (!result.valid) return res.status(400).json({ success: false, message: result.reason });
 
     otpService.markPhoneVerified(phone);
     const user = await userModel.updatePhone(req.user.id, phone);
@@ -215,10 +181,7 @@ async function refresh(req, res, next) {
       refreshToken = cookies.refreshToken;
     }
     const payload = tokenService.verifyRefreshToken(refreshToken);
-
-    if (!payload || !(await tokenService.isRefreshTokenValid(refreshToken))) {
-      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
-    }
+    if (!payload || !(await tokenService.isRefreshTokenValid(refreshToken))) return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
 
     const user = await userModel.findById(payload.id);
     if (!user) return res.status(401).json({ success: false, message: 'User not found' });
@@ -242,7 +205,6 @@ async function logout(req, res, next) {
       }, {});
       refreshToken = cookies.refreshToken;
     }
-
     if (refreshToken) await tokenService.revokeRefreshToken(refreshToken);
     res.clearCookie('accessToken');
     res.clearCookie('refreshToken');
@@ -252,15 +214,4 @@ async function logout(req, res, next) {
   }
 }
 
-module.exports = {
-  requestOtp,
-  verifyOtp,
-  register,
-  login,
-  me,
-  updateMe,
-  changePin,
-  changePhone,
-  refresh,
-  logout,
-};
+module.exports = { requestOtp, verifyOtp, register, login, me, updateMe, changePin, changePhone, refresh, logout };
