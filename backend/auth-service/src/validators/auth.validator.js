@@ -32,10 +32,10 @@ const validatePasswordRegister = [
   body('email').exists().trim().isEmail().withMessage('Email is required and must be valid'),
   body('password').exists().isLength({ min: 8, max: 72 }).withMessage('Password must be 8-72 characters'),
   body('confirmPassword').exists().withMessage('Password confirmation is required'),
-  body('role').exists().isIn(['elderly', 'caregiver']).withMessage('Role must be either elderly or caregiver'),
+  body('role').exists().isIn(['elderly', 'caregiver']).withMessage('Role must be elderly or caregiver'),
   body('age').optional({ checkFalsy: true }).isInt({ min: 1, max: 120 }).withMessage('Age must be a valid number'),
   body('pin').exists().matches(/^\d{4}$/).withMessage('PIN must be exactly 4 digits'),
-  body('termsAccepted').equals('true').withMessage('Terms must be accepted'),
+  body('termsAccepted').custom((value) => value === true || value === 'true').withMessage('Terms must be accepted'),
 ];
 
 const validatePasswordLogin = [
