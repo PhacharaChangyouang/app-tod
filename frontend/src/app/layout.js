@@ -1,4 +1,5 @@
 import './globals.css';
+import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
 import AhaVisualPolish from '../components/AhaVisualPolish';
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }) {
     <html lang="th">
       <body>
         {children}
+        <AhaNavigation />
         <AhaVisualPolish />
         <MedicationNotificationManager />
       </body>
