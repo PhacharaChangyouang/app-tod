@@ -36,10 +36,11 @@ function Brand() {
   );
 }
 
-function SideNav({ active, router }) {
+function SideNav({ active, router, onVoice, voice }) {
   const items = [
     ['home', 'หน้าหลัก', '/home'],
     ['pill', 'ยา', '/reminders'],
+    ['mic', voice ? 'กำลังฟัง…' : 'พูดกับ AHA', '__voice__'],
     ['bell', 'แจ้งเตือน', '/notifications'],
     ['warning', 'ฉุกเฉิน', '/emergency'],
   ];
@@ -47,10 +48,16 @@ function SideNav({ active, router }) {
   return (
     <aside className="aha-v3-sidebar">
       <Brand />
-      <nav className="aha-v3-side-links">
+      <nav className="aha-v3-side-links" aria-label="เมนูหลัก AHA">
         {items.map(([icon, label, path]) => (
-          <button key={path} className={active === path ? 'active' : ''} onClick={() => router.push(path)}>
-            <AhaIcon name={icon} size={24} />
+          <button
+            key={path}
+            type="button"
+            className={`${active === path ? 'active' : ''}${path === '__voice__' ? ' aha-v3-nav-voice' : ''}${path === '/emergency' ? ' danger' : ''}`}
+            onClick={() => path === '__voice__' ? onVoice() : router.push(path)}
+            aria-label={label}
+          >
+            <AhaIcon name={icon} size={path === '__voice__' ? 26 : 24} />
             <span>{label}</span>
           </button>
         ))}
@@ -162,7 +169,7 @@ export default function HomePage() {
   return (
     <div className="aha-v3-page">
       <div className="aha-v3-layout">
-        <SideNav active="/home" router={router} />
+        <SideNav active="/home" router={router} onVoice={startVoice} voice={voice} />
 
         <div className="aha-v3-main">
           <header className="aha-v3-topbar">
@@ -338,13 +345,6 @@ export default function HomePage() {
               </article>
             </section>
           </main>
-
-          <nav className="aha-v3-mobile-nav">
-            <button className="active"><AhaIcon name="home" size={23} /><span>หน้าหลัก</span></button>
-            <button onClick={() => router.push('/reminders')}><AhaIcon name="pill" size={23} /><span>ยา</span></button>
-            <button onClick={() => router.push('/notifications')}><AhaIcon name="bell" size={23} /><span>แจ้งเตือน</span></button>
-            <button className="danger" onClick={() => router.push('/emergency')}><AhaIcon name="phone" size={23} /><span>ฉุกเฉิน</span></button>
-          </nav>
         </div>
       </div>
     </div>
