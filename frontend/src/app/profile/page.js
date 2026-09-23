@@ -1,25 +1,27 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
 import { authApi } from '../../services/api';
 import { clearSession, getSession, saveSession } from '../../services/auth';
 
 const THEMES = [
-  { key: 'green', name: 'AHA Green', color: '#2f9b68' },
-  { key: 'blue', name: 'Calm Blue', color: '#3b82c4' },
-  { key: 'teal', name: 'Soft Teal', color: '#2a9d8f' },
-  { key: 'purple', name: 'Gentle Purple', color: '#8064b5' },
+  { key: 'green', name: 'เขียว AHA', color: '#2f9b68' },
+  { key: 'blue', name: 'ฟ้าอ่อน', color: '#3b82c4' },
+  { key: 'teal', name: 'เขียวอมฟ้า', color: '#2a9d8f' },
+  { key: 'purple', name: 'ม่วงอ่อน', color: '#8064b5' },
 ];
 
 export default function ProfilePage() {
   const router = useRouter();
+  const fileRef = useRef(null);
   const [user, setUser] = useState(null);
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [role, setRole] = useState('elderly');
   const [theme, setTheme] = useState('green');
+  const [avatar, setAvatar] = useState('');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
   const [phone, setPhone] = useState('');
@@ -28,25 +30,62 @@ export default function ProfilePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [pinSaving, setPinSaving] = useState(false);
 
   useEffect(() => {
     const session = getSession();
     if (!session?.accessToken) { router.replace('/login'); return; }
-    const initialUser = session.user || {};
-    setUser(initialUser); setName(initialUser.name || ''); setAge(initialUser.age ?? '');
-    setRole(initialUser.role || 'elderly'); setPhone(initialUser.phone || '');
-    const savedTheme = localStorage.getItem('aha_theme') || 'green';
-    setTheme(savedTheme); document.documentElement.dataset.ahaTheme = savedTheme;
+    const initial = session.user || {};
+    setUser(initial);
+    setName(initial.name || '');
+    setAge(initial.age ?? '');
+    setRole(initial.role || 'elderly');
+    setPhone(initial.phone || '');
+    setTheme(localStorage.getItem('aha_theme') || 'green');
+    setAvatar(localStorage.getItem(`aha_avatar_${initial.id}`) || '');
+    document.documentElement.dataset.ahaTheme = localStorage.getItem('aha_theme') || 'green';
 
     authApi.me().then((result) => {
       if (!result?.user) return;
       const fresh = result.user;
       setUser(fresh); setName(fresh.name || ''); setAge(fresh.age ?? ''); setRole(fresh.role || 'elderly'); setPhone(fresh.phone || '');
+      setAvatar(localStorage.getItem(`aha_avatar_${fresh.id}`) || '');
       saveSession({ ...getSession(), user: fresh });
     }).catch(() => {});
   }, [router]);
 
-  const selectTheme = (key) => { setTheme(key); localStorage.setItem('aha_theme', key); document.documentElement.dataset.ahaTheme = key; };
+  const flash = (ok, text) => { setError(ok ? '' : text); setMessage(ok ? text : ''); };
+
+  const selectTheme = (key) => {
+    setTheme(key);
+    localStorage.setItem('aha_theme', key);
+    document.documentElement.dataset.ahaTheme = key;
+    flash(true, 'เปลี่ยนสีระบบแล้ว');
+  };
+
+  const chooseAvatar = () => fileRef.current?.click();
+
+  const onAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { flash(false, 'กรุณาเลือกไฟล์รูปภาพ'); return; }
+    if (file.size > 2 * 1024 * 1024) { flash(false, 'รูปภาพต้องมีขนาดไม่เกิน 2 MB'); return; }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const value = String(reader.result || '');
+      setAvatar(value);
+      if (user?.id) localStorage.setItem(`aha_avatar_${user.id}`, value);
+      flash(true, 'เปลี่ยนรูปโปรไฟล์แล้ว');
+    };
+    reader.readAsDataURL(file);
+    event.target.value = '';
+  };
+
+  const removeAvatar = () => {
+    setAvatar('');
+    if (user?.id) localStorage.removeItem(`aha_avatar_${user.id}`);
+    flash(true, 'ลบรูปโปรไฟล์แล้ว');
+  };
 
   const saveProfile = async () => {
     setSaving(true); setError(''); setMessage('');
@@ -78,8 +117,13 @@ export default function ProfilePage() {
 
   const changePin = async () => {
     setError(''); setMessage('');
-    try { await authApi.changePin(currentPin, newPin); setCurrentPin(''); setNewPin(''); setMessage('เปลี่ยนรหัส PIN เรียบร้อยแล้ว'); }
+    if (!/^\d{4}$/.test(currentPin)) { setError('PIN ปัจจุบันต้องเป็นตัวเลข 4 หลัก'); return; }
+    if (!/^\d{4}$/.test(newPin)) { setError('PIN ใหม่ต้องเป็นตัวเลข 4 หลัก'); return; }
+    if (currentPin === newPin) { setError('PIN ใหม่ต้องไม่เหมือน PIN เดิม'); return; }
+    setPinSaving(true);
+    try { await authApi.changePin(currentPin, newPin); setCurrentPin(''); setNewPin(''); setMessage('เปลี่ยนรหัส PIN 4 หลักเรียบร้อยแล้ว'); }
     catch (err) { setError(err.message || 'เปลี่ยน PIN ไม่สำเร็จ'); }
+    finally { setPinSaving(false); }
   };
 
   const logout = async () => {
@@ -87,53 +131,85 @@ export default function ProfilePage() {
     clearSession(); router.replace('/login');
   };
 
-  if (!user) return <div className="aha-v3-page"><div className="aha-v3-empty">กำลังโหลดโปรไฟล์…</div></div>;
+  if (!user) return <div className="aha-profile-page"><div className="aha-profile-loading">กำลังโหลดโปรไฟล์…</div></div>;
+
+  const initial = (user.name || 'A').slice(0, 1).toUpperCase();
 
   return (
-    <div className="aha-v3-page aha-profile-page">
-      <div className="aha-v3-layout"><div className="aha-v3-main">
-        <header className="aha-v3-topbar">
-          <button className="aha-profile-back" onClick={() => router.push('/home')} type="button" aria-label="กลับหน้าหลัก"><AhaIcon name="arrow" size={20} /></button>
-          <div className="aha-v3-brand"><span className="aha-v3-brand-mark"><span className="aha-v3-brand-wave">⌁</span></span><span><strong>AHA</strong><small>AI Health Assistant</small></span></div>
-          <div className="aha-v3-top-message"><strong>โปรไฟล์ของคุณ</strong><span>จัดการข้อมูลและการตั้งค่าบัญชี</span></div>
-        </header>
+    <div className="aha-profile-page">
+      <header className="aha-profile-header">
+        <button className="aha-profile-icon-button" onClick={() => router.push('/home')} type="button" aria-label="กลับหน้าหลัก"><AhaIcon name="arrow" size={22} /></button>
+        <div className="aha-profile-title"><strong>โปรไฟล์ของคุณ</strong><span>ข้อมูลและการตั้งค่า</span></div>
+        <button className="aha-profile-home-button" onClick={() => router.push('/home')} type="button"><AhaIcon name="home" size={19} /><span>หน้าหลัก</span></button>
+      </header>
 
-        <main className="aha-profile-content">
-          <section className="aha-profile-head"><div className="aha-profile-avatar">{(user.name || 'A').slice(0, 1)}</div><div><h1>{user.name || 'ผู้ใช้งาน AHA'}</h1><p>{user.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'} · {user.phone}</p></div></section>
-          {(message || error) && <div className={`aha-profile-alert ${error ? 'error' : 'success'}`}>{error || message}</div>}
+      <main className="aha-profile-wrap">
+        <section className="aha-profile-identity">
+          <div className="aha-profile-avatar-wrap">
+            <button className="aha-profile-avatar" onClick={chooseAvatar} type="button" aria-label="เปลี่ยนรูปโปรไฟล์">
+              {avatar ? <img src={avatar} alt="รูปโปรไฟล์" /> : <span>{initial}</span>}
+              <i><AhaIcon name="activity" size={16} /></i>
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" onChange={onAvatarChange} hidden />
+          </div>
+          <div className="aha-profile-identity-copy"><h1>{user.name || 'ผู้ใช้งาน AHA'}</h1><p>{user.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'} · {user.phone}</p><div><button type="button" onClick={chooseAvatar}>เปลี่ยนรูป</button>{avatar && <button type="button" onClick={removeAvatar}>ลบรูป</button>}</div></div>
+        </section>
 
-          <section className="aha-profile-grid">
-            <article className="aha-profile-card"><div className="aha-profile-card-title"><AhaIcon name="activity" size={22} /><div><h2>ข้อมูลส่วนตัว</h2><p>แก้ไขข้อมูลที่ใช้แสดงในระบบ</p></div></div><label>ชื่อที่แสดง<input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} /></label><label>อายุ<input type="number" min="1" max="120" value={age} onChange={(e) => setAge(e.target.value)} /></label><label>บทบาทของบัญชี<select value={role} onChange={(e) => setRole(e.target.value)}><option value="elderly">ผู้สูงอายุ</option><option value="caregiver">ผู้ดูแล</option></select></label>{role !== user.role && <div className="aha-profile-warning">การเปลี่ยนบทบาทมีผลต่อหน้าหลัก สิทธิ์ และระบบเชื่อมต่อครอบครัว ควรเปลี่ยนเมื่อจำเป็น</div>}<button className="aha-profile-primary" onClick={saveProfile} disabled={saving}>{saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}</button></article>
+        {(message || error) && <div className={`aha-profile-alert ${error ? 'error' : 'success'}`}>{error || message}</div>}
 
-            <article className="aha-profile-card"><div className="aha-profile-card-title"><AhaIcon name="activity" size={22} /><div><h2>สีของระบบ</h2><p>เลือกสีที่สบายตาและเหมาะกับคุณ</p></div></div><div className="aha-theme-grid">{THEMES.map((item) => <button key={item.key} className={`aha-theme-option ${theme === item.key ? 'active' : ''}`} onClick={() => selectTheme(item.key)} type="button"><span style={{ background: item.color }} />{item.name}</button>)}</div></article>
+        <section className="aha-profile-section">
+          <div className="aha-profile-section-heading"><div><h2>ข้อมูลส่วนตัว</h2><p>ข้อมูลที่ใช้แสดงในระบบ AHA</p></div></div>
+          <div className="aha-profile-fields">
+            <label>ชื่อที่แสดง<input value={name} onChange={(e) => setName(e.target.value)} maxLength={100} /></label>
+            <label>อายุ<input type="number" min="1" max="120" value={age} onChange={(e) => setAge(e.target.value)} /></label>
+            <label>บทบาท<select value={role} onChange={(e) => setRole(e.target.value)}><option value="elderly">ผู้สูงอายุ</option><option value="caregiver">ผู้ดูแล</option></select></label>
+          </div>
+          <button className="aha-profile-primary" onClick={saveProfile} disabled={saving}>{saving ? 'กำลังบันทึก…' : 'บันทึกข้อมูล'}</button>
+        </section>
 
-            <article className="aha-profile-card"><div className="aha-profile-card-title"><AhaIcon name="phone" size={22} /><div><h2>เบอร์โทรศัพท์</h2><p>ต้องยืนยัน OTP ทุกครั้งเมื่อเปลี่ยนเบอร์</p></div></div><label>เบอร์โทรศัพท์ใหม่<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" /></label>{!phoneOtpSent ? <button className="aha-profile-secondary" onClick={requestPhoneOtp}>ส่ง OTP</button> : <><label>รหัส OTP<input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" /></label><button className="aha-profile-primary" onClick={confirmPhone}>ยืนยันการเปลี่ยนเบอร์</button></>}</article>
+        <section className="aha-profile-section">
+          <div className="aha-profile-section-heading"><div><h2>ลักษณะการแสดงผล</h2><p>เลือกสีที่อ่านง่ายและสบายตา</p></div></div>
+          <div className="aha-theme-grid">{THEMES.map((item) => <button key={item.key} type="button" className={`aha-theme-option ${theme === item.key ? 'active' : ''}`} onClick={() => selectTheme(item.key)}><span style={{ background: item.color }} />{item.name}{theme === item.key && <b>✓</b>}</button>)}</div>
+        </section>
 
-            <article className="aha-profile-card"><div className="aha-profile-card-title"><AhaIcon name="activity" size={22} /><div><h2>รหัส PIN</h2><p>ใช้สำหรับเข้าสู่ระบบ AHA</p></div></div><label>PIN ปัจจุบัน<input type="password" inputMode="numeric" maxLength={6} value={currentPin} onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 6))} /></label><label>PIN ใหม่<input type="password" inputMode="numeric" maxLength={6} value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 6))} /></label><button className="aha-profile-secondary" onClick={changePin}>เปลี่ยน PIN</button></article>
-          </section>
+        <section className="aha-profile-section">
+          <div className="aha-profile-section-heading"><div><h2>เปลี่ยนเบอร์โทรศัพท์</h2><p>ต้องยืนยัน OTP ไปยังเบอร์ใหม่</p></div></div>
+          <div className="aha-profile-fields single"><label>เบอร์โทรศัพท์ใหม่<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" placeholder="0XXXXXXXXX" /></label></div>
+          {!phoneOtpSent ? <button className="aha-profile-secondary" onClick={requestPhoneOtp}>ส่ง OTP</button> : <div className="aha-profile-otp"><label>รหัส OTP<input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" maxLength={6} /></label><button className="aha-profile-primary" onClick={confirmPhone}>ยืนยันการเปลี่ยนเบอร์</button></div>}
+        </section>
 
-          <section className="aha-profile-account-row"><div><strong>บัญชี AHA</strong><span>การออกจากระบบจะยกเลิก session ของอุปกรณ์นี้</span></div><button className="aha-profile-danger" onClick={logout} type="button">ออกจากระบบ</button></section>
-        </main>
+        <section className="aha-profile-section">
+          <div className="aha-profile-section-heading"><div><h2>รหัส PIN</h2><p>ใช้ PIN สำหรับการเข้าสู่ระบบแบบ PIN — ต้องเป็นตัวเลข 4 หลักเท่านั้น</p></div></div>
+          <div className="aha-profile-pin-grid"><label>PIN ปัจจุบัน<input type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="current-password" value={currentPin} onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" /></label><label>PIN ใหม่<input type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="new-password" value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" /></label></div>
+          <button className="aha-profile-secondary" onClick={changePin} disabled={pinSaving}>{pinSaving ? 'กำลังบันทึก…' : 'เปลี่ยน PIN 4 หลัก'}</button>
+        </section>
 
-        <style jsx global>{`
-          .aha-profile-page{min-height:100vh;background:#f3f9f6}
-          .aha-profile-content{width:min(1120px,calc(100% - 32px));margin:0 auto;padding:20px 0 40px}
-          .aha-profile-back{width:42px;height:42px;border:1px solid #d7e7df;background:#fff;border-radius:13px;color:#2f9b68;display:grid;place-items:center}
-          .aha-profile-head{display:flex;align-items:center;gap:18px;margin:8px 0 22px;padding:24px;border:1px solid #d9e9e1;background:#fff;border-radius:24px;box-shadow:0 14px 35px rgba(35,95,70,.08)}
-          .aha-profile-avatar{width:76px;height:76px;border-radius:24px;background:linear-gradient(145deg,#2f9b68,#57b887);color:#fff;display:grid;place-items:center;font-size:32px;font-weight:900;flex:0 0 auto}
-          .aha-profile-head h1{margin:0 0 5px;font-size:30px;color:#173c2c}.aha-profile-head p{margin:0;color:#6f887c;font-size:16px}
-          .aha-profile-alert{margin-bottom:16px;padding:13px 16px;border-radius:15px;font-weight:700}.aha-profile-alert.success{background:#edf9f2;color:#287c4e;border:1px solid #ccebd8}.aha-profile-alert.error{background:#fff1f1;color:#b82d2a;border:1px solid #ffd1cf}
-          .aha-profile-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-          .aha-profile-card{background:#fff;border:1px solid #d9e9e1;border-radius:22px;padding:22px;box-shadow:0 12px 30px rgba(35,95,70,.07);display:grid;gap:14px}
-          .aha-profile-card-title{display:flex;align-items:flex-start;gap:11px;color:#2f9b68}.aha-profile-card-title h2{margin:0;color:#183d2e;font-size:20px}.aha-profile-card-title p{margin:4px 0 0;color:#7a9086;font-size:14px}
-          .aha-profile-card label{display:grid;gap:7px;color:#315347;font-weight:800;font-size:15px}.aha-profile-card input,.aha-profile-card select{min-height:50px;border:1px solid #cfe1d8;border-radius:14px;padding:0 14px;background:#fbfefc;color:#183d2e;outline:none}.aha-profile-card input:focus,.aha-profile-card select:focus{border-color:#2f9b68;box-shadow:0 0 0 4px rgba(47,155,104,.12)}
-          .aha-profile-primary,.aha-profile-secondary,.aha-profile-danger{min-height:50px;border-radius:14px;border:0;padding:0 18px;font-weight:900}.aha-profile-primary{background:#2f9b68;color:#fff;box-shadow:0 9px 20px rgba(47,155,104,.2)}.aha-profile-primary:disabled{opacity:.55}.aha-profile-secondary{background:#edf8f2;color:#287c4e;border:1px solid #cce8d8}.aha-profile-danger{background:#fff1f1;color:#bf3632;border:1px solid #ffd2cf}
-          .aha-profile-warning{padding:11px 13px;border-radius:13px;background:#fff8e9;color:#87661b;border:1px solid #f3dfac;font-size:13px;line-height:1.55}
-          .aha-theme-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.aha-theme-option{min-height:58px;border:1px solid #d8e7df;background:#fff;border-radius:14px;display:flex;align-items:center;gap:10px;padding:0 12px;color:#345548;font-weight:800;text-align:left}.aha-theme-option span{width:20px;height:20px;border-radius:50%;flex:0 0 auto}.aha-theme-option.active{border-color:#2f9b68;box-shadow:0 0 0 3px rgba(47,155,104,.1);color:#236f48}
-          .aha-profile-account-row{margin-top:16px;padding:18px 20px;border:1px solid #d9e9e1;background:#fff;border-radius:20px;display:flex;align-items:center;justify-content:space-between;gap:15px}.aha-profile-account-row strong{display:block;color:#183d2e}.aha-profile-account-row span{display:block;color:#7a9086;font-size:13px;margin-top:3px}
-          @media(max-width:700px){.aha-profile-content{width:calc(100% - 18px);padding-top:10px}.aha-profile-grid{grid-template-columns:1fr}.aha-profile-head{padding:18px}.aha-profile-head h1{font-size:24px}.aha-profile-avatar{width:62px;height:62px;border-radius:19px;font-size:27px}.aha-theme-grid{grid-template-columns:1fr}.aha-profile-account-row{align-items:stretch;flex-direction:column}.aha-profile-danger{width:100%}}
-        `}</style>
-      </div></div>
+        <section className="aha-profile-account"><div><strong>บัญชี AHA</strong><span>ออกจากระบบเฉพาะอุปกรณ์นี้</span></div><button onClick={logout} type="button">ออกจากระบบ</button></section>
+      </main>
+
+      <nav className="aha-profile-mobile-nav"><button onClick={() => router.push('/home')} type="button"><AhaIcon name="home" size={20} /><span>หน้าหลัก</span></button><button className="active" type="button"><AhaIcon name="activity" size={20} /><span>โปรไฟล์</span></button></nav>
+
+      <style jsx>{`
+        .aha-profile-page{min-height:100vh;background:#f4f9f7;color:#183d2e;padding-bottom:28px;font-family:Arial,"Noto Sans Thai",sans-serif}
+        .aha-profile-header{height:76px;width:min(1040px,calc(100% - 28px));margin:auto;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:14px}
+        .aha-profile-icon-button,.aha-profile-home-button{border:1px solid #d7e7df;background:#fff;color:#2f9b68;border-radius:14px;min-height:44px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800}
+        .aha-profile-icon-button{width:44px}.aha-profile-home-button{padding:0 14px}.aha-profile-title strong{display:block;font-size:22px}.aha-profile-title span{display:block;color:#789087;font-size:13px;margin-top:2px}
+        .aha-profile-wrap{width:min(920px,calc(100% - 28px));margin:auto;display:grid;gap:16px}
+        .aha-profile-identity,.aha-profile-section,.aha-profile-account{background:#fff;border:1px solid #dbeae3;border-radius:22px;box-shadow:0 10px 28px rgba(35,95,70,.06)}
+        .aha-profile-identity{padding:22px;display:flex;align-items:center;gap:18px}.aha-profile-avatar-wrap{flex:0 0 auto}.aha-profile-avatar{width:92px;height:92px;border-radius:26px;border:0;background:linear-gradient(145deg,#2f9b68,#58b989);color:#fff;display:grid;place-items:center;font-size:38px;font-weight:900;position:relative;padding:0;overflow:hidden}.aha-profile-avatar img{width:100%;height:100%;object-fit:cover}.aha-profile-avatar i{position:absolute;right:4px;bottom:4px;width:29px;height:29px;border-radius:10px;background:#fff;color:#2f9b68;display:grid;place-items:center;font-style:normal;box-shadow:0 3px 10px rgba(0,0,0,.12)}
+        .aha-profile-identity-copy h1{font-size:28px;margin:0 0 5px}.aha-profile-identity-copy p{margin:0;color:#71877e;font-size:15px}.aha-profile-identity-copy>div{display:flex;gap:8px;margin-top:10px}.aha-profile-identity-copy button{border:0;background:#edf8f2;color:#287c4e;border-radius:10px;padding:8px 11px;font-weight:800}
+        .aha-profile-alert{padding:13px 16px;border-radius:14px;font-weight:800}.aha-profile-alert.success{background:#edf9f2;color:#287c4e;border:1px solid #ccebd8}.aha-profile-alert.error{background:#fff1f1;color:#b82d2a;border:1px solid #ffd1cf}
+        .aha-profile-section{padding:22px}.aha-profile-section-heading{margin-bottom:17px}.aha-profile-section-heading h2{margin:0;font-size:21px}.aha-profile-section-heading p{margin:5px 0 0;color:#789087;font-size:14px;line-height:1.55}
+        .aha-profile-fields,.aha-profile-pin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.aha-profile-fields.single{grid-template-columns:minmax(0,420px)}.aha-profile-pin-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:680px}
+        .aha-profile-section label{display:grid;gap:7px;font-size:15px;font-weight:800;color:#315347}.aha-profile-section input,.aha-profile-section select{width:100%;min-height:50px;border:1px solid #cfe1d8;border-radius:13px;background:#fbfefc;color:#183d2e;padding:0 14px;outline:none;font-size:17px}.aha-profile-section input:focus,.aha-profile-section select:focus{border-color:#2f9b68;box-shadow:0 0 0 4px rgba(47,155,104,.1)}
+        .aha-profile-primary,.aha-profile-secondary{margin-top:15px;min-height:50px;border-radius:13px;padding:0 18px;font-weight:900;border:0}.aha-profile-primary{background:#2f9b68;color:#fff}.aha-profile-secondary{background:#edf8f2;color:#287c4e;border:1px solid #cce8d8}.aha-profile-primary:disabled,.aha-profile-secondary:disabled{opacity:.55}
+        .aha-theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.aha-theme-option{min-height:58px;border:1px solid #d8e7df;background:#fff;border-radius:13px;display:flex;align-items:center;gap:9px;padding:0 12px;color:#345548;font-weight:800}.aha-theme-option span{width:20px;height:20px;border-radius:50%;flex:0 0 auto}.aha-theme-option b{margin-left:auto;color:#2f9b68}.aha-theme-option.active{border-color:#2f9b68;box-shadow:0 0 0 3px rgba(47,155,104,.09)}
+        .aha-profile-otp{display:flex;gap:12px;align-items:end;max-width:680px}.aha-profile-otp label{flex:1}.aha-profile-otp .aha-profile-primary{margin:0;white-space:nowrap}
+        .aha-profile-account{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.aha-profile-account strong{display:block}.aha-profile-account span{display:block;color:#789087;font-size:13px;margin-top:3px}.aha-profile-account button{min-height:46px;border:1px solid #ffd1cf;background:#fff2f1;color:#bd3935;border-radius:12px;padding:0 16px;font-weight:900}
+        .aha-profile-mobile-nav{display:none}.aha-profile-loading{min-height:100vh;display:grid;place-items:center;color:#6e867b;font-weight:800}
+        @media(max-width:720px){.aha-profile-page{padding-bottom:86px}.aha-profile-header{height:68px;width:calc(100% - 18px);grid-template-columns:42px 1fr auto;gap:9px}.aha-profile-title strong{font-size:18px}.aha-profile-title span{font-size:12px}.aha-profile-home-button{width:42px;padding:0}.aha-profile-home-button span{display:none}.aha-profile-wrap{width:calc(100% - 18px);gap:12px}.aha-profile-identity{padding:16px;gap:13px;border-radius:18px}.aha-profile-avatar{width:70px;height:70px;border-radius:21px;font-size:30px}.aha-profile-identity-copy h1{font-size:22px}.aha-profile-identity-copy p{font-size:13px}.aha-profile-section{padding:17px;border-radius:18px}.aha-profile-fields,.aha-profile-pin-grid,.aha-theme-grid{grid-template-columns:1fr 1fr}.aha-profile-fields.single,.aha-profile-pin-grid{grid-template-columns:1fr}.aha-profile-theme-option{font-size:14px}.aha-profile-otp{display:grid;grid-template-columns:1fr}.aha-profile-otp .aha-profile-primary{margin-top:0}.aha-profile-account{border-radius:18px}.aha-profile-mobile-nav{position:fixed;left:9px;right:9px;bottom:9px;height:64px;background:rgba(255,255,255,.96);border:1px solid #d7e7df;border-radius:19px;display:grid;grid-template-columns:1fr 1fr;z-index:40;box-shadow:0 10px 30px rgba(30,80,60,.14);backdrop-filter:blur(12px)}.aha-profile-mobile-nav button{border:0;background:transparent;color:#71877e;display:grid;place-items:center;gap:2px;font-size:11px;font-weight:900}.aha-profile-mobile-nav button.active{color:#2f9b68}.aha-profile-mobile-nav span{line-height:1}.aha-profile-identity-copy>div{margin-top:7px}}
+        @media(max-width:430px){.aha-profile-fields{grid-template-columns:1fr}.aha-theme-grid{grid-template-columns:1fr 1fr}.aha-profile-identity-copy h1{font-size:19px}.aha-profile-section-heading h2{font-size:19px}}
+      `}</style>
     </div>
   );
 }
