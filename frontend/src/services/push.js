@@ -9,6 +9,17 @@ function urlBase64ToUint8Array(base64String) {
   return Uint8Array.from([...rawData].map((char) => char.charCodeAt(0)));
 }
 
+function isIosDevice() {
+  if (typeof navigator === 'undefined') return false;
+  return /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function isStandalonePwa() {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
 export async function registerAhaServiceWorker() {
   if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
     return null;
@@ -25,24 +36,34 @@ export async function getAhaPushSubscription() {
 
 export async function enableAhaPush() {
   if (typeof window === 'undefined') {
-    throw new Error('Push is only available in the browser');
+    throw new Error('การแจ้งเตือนต้องเปิดจากอุปกรณ์ที่รองรับ');
   }
 
   if (!PUBLIC_KEY) {
-    throw new Error('NEXT_PUBLIC_VAPID_PUBLIC_KEY is not configured');
+    throw new Error('ระบบยังไม่ได้ตั้งค่า VAPID Public Key');
+  }
+
+  if (!window.isSecureContext) {
+    throw new Error('ต้องเปิด AHA ผ่าน HTTPS เพื่อใช้การแจ้งเตือน');
+  }
+
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (isIosDevice() && !isStandalonePwa()) {
+      throw new Error('iPhone/iPad ต้องเลือก “เพิ่มไปยังหน้าจอโฮม” แล้วเปิด AHA จากไอคอนบนหน้าจอโฮมก่อน จึงจะรับ Push ได้');
+    }
+    throw new Error('Browser นี้ไม่รองรับ Push Notification ให้ใช้ Chrome/Edge บน Android หรือเพิ่ม AHA ไปยังหน้าจอโฮมบน iPhone/iPad');
   }
 
   if (!('Notification' in window)) {
-    throw new Error('This browser does not support notifications');
-  }
-
-  if (!('PushManager' in window)) {
-    throw new Error('This browser does not support push notifications');
+    throw new Error('Browser นี้ไม่รองรับ Notification API แต่ AHA ยังแสดง Popup เตือนยาได้ขณะเปิดเว็บ');
   }
 
   const permission = await Notification.requestPermission();
   if (permission !== 'granted') {
-    throw new Error('Notification permission was not granted');
+    if (permission === 'denied') {
+      throw new Error('คุณบล็อก Notification ไว้ ให้เปิดสิทธิ์การแจ้งเตือนของ AHA ในการตั้งค่า Browser');
+    }
+    throw new Error('ยังไม่ได้อนุญาตการแจ้งเตือน');
   }
 
   const registration = await registerAhaServiceWorker();
