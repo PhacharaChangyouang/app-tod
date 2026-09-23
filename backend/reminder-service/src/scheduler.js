@@ -43,8 +43,8 @@ function isDue(reminder, now, nowDate = new Date()) {
   const scheduled = scheduledDateTime(now.date, reminder.reminder_time);
   const diffMinutes = Math.floor((nowDate.getTime() - scheduled.getTime()) / 60000);
 
-  // Do not require the scheduler to hit the exact minute. Railway/container
-  // restarts or a short pause can otherwise make a reminder disappear forever.
+  // Allow a short catch-up window so a scheduler restart/container pause
+  // does not permanently lose a medicine reminder.
   return diffMinutes >= 0 && diffMinutes <= MAX_LATE_MINUTES;
 }
 
@@ -116,11 +116,11 @@ async function processDueReminders() {
     const snoozeDue = isSnoozeDue(reminder, nowDate);
     if (!isDue(reminder, now, nowDate)) continue;
 
-    // For a normal reminder the trigger belongs to the scheduled time, not
-    // the actual scheduler execution time. This prevents duplicate sends
-    // while still allowing late delivery after a restart/pause.
+    // Normal reminders use their configured scheduled minute. Snoozed
+    // reminders use the original snooze_until timestamp, so retries keep the
+    // same dedupe key and cannot create duplicate notifications.
     const triggerKey = snoozeDue
-      ? `snooze:${nowDate.toISOString().slice(0, 16)}`
+      ? `snooze:${new Date(reminder.snooze_until).toISOString().slice(0, 16)}`
       : `${now.date}:${String(reminder.reminder_time).slice(0, 5)}`;
 
     if (reminder.last_triggered_key === triggerKey) continue;
