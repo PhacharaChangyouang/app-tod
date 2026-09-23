@@ -28,7 +28,7 @@ const validatePasswordRegister = [
   body('phone').exists().trim().matches(/^0\d{9}$/).withMessage('Phone must be a 10-digit Thai number starting with 0'),
   body('firstName').exists().trim().isLength({ min: 1, max: 50 }).withMessage('First name is required'),
   body('lastName').exists().trim().isLength({ min: 1, max: 50 }).withMessage('Last name is required'),
-  body('username').exists().trim().matches(/^[A-Za-z0-9_.-]{4,30}$/).withMessage('Username must be 4-30 letters, numbers, dot, dash or underscore'),
+  body('username').exists().trim().matches(/^[A-Za-z0-9]{4,30}$/).withMessage('Username must be 4-30 letters or numbers only'),
   body('email').exists().trim().isEmail().withMessage('Email is required and must be valid'),
   body('password').exists().isLength({ min: 8, max: 72 }).withMessage('Password must be 8-72 characters'),
   body('confirmPassword').exists().withMessage('Password confirmation is required'),
