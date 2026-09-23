@@ -41,10 +41,20 @@ async function registerWithPassword(req, res, next) {
       password, confirmPassword, role, age, pin, termsAccepted,
     } = req.body;
 
-    if (!termsAccepted) return res.status(400).json({ success: false, message: 'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายข้อมูลส่วนบุคคล' });
-    if (password !== confirmPassword) return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
+    if (!termsAccepted) {
+      return res.status(400).json({ success: false, message: 'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายข้อมูลส่วนบุคคล' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
+    }
+
     if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(String(password || ''))) {
-      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรกับตัวเลข' });
+      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
+    }
+
+    if (!/^\d{4}$/.test(String(pin || ''))) {
+      return res.status(400).json({ success: false, message: 'PIN ต้องเป็นตัวเลข 4 หลัก' });
     }
 
     const phoneUser = await userModel.findByPhone(phone);
@@ -60,7 +70,7 @@ async function registerWithPassword(req, res, next) {
 
     const name = `${String(firstName || '').trim()} ${String(lastName || '').trim()}`.trim();
     const passwordHash = await bcrypt.hash(String(password), SALT_ROUNDS);
-    const pinHash = await bcrypt.hash(/^\d{4}$/.test(String(pin || '')) ? String(pin) : '0000', SALT_ROUNDS);
+    const pinHash = await bcrypt.hash(String(pin), SALT_ROUNDS);
 
     const user = await userModel.createWithPassword({
       phone,
