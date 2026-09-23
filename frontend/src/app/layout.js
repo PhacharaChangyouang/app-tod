@@ -5,10 +5,15 @@ export const metadata = {
   title: 'AHA — AI Health Assistant',
   description: 'ผู้ช่วยสุขภาพอัจฉริยะสำหรับผู้สูงอายุและผู้ดูแล',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/aha-icon.svg',
+    shortcut: '/icons/aha-icon.svg',
+    apple: '/icons/aha-icon.svg',
+  },
 };
 
 export const viewport = {
-  themeColor: '#29ABE2',
+  themeColor: '#0EA9E9',
   initialScale: 1,
   width: 'device-width',
 };
