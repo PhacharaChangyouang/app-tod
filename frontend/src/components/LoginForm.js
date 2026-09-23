@@ -126,7 +126,7 @@ export default function LoginForm({ onSubmit }) {
                   <div className="field"><label>นามสกุล</label><input value={register.lastName} onChange={(e) => updateRegister('lastName', e.target.value)} autoComplete="family-name" required /></div>
                 </div>
                 <div className="field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={register.phone} onChange={(e) => updateRegister('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="0XXXXXXXXX" required /></div>
-                <div className="field"><label>อีเมล <span>(ถ้ามี)</span></label><input type="email" value={register.email} onChange={(e) => updateRegister('email', e.target.value)} autoComplete="email" placeholder="name@example.com" /></div>
+                <div className="field"><label>อีเมล</label><input type="email" value={register.email} onChange={(e) => updateRegister('email', e.target.value)} autoComplete="email" placeholder="name@example.com" required /></div>
                 <div className="field"><label>ชื่อผู้ใช้</label><input value={register.username} onChange={(e) => updateRegister('username', e.target.value.replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 30))} autoComplete="username" placeholder="อย่างน้อย 4 ตัวอักษร" required /></div>
                 <div className="field-row">
                   <div className="field"><label>รหัสผ่าน</label><input type="password" value={register.password} onChange={(e) => updateRegister('password', e.target.value)} autoComplete="new-password" placeholder="8 ตัวขึ้นไป" required /></div>
