@@ -1,6 +1,5 @@
 /**
- * Migration script — สร้างตาราง users (phone-based auth)
- *
+ * Migration script — AHA auth tables
  * รันด้วย: npm run migrate
  */
 
@@ -25,9 +24,6 @@ async function migrate() {
       );
     `);
 
-    // เก็บ refresh token แบบ hash (ไม่เก็บ token ดิบ) ผูกกับ user
-    // เดิม refresh token เก็บใน memory (Set) เท่านั้น -> restart server แล้วหายหมด
-    // ทำให้ user ทุกคนต้อง login ใหม่หลัง deploy/restart ทุกครั้ง
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
@@ -44,23 +40,32 @@ async function migrate() {
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
-
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id);
-    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_refresh_tokens_user_id ON refresh_tokens(user_id)`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS family_connections (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         requester_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
         requested_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-        status VARCHAR(20) NOT NULL DEFAULT 'pending'
-          CHECK (status IN ('pending', 'accepted', 'rejected')),
+        status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'accepted', 'rejected')),
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         UNIQUE (requester_id, requested_id)
       );
     `);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token_hash VARCHAR(64) UNIQUE NOT NULL,
+        expires_at TIMESTAMPTZ NOT NULL,
+        used_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expiry ON password_reset_tokens(expires_at)`);
 
     logger.info('Migration completed successfully');
   } catch (err) {
