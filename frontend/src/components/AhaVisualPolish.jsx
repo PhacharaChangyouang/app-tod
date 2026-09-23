@@ -72,10 +72,7 @@ export default function AhaVisualPolish() {
       }
       .aha-v3-hero-note { z-index: 6 !important; }
 
-      /* =========================================================
-         Notification bell
-         Keep the existing button/logic. Only repair appearance.
-         ========================================================= */
+      /* Notification bell */
       button[aria-label*="การแจ้งเตือน AHA"] {
         width: 48px !important;
         height: 48px !important;
@@ -104,13 +101,16 @@ export default function AhaVisualPolish() {
         flex: 0 0 25px;
         background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
       }
-      button[aria-label*="การแจ้งเตือน AHA"]:hover {
-        transform: translateY(-1px);
+
+      /* IMPORTANT: the home page still contains the legacy 4-item
+         mobile nav. The global AHA nav is the single source of truth.
+         Hide the legacy one instead of rendering two menus. */
+      .aha-v3-mobile-nav {
+        display: none !important;
       }
 
       /* =========================================================
-         Mobile navigation
-         This is the ONLY bottom navigation on mobile.
+         One mobile navigation — AHA MobileNav only
          ========================================================= */
       .aha-mobile-nav {
         display: none !important;
@@ -144,7 +144,6 @@ export default function AhaVisualPolish() {
           transform: scale(1.03) !important;
         }
 
-        /* Mobile bottom nav — explicit, so it cannot disappear */
         .aha-mobile-nav {
           position: fixed !important;
           left: 0 !important;
@@ -160,7 +159,7 @@ export default function AhaVisualPolish() {
         .aha-mobile-nav-inner {
           width: min(560px, 100%) !important;
           margin: 0 auto !important;
-          min-height: 68px !important;
+          min-height: 72px !important;
           padding: 6px !important;
           display: grid !important;
           grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
@@ -180,7 +179,9 @@ export default function AhaVisualPolish() {
           min-width: 0 !important;
           min-height: 56px !important;
           border: 0 !important;
+          outline: 0 !important;
           background: transparent !important;
+          background-color: transparent !important;
           color: #718896 !important;
           border-radius: 16px !important;
           display: flex !important;
@@ -192,24 +193,32 @@ export default function AhaVisualPolish() {
           padding: 3px 2px !important;
           margin: 0 !important;
           line-height: 1 !important;
+          box-shadow: none !important;
+          -webkit-tap-highlight-color: transparent !important;
         }
         .aha-mobile-nav-item.active:not(.featured) {
           background: #eaf8fe !important;
+          background-color: #eaf8fe !important;
           color: #167db6 !important;
         }
         .aha-mobile-nav-item.danger { color: #d94742 !important; }
-        .aha-mobile-nav-item.danger.active { background: #fff0ef !important; }
+        .aha-mobile-nav-item.danger.active {
+          background: #fff0ef !important;
+          background-color: #fff0ef !important;
+        }
         .aha-mobile-nav-item.featured {
           min-height: 66px !important;
           margin-top: -17px !important;
           border-radius: 20px !important;
           background: linear-gradient(145deg,#159fe0,#0d83c6) !important;
+          background-color: #159fe0 !important;
           color: #fff !important;
           box-shadow: 0 8px 20px rgba(21,159,224,.32) !important;
           border: 4px solid #fff !important;
         }
         .aha-mobile-nav-item.featured.active {
           background: linear-gradient(145deg,#0f91d2,#0879ba) !important;
+          background-color: #0f91d2 !important;
           color: #fff !important;
         }
         .aha-mobile-nav-icon {
@@ -218,9 +227,11 @@ export default function AhaVisualPolish() {
           line-height: 1 !important;
           width: 27px !important;
           height: 27px !important;
+          flex: 0 0 27px !important;
         }
         .aha-mobile-nav-label {
           display: block !important;
+          color: inherit !important;
           font-size: 10px !important;
           line-height: 1.15 !important;
           white-space: nowrap !important;
