@@ -3,12 +3,7 @@
 export default function AhaVisualPolish() {
   return (
     <style jsx global>{`
-      /* =========================================================
-         AHA visual polish — UI only
-         Do not change reminder / notification logic here.
-         ========================================================= */
-
-      /* Brand + next-dose readability */
+      /* AHA visual polish — UI only. Reminder/notification logic is untouched. */
       .aha-v3-brand-mark {
         width: 48px !important;
         height: 48px !important;
@@ -19,24 +14,11 @@ export default function AhaVisualPolish() {
       }
       .aha-v3-brand-mark svg { display: none !important; }
 
-      .aha-v3-next-inner {
-        min-height: 132px;
-        align-items: center;
-      }
-      .aha-v3-next-inner > div > strong {
-        font-size: clamp(38px, 4vw, 54px) !important;
-        line-height: .95 !important;
-      }
-      .aha-v3-next-inner > div > span {
-        font-size: clamp(20px, 2vw, 25px) !important;
-        font-weight: 800 !important;
-      }
+      .aha-v3-next-inner { min-height: 132px; align-items: center; }
+      .aha-v3-next-inner > div > strong { font-size: clamp(38px, 4vw, 54px) !important; line-height: .95 !important; }
+      .aha-v3-next-inner > div > span { font-size: clamp(20px, 2vw, 25px) !important; font-weight: 800 !important; }
       .aha-v3-next-inner > div > small { font-size: 17px !important; }
-      .aha-v3-next .aha-v3-primary-button {
-        min-height: 52px;
-        font-size: 17px;
-        font-weight: 800;
-      }
+      .aha-v3-next .aha-v3-primary-button { min-height: 52px; font-size: 17px; font-weight: 800; }
       .aha-v3-take-button {
         min-height: 48px !important;
         min-width: 132px !important;
@@ -51,7 +33,6 @@ export default function AhaVisualPolish() {
         visibility: visible !important;
       }
 
-      /* Greeting / elderly photo */
       .aha-v3-hero-photo {
         right: 0 !important;
         top: 0 !important;
@@ -72,11 +53,11 @@ export default function AhaVisualPolish() {
       }
       .aha-v3-hero-note { z-index: 6 !important; }
 
-      /* Notification bell */
+      /* Notification switch: always a visible bell, never the AHA logo. */
       button[aria-label*="การแจ้งเตือน AHA"] {
-        width: 48px !important;
-        height: 48px !important;
-        min-width: 48px !important;
+        width: 50px !important;
+        height: 50px !important;
+        min-width: 50px !important;
         padding: 0 !important;
         border-radius: 50% !important;
         display: inline-flex !important;
@@ -85,178 +66,158 @@ export default function AhaVisualPolish() {
         background: #159fe0 !important;
         border: 0 !important;
         color: #fff !important;
-        position: relative !important;
+        position: fixed !important;
+        right: 14px !important;
+        top: max(76px, env(safe-area-inset-top) + 62px) !important;
+        z-index: 10050 !important;
         overflow: visible !important;
         box-shadow: 0 7px 18px rgba(21,159,224,.24) !important;
       }
       button[aria-label*="การแจ้งเตือน AHA"] > img,
-      button[aria-label*="การแจ้งเตือน AHA"] > span {
-        display: none !important;
-      }
+      button[aria-label*="การแจ้งเตือน AHA"] > span { display: none !important; }
       button[aria-label*="การแจ้งเตือน AHA"]::before {
         content: "";
-        width: 25px;
-        height: 25px;
+        width: 27px;
+        height: 27px;
         display: block;
-        flex: 0 0 25px;
-        background: center / contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
+        background: center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9'/%3E%3Cpath d='M10 21h4'/%3E%3C/svg%3E");
+      }
+      button[aria-label*="การแจ้งเตือน AHA"]::after {
+        content: "";
+        position: absolute;
+        right: -1px;
+        bottom: -1px;
+        width: 13px;
+        height: 13px;
+        border-radius: 50%;
+        background: #16a34a;
+        border: 2px solid #fff;
       }
 
-      /* IMPORTANT: the home page still contains the legacy 4-item
-         mobile nav. The global AHA nav is the single source of truth.
-         Hide the legacy one instead of rendering two menus. */
-      .aha-v3-mobile-nav {
-        display: none !important;
-      }
+      /* One navigation component only: Home SideNav becomes the bottom nav on mobile. */
+      .aha-v3-mobile-nav,
+      .aha-mobile-nav { display: none !important; }
 
-      /* =========================================================
-         One mobile navigation — AHA MobileNav only
-         ========================================================= */
-      .aha-mobile-nav {
-        display: none !important;
+      .aha-v3-sidebar .aha-v3-side-links {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 8px !important;
+      }
+      .aha-v3-sidebar .aha-v3-side-links button {
+        position: relative !important;
+      }
+      .aha-v3-sidebar .aha-v3-side-links button.aha-v3-nav-voice {
+        background: #eaf8fe !important;
+        color: #167db6 !important;
+        border: 1px solid #ccecf8 !important;
+        font-weight: 900 !important;
+      }
+      .aha-v3-sidebar .aha-v3-side-links button.danger {
+        color: #d94742 !important;
       }
 
       @media (max-width: 768px) {
-        .aha-v3-brand-mark {
-          width: 42px !important;
-          height: 42px !important;
-          flex-basis: 42px !important;
-          border-radius: 12px !important;
-        }
+        .aha-v3-brand-mark { width: 42px !important; height: 42px !important; flex-basis: 42px !important; border-radius: 12px !important; }
         .aha-v3-next-inner { min-height: 154px; }
         .aha-v3-next-inner > div > strong { font-size: 44px !important; }
         .aha-v3-next-inner > div > span { font-size: 22px !important; }
         .aha-v3-next-inner > div > small { font-size: 18px !important; }
-        .aha-v3-take-button {
-          width: 100% !important;
-          min-height: 54px !important;
-          font-size: 19px !important;
-        }
+        .aha-v3-take-button { width: 100% !important; min-height: 54px !important; font-size: 19px !important; }
 
-        .aha-v3-hero-photo {
-          width: 64% !important;
-          height: 80% !important;
-          top: auto !important;
-          bottom: 0 !important;
-        }
-        .aha-v3-hero-photo img {
-          object-position: 74% 28% !important;
-          transform: scale(1.03) !important;
-        }
+        .aha-v3-hero-photo { width: 64% !important; height: 80% !important; top: auto !important; bottom: 0 !important; }
+        .aha-v3-hero-photo img { object-position: 74% 28% !important; transform: scale(1.03) !important; }
 
-        .aha-mobile-nav {
+        /* Same SideNav DOM; only layout changes. No second mobile menu. */
+        .aha-v3-sidebar {
           position: fixed !important;
-          left: 0 !important;
-          right: 0 !important;
-          bottom: 0 !important;
+          left: 8px !important;
+          right: 8px !important;
+          bottom: calc(7px + env(safe-area-inset-bottom)) !important;
+          top: auto !important;
+          width: auto !important;
+          height: 78px !important;
+          min-height: 0 !important;
           z-index: 10020 !important;
-          display: block !important;
-          visibility: visible !important;
-          opacity: 1 !important;
-          padding: 7px 10px calc(7px + env(safe-area-inset-bottom)) !important;
-          pointer-events: none !important;
-        }
-        .aha-mobile-nav-inner {
-          width: min(560px, 100%) !important;
-          margin: 0 auto !important;
-          min-height: 72px !important;
-          padding: 6px !important;
-          display: grid !important;
-          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
-          align-items: end !important;
-          gap: 3px !important;
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: center !important;
+          padding: 5px !important;
+          border-radius: 22px !important;
           background: rgba(255,255,255,.98) !important;
           border: 1px solid #d9e9f1 !important;
-          border-radius: 22px !important;
           box-shadow: 0 10px 34px rgba(29,89,118,.20) !important;
           backdrop-filter: blur(18px) !important;
           -webkit-backdrop-filter: blur(18px) !important;
-          pointer-events: auto !important;
         }
-        .aha-mobile-nav-item {
-          appearance: none !important;
-          -webkit-appearance: none !important;
+        .aha-v3-sidebar > .aha-v3-brand,
+        .aha-v3-sidebar > .aha-v3-side-spacer,
+        .aha-v3-sidebar > .aha-v3-side-care,
+        .aha-v3-sidebar > .aha-v3-side-wellness { display: none !important; }
+        .aha-v3-sidebar .aha-v3-side-links {
+          width: 100% !important;
+          height: 100% !important;
+          display: grid !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          align-items: stretch !important;
+          gap: 3px !important;
+          margin: 0 !important;
+        }
+        .aha-v3-sidebar .aha-v3-side-links button {
           min-width: 0 !important;
-          min-height: 56px !important;
+          min-height: 0 !important;
+          height: 66px !important;
+          margin: 0 !important;
+          padding: 4px 2px !important;
           border: 0 !important;
-          outline: 0 !important;
-          background: transparent !important;
-          background-color: transparent !important;
-          color: #718896 !important;
           border-radius: 16px !important;
+          background: transparent !important;
+          color: #718896 !important;
           display: flex !important;
           flex-direction: column !important;
           align-items: center !important;
           justify-content: center !important;
-          gap: 3px !important;
-          font-weight: 850 !important;
-          padding: 3px 2px !important;
-          margin: 0 !important;
-          line-height: 1 !important;
+          gap: 4px !important;
           box-shadow: none !important;
-          -webkit-tap-highlight-color: transparent !important;
+          font-weight: 850 !important;
+          line-height: 1 !important;
         }
-        .aha-mobile-nav-item.active:not(.featured) {
+        .aha-v3-sidebar .aha-v3-side-links button.active {
           background: #eaf8fe !important;
-          background-color: #eaf8fe !important;
           color: #167db6 !important;
         }
-        .aha-mobile-nav-item.danger { color: #d94742 !important; }
-        .aha-mobile-nav-item.danger.active {
-          background: #fff0ef !important;
-          background-color: #fff0ef !important;
-        }
-        .aha-mobile-nav-item.featured {
-          min-height: 66px !important;
-          margin-top: -17px !important;
-          border-radius: 20px !important;
+        .aha-v3-sidebar .aha-v3-side-links button.aha-v3-nav-voice {
           background: linear-gradient(145deg,#159fe0,#0d83c6) !important;
-          background-color: #159fe0 !important;
           color: #fff !important;
-          box-shadow: 0 8px 20px rgba(21,159,224,.32) !important;
           border: 4px solid #fff !important;
+          border-radius: 20px !important;
+          height: 74px !important;
+          margin-top: -15px !important;
+          box-shadow: 0 8px 20px rgba(21,159,224,.32) !important;
         }
-        .aha-mobile-nav-item.featured.active {
-          background: linear-gradient(145deg,#0f91d2,#0879ba) !important;
-          background-color: #0f91d2 !important;
-          color: #fff !important;
-        }
-        .aha-mobile-nav-icon {
-          display: grid !important;
-          place-items: center !important;
-          line-height: 1 !important;
-          width: 27px !important;
-          height: 27px !important;
-          flex: 0 0 27px !important;
-        }
-        .aha-mobile-nav-label {
+        .aha-v3-sidebar .aha-v3-side-links button.danger { color: #d94742 !important; }
+        .aha-v3-sidebar .aha-v3-side-links button span {
           display: block !important;
-          color: inherit !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
           font-size: 10px !important;
           line-height: 1.15 !important;
-          white-space: nowrap !important;
-          font-weight: 850 !important;
         }
-        .aha-mobile-nav-item.featured .aha-mobile-nav-label {
-          font-size: 10px !important;
-          font-weight: 900 !important;
-        }
-
-        /* Give page content room above the fixed nav. */
         .aha-v3-content,
-        .aha-v3-page,
-        .aha-page,
-        .home-page {
-          padding-bottom: 104px !important;
+        .aha-v3-page { padding-bottom: 104px !important; }
+
+        /* Keep notification bell clear of the mobile navigation. */
+        button[aria-label*="การแจ้งเตือน AHA"] {
+          right: 12px !important;
+          top: max(68px, env(safe-area-inset-top) + 58px) !important;
         }
       }
 
       @media (max-width: 380px) {
-        .aha-mobile-nav { padding-left: 5px !important; padding-right: 5px !important; }
-        .aha-mobile-nav-inner { border-radius: 18px !important; padding: 5px !important; }
-        .aha-mobile-nav-item { min-height: 53px !important; }
-        .aha-mobile-nav-item.featured { min-height: 62px !important; }
-        .aha-mobile-nav-label { font-size: 9px !important; }
+        .aha-v3-sidebar { left: 5px !important; right: 5px !important; border-radius: 18px !important; }
+        .aha-v3-sidebar .aha-v3-side-links button span { font-size: 9px !important; }
+        .aha-v3-sidebar .aha-v3-side-links button.aha-v3-nav-voice { height: 70px !important; }
       }
     `}</style>
   );
