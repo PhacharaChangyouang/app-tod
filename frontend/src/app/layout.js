@@ -3,6 +3,7 @@ import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
 import AhaVisualPolish from '../components/AhaVisualPolish';
 import AhaResponsiveFix from '../components/AhaResponsiveFix';
+import FamilyHomeShortcut from '../components/FamilyHomeShortcut';
 
 export const metadata = {
   title: 'AHA — AI Health Assistant',
@@ -29,6 +30,7 @@ export default function RootLayout({ children }) {
         <AhaNavigation />
         <AhaVisualPolish />
         <AhaResponsiveFix />
+        <FamilyHomeShortcut />
         <MedicationNotificationManager />
       </body>
     </html>
