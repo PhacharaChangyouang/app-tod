@@ -3,6 +3,7 @@ const router = express.Router();
 
 const authController = require('../controllers/auth.controller');
 const passwordAuthController = require('../controllers/password-auth.controller');
+const otpAuthController = require('../controllers/otp-auth.controller');
 const authenticate = require('../middlewares/authenticate');
 const {
   validatePhone,
@@ -17,6 +18,7 @@ const {
 
 router.post('/request-otp', validatePhone, handleValidationErrors, authController.requestOtp);
 router.post('/verify-otp', [validatePhone, validateOtp], handleValidationErrors, authController.verifyOtp);
+router.post('/login-otp', [validatePhone, validateOtp], handleValidationErrors, otpAuthController.loginWithOtp);
 router.post('/register', validateRegister, handleValidationErrors, authController.register);
 router.post('/login', validateLogin, handleValidationErrors, authController.login);
 
