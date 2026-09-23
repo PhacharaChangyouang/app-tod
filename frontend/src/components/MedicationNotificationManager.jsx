@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getAccessToken, getUser } from '../services/auth';
 import { notificationApi, reminderApi } from '../services/api';
-import AhaIcon from './AhaIcon';
 import {
   disableAhaPush,
   enableAhaPush,
@@ -200,29 +199,31 @@ export default function MedicationNotificationManager() {
         onClick={togglePush}
         disabled={busy}
         aria-label={pushEnabled ? 'ปิดการแจ้งเตือน AHA' : 'เปิดการแจ้งเตือน AHA'}
+        aria-pressed={pushEnabled}
         title={pushEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน'}
         style={{
-          position: 'fixed', right: 14, top: 'max(76px, env(safe-area-inset-top) + 62px)', zIndex: 10001,
-          width: 50, height: 50, borderRadius: '50%', border: '2px solid rgba(255,255,255,.95)',
-          background: pushEnabled ? '#0ea981' : '#64748b', color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-          cursor: busy ? 'wait' : 'pointer', display: 'grid', placeItems: 'center', padding: 0,
+          position: 'fixed', right: 14, top: 'max(76px, env(safe-area-inset-top) + 62px)', zIndex: 10050,
+          width: 52, height: 52, borderRadius: '50%', border: '1px solid #d8eaf2',
+          background: 'rgba(255,255,255,.96)', color: '#0f9b76', boxShadow: '0 8px 22px rgba(28,108,148,.16)',
+          cursor: busy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+          padding: 0, fontSize: 29, lineHeight: 1,
         }}
       >
-        <AhaIcon name="bell" size={27} />
-        <span aria-hidden="true" style={{ position: 'absolute', right: 0, bottom: 0, width: 15, height: 15, borderRadius: '50%', background: pushEnabled ? '#16a34a' : '#64748b', border: '2px solid #fff' }} />
+        <span className="aha-notification-emoji" aria-hidden="true">🔔</span>
+        <span className="aha-notification-status" aria-hidden="true" />
       </button>
 
       {!pushEnabled && ready && (
         <div style={{ position: 'fixed', right: 14, top: 'max(132px, env(safe-area-inset-top) + 118px)', zIndex: 10000, width: 'min(330px, calc(100vw - 28px))', background: '#fff', borderRadius: 16, padding: '13px 15px', boxShadow: '0 10px 35px rgba(0,0,0,.16)', border: '1px solid #dbe5ee', color: '#0f172a', fontSize: 15 }}>
           <strong>เปิดการแจ้งเตือนยา</strong>
           <div style={{ marginTop: 4, color: '#475569', lineHeight: 1.45 }}>
-            {permission === 'denied' ? 'การแจ้งเตือนถูกบล็อก ให้เปิด Notification ในการตั้งค่า Browser แล้วลองอีกครั้ง' : 'กดปุ่มกระดิ่งนี้เพื่ออนุญาตให้ AHA แจ้งเตือนเมื่อถึงเวลาทานยา'}
+            {permission === 'denied' ? 'การแจ้งเตือนถูกบล็อก ให้เปิด Notification ในการตั้งค่า Browser แล้วลองอีกครั้ง' : 'กดปุ่ม 🔔 นี้เพื่ออนุญาตให้ AHA แจ้งเตือนเมื่อถึงเวลาทานยา'}
           </div>
         </div>
       )}
 
       {error && (
-        <div role="alert" style={{ position: 'fixed', left: '50%', bottom: 'max(18px, env(safe-area-inset-bottom) + 18px)', transform: 'translateX(-50%)', zIndex: 10002, background: '#991b1b', color: '#fff', padding: '12px 16px', borderRadius: 12, maxWidth: 'calc(100vw - 40px)', fontSize: 16, lineHeight: 1.4 }}>
+        <div role="alert" style={{ position: 'fixed', left: '50%', bottom: 'max(18px, env(safe-area-inset-bottom) + 18px)', transform: 'translateX(-50%)', zIndex: 10052, background: '#991b1b', color: '#fff', padding: '12px 16px', borderRadius: 12, maxWidth: 'calc(100vw - 40px)', fontSize: 16, lineHeight: 1.4 }}>
           {error}
         </div>
       )}
