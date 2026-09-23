@@ -23,6 +23,11 @@ async function ensureRuntimeSchema() {
       UNIQUE (reminder_id, scheduled_date, scheduled_time)
     )
   `);
+
+  await pool.query(`
+    ALTER TABLE reminders
+    ADD COLUMN IF NOT EXISTS snooze_until TIMESTAMPTZ
+  `);
 }
 
 app.use(helmet());
@@ -44,6 +49,7 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-api-key'],
 }));
+
 app.use(express.json());
 
 app.get('/health', async (req, res) => {
@@ -61,7 +67,7 @@ app.get('/api/reminders', authenticate, async (req, res) => {
     const result = await pool.query(`
       SELECT id, medicine_name, dosage, reminder_time, frequency,
              days_of_week, start_date, end_date, is_active,
-             last_triggered_key, created_at, updated_at
+             last_triggered_key, snooze_until, created_at, updated_at
       FROM reminders
       WHERE user_id = $1
       ORDER BY reminder_time ASC
@@ -115,10 +121,46 @@ app.post('/api/reminders/:id/taken', authenticate, async (req, res) => {
       RETURNING *
     `, [req.params.id, req.user.id, reminder.rows[0].reminder_time]);
 
+    await pool.query(
+      'UPDATE reminders SET snooze_until = NULL, updated_at = now() WHERE id = $1 AND user_id = $2',
+      [req.params.id, req.user.id]
+    );
+
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: 'Failed to mark medicine as taken' });
+  }
+});
+
+app.post('/api/reminders/:id/snooze', authenticate, async (req, res) => {
+  const minutes = Number(req.body?.minutes ?? 10);
+
+  if (!Number.isInteger(minutes) || minutes < 1 || minutes > 120) {
+    return res.status(400).json({ success: false, message: 'minutes must be an integer between 1 and 120' });
+  }
+
+  try {
+    const result = await pool.query(`
+      UPDATE reminders
+      SET snooze_until = now() + make_interval(mins => $1),
+          updated_at = now()
+      WHERE id = $2 AND user_id = $3 AND is_active = true
+      RETURNING *
+    `, [minutes, req.params.id, req.user.id]);
+
+    if (!result.rowCount) {
+      return res.status(404).json({ success: false, message: 'Reminder not found' });
+    }
+
+    res.json({
+      success: true,
+      message: `Reminder snoozed for ${minutes} minutes`,
+      data: result.rows[0],
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: 'Failed to snooze reminder' });
   }
 });
 
@@ -215,7 +257,7 @@ app.patch('/api/reminders/:id/status', authenticate, async (req, res) => {
   }
   try {
     const result = await pool.query(
-      'UPDATE reminders SET is_active=$1, updated_at=now() WHERE id=$2 AND user_id=$3 RETURNING *',
+      'UPDATE reminders SET is_active=$1, snooze_until=NULL, updated_at=now() WHERE id=$2 AND user_id=$3 RETURNING *',
       [req.body.is_active, req.params.id, req.user.id]
     );
     if (!result.rowCount) return res.status(404).json({ success: false, message: 'Reminder not found' });
@@ -263,4 +305,5 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+
 module.exports = app;
