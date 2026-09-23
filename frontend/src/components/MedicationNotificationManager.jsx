@@ -38,7 +38,15 @@ export default function MedicationNotificationManager() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState('default');
+  const [isMobile, setIsMobile] = useState(false);
   const handledActions = useRef(new Set());
+
+  useEffect(() => {
+    const updateViewport = () => setIsMobile(window.innerWidth <= 768);
+    updateViewport();
+    window.addEventListener('resize', updateViewport);
+    return () => window.removeEventListener('resize', updateViewport);
+  }, []);
 
   useEffect(() => {
     const syncAuth = () => {
@@ -76,8 +84,6 @@ export default function MedicationNotificationManager() {
       setPushEnabled(enabled);
       localStorage.setItem('aha_push_enabled', String(enabled));
     } catch (err) {
-      // Push is optional for the in-app reminder. The app must still be able
-      // to show the medicine dialog by polling unread notifications.
       console.warn('AHA push status unavailable:', err);
       setPushEnabled(false);
     } finally {
@@ -163,13 +169,13 @@ export default function MedicationNotificationManager() {
     };
   }, [authenticated, handleServiceWorkerMessage, syncPushState]);
 
-  // In-app alerts are deliberately independent from Web Push permission.
-  // This is what makes the planned popup work while the user is inside AHA.
+  // In-app alerts are independent from Web Push permission.
+  // Poll frequently enough for the normal UI alert to appear close to the due time.
   useEffect(() => {
     if (!ready) return undefined;
 
     pollUnread();
-    const timer = window.setInterval(pollUnread, 5000);
+    const timer = window.setInterval(pollUnread, 3000);
     return () => window.clearInterval(timer);
   }, [ready, pollUnread]);
 
@@ -228,6 +234,9 @@ export default function MedicationNotificationManager() {
 
   if (!authenticated) return null;
 
+  const bellBottom = isMobile ? 92 : 18;
+  const hintBottom = bellBottom + 64;
+
   return (
     <>
       <button
@@ -237,12 +246,12 @@ export default function MedicationNotificationManager() {
         aria-label={pushEnabled ? 'ปิดการแจ้งเตือน AHA' : 'เปิดการแจ้งเตือน AHA'}
         title={pushEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน'}
         style={{
-          position: 'fixed', right: 18, bottom: 18, zIndex: 10001,
-          width: 54, height: 54, borderRadius: '50%',
+          position: 'fixed', right: isMobile ? 14 : 18, bottom: bellBottom, zIndex: 10001,
+          width: isMobile ? 50 : 54, height: isMobile ? 50 : 54, borderRadius: '50%',
           border: '2px solid rgba(255,255,255,.9)',
           background: pushEnabled ? '#16a34a' : '#64748b',
           color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-          cursor: busy ? 'wait' : 'pointer', fontSize: 24,
+          cursor: busy ? 'wait' : 'pointer', fontSize: isMobile ? 22 : 24,
         }}
       >
         {pushEnabled ? '🔔' : '🔕'}
@@ -250,25 +259,26 @@ export default function MedicationNotificationManager() {
 
       {!pushEnabled && ready && (
         <div style={{
-          position: 'fixed', right: 18, bottom: 82, zIndex: 10000,
-          maxWidth: 340, background: '#fff', borderRadius: 16,
-          padding: '14px 16px', boxShadow: '0 10px 35px rgba(0,0,0,.16)',
-          border: '1px solid #e2e8f0', color: '#0f172a', fontSize: 14,
+          position: 'fixed', right: isMobile ? 14 : 18, bottom: hintBottom, zIndex: 10000,
+          width: isMobile ? 'min(310px, calc(100vw - 28px))' : 340,
+          background: '#fff', borderRadius: 16, padding: '12px 14px',
+          boxShadow: '0 10px 35px rgba(0,0,0,.16)',
+          border: '1px solid #e2e8f0', color: '#0f172a', fontSize: 13,
         }}>
           <strong>เปิดการแจ้งเตือนยา</strong>
-          <div style={{ marginTop: 4, color: '#475569' }}>
+          <div style={{ marginTop: 4, color: '#475569', lineHeight: 1.45 }}>
             {permission === 'denied'
-              ? 'การแจ้งเตือนถูกบล็อกอยู่ ให้ปลดบล็อก Notification ในการตั้งค่า Browser แล้วกด 🔕 อีกครั้ง'
-              : 'กด 🔕 เพื่ออนุญาตการแจ้งเตือนและรับแจ้งเตือนแม้อยู่หน้าอื่นหรือหน้าจอล็อก'}
+              ? 'การแจ้งเตือนถูกบล็อก ให้เปิด Notification ในการตั้งค่า Browser แล้วลองอีกครั้ง'
+              : 'กด 🔕 เพื่อเปิดแจ้งเตือนเมื่ออยู่นอกหน้า AHA'}
           </div>
         </div>
       )}
 
       {error && (
         <div role="alert" style={{
-          position: 'fixed', left: '50%', bottom: 18, transform: 'translateX(-50%)',
+          position: 'fixed', left: '50%', bottom: isMobile ? 12 : 18, transform: 'translateX(-50%)',
           zIndex: 10002, background: '#991b1b', color: '#fff', padding: '10px 14px',
-          borderRadius: 12, maxWidth: 'calc(100vw - 40px)',
+          borderRadius: 12, maxWidth: 'calc(100vw - 40px)', fontSize: 14,
         }}>
           {error}
         </div>
@@ -281,33 +291,33 @@ export default function MedicationNotificationManager() {
           aria-labelledby="aha-medicine-alert-title"
           style={{
             position: 'fixed', inset: 0, zIndex: 10003, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', padding: 20,
+            alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 20,
             background: 'rgba(15,23,42,.58)', backdropFilter: 'blur(4px)',
           }}
         >
           <div style={{
-            width: 'min(520px, 100%)', background: '#fff', borderRadius: 28,
-            padding: '30px 26px 24px', boxShadow: '0 24px 70px rgba(0,0,0,.3)',
-            textAlign: 'center',
+            width: 'min(520px, 100%)', background: '#fff', borderRadius: isMobile ? 22 : 28,
+            padding: isMobile ? '24px 18px 18px' : '30px 26px 24px',
+            boxShadow: '0 24px 70px rgba(0,0,0,.3)', textAlign: 'center',
           }}>
-            <div style={{ fontSize: 52, lineHeight: 1, marginBottom: 14 }}>💊</div>
-            <div style={{ fontSize: 18, color: '#64748b', marginBottom: 8 }}>AHA แจ้งเตือน</div>
-            <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: 30, lineHeight: 1.25, color: '#0f172a' }}>
+            <div style={{ fontSize: isMobile ? 46 : 52, lineHeight: 1, marginBottom: 12 }}>💊</div>
+            <div style={{ fontSize: 16, color: '#64748b', marginBottom: 6 }}>AHA แจ้งเตือน</div>
+            <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: isMobile ? 25 : 30, lineHeight: 1.25, color: '#0f172a' }}>
               ถึงเวลาทานยาแล้ว
             </h2>
-            <p style={{ margin: '16px 0 26px', fontSize: 20, lineHeight: 1.5, color: '#334155' }}>
+            <p style={{ margin: '14px 0 22px', fontSize: isMobile ? 18 : 20, lineHeight: 1.5, color: '#334155' }}>
               {alert.message}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => handleAction('snooze', alert)}
                 style={{
-                  minHeight: 58, borderRadius: 16, border: '2px solid #cbd5e1',
-                  background: '#f8fafc', color: '#334155', fontSize: 19,
-                  fontWeight: 700, cursor: 'pointer',
+                  minHeight: isMobile ? 56 : 58, borderRadius: 15, border: '2px solid #cbd5e1',
+                  background: '#f8fafc', color: '#334155', fontSize: isMobile ? 16 : 19,
+                  fontWeight: 700, cursor: 'pointer', padding: '0 8px',
                 }}
               >
                 ⏰ เลื่อน 10 นาที
@@ -317,8 +327,9 @@ export default function MedicationNotificationManager() {
                 disabled={busy}
                 onClick={() => handleAction('taken', alert)}
                 style={{
-                  minHeight: 58, borderRadius: 16, border: 0, background: '#16a34a',
-                  color: '#fff', fontSize: 20, fontWeight: 800, cursor: 'pointer',
+                  minHeight: isMobile ? 56 : 58, borderRadius: 15, border: 0, background: '#16a34a',
+                  color: '#fff', fontSize: isMobile ? 17 : 20, fontWeight: 800,
+                  cursor: 'pointer', padding: '0 8px',
                 }}
               >
                 ✓ โอเค / ทานแล้ว
