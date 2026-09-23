@@ -1,5 +1,5 @@
 /**
- * Migration script — สร้างตาราง users (phone-based auth)
+ * Migration script — users + auth data
  *
  * รันด้วย: npm run migrate
  */
@@ -25,9 +25,13 @@ async function migrate() {
       );
     `);
 
-    // เก็บ refresh token แบบ hash (ไม่เก็บ token ดิบ) ผูกกับ user
-    // เดิม refresh token เก็บใน memory (Set) เท่านั้น -> restart server แล้วหายหมด
-    // ทำให้ user ทุกคนต้อง login ใหม่หลัง deploy/restart ทุกครั้ง
+    // New password-login fields. Nullable keeps all existing users working.
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL`);
+
     await pool.query(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
