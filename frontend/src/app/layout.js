@@ -1,5 +1,6 @@
 import './globals.css';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
+import AhaVisualPolish from '../components/AhaVisualPolish';
 
 export const metadata = {
   title: 'AHA — AI Health Assistant',
@@ -23,6 +24,7 @@ export default function RootLayout({ children }) {
     <html lang="th">
       <body>
         {children}
+        <AhaVisualPolish />
         <MedicationNotificationManager />
       </body>
     </html>
