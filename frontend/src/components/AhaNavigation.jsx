@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import AhaIcon from './AhaIcon';
 
 function Brand() {
@@ -24,64 +23,33 @@ function Brand() {
 export default function AhaNavigation() {
   const pathname = usePathname();
   const router = useRouter();
-  const [voice, setVoice] = useState(false);
 
   if (!pathname || pathname === '/' || pathname.startsWith('/login')) return null;
 
   const items = [
     ['home', 'หน้าหลัก', '/home'],
     ['pill', 'ยา', '/reminders'],
-    ['mic', voice ? 'กำลังฟัง…' : 'พูดกับ AHA', '__voice__'],
+    ['mic', 'พูดกับ AHA', '/voice'],
     ['bell', 'แจ้งเตือน', '/notifications'],
     ['warning', 'ฉุกเฉิน', '/emergency'],
   ];
-
-  const startVoice = () => {
-    const Recognition = typeof window !== 'undefined'
-      ? window.SpeechRecognition || window.webkitSpeechRecognition
-      : null;
-
-    if (!Recognition) {
-      setVoice(true);
-      window.setTimeout(() => setVoice(false), 1200);
-      return;
-    }
-
-    const recognition = new Recognition();
-    recognition.lang = 'th-TH';
-    recognition.interimResults = false;
-    setVoice(true);
-
-    recognition.onresult = (event) => {
-      const transcript = event.results?.[0]?.[0]?.transcript || '';
-      setVoice(false);
-      if (/ยา|เตือน|กิน/.test(transcript)) router.push('/reminders');
-    };
-
-    recognition.onerror = () => setVoice(false);
-    recognition.onend = () => setVoice(false);
-    recognition.start();
-  };
 
   return (
     <aside className="aha-v3-sidebar" data-aha-navigation="true">
       <Brand />
       <nav className="aha-v3-side-links" aria-label="เมนูหลัก AHA">
         {items.map(([icon, label, path]) => {
-          const active = path === '__voice__'
-            ? false
-            : pathname === path || pathname.startsWith(`${path}/`);
-
+          const active = pathname === path || pathname.startsWith(`${path}/`);
           return (
             <button
               key={path}
               type="button"
-              className={`${active ? 'active' : ''}${path === '__voice__' ? ' aha-v3-nav-voice' : ''}${path === '/emergency' ? ' danger' : ''}`}
-              onClick={() => path === '__voice__' ? startVoice() : router.push(path)}
+              className={`${active ? 'active' : ''}${path === '/voice' ? ' aha-v3-nav-voice' : ''}${path === '/emergency' ? ' danger' : ''}`}
+              onClick={() => router.push(path)}
               aria-label={label}
               aria-current={active ? 'page' : undefined}
             >
-              <AhaIcon name={icon} size={path === '__voice__' ? 26 : 24} />
+              <AhaIcon name={icon} size={path === '/voice' ? 26 : 24} />
               <span>{label}</span>
             </button>
           );
