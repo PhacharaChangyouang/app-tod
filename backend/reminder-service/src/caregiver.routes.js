@@ -62,7 +62,7 @@ function validateReminderPayload(body, { partial = false } = {}) {
 
   if (!partial && (!medicineName || !time)) return 'medicine_name and reminder_time are required';
   if (partial && body.medicine_name !== undefined && !medicineName) return 'medicine_name cannot be empty';
-  if (body.reminder_time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d/.test(time)) return 'reminder_time must be HH:MM';
+  if (body.reminder_time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return 'reminder_time must be HH:MM';
   if (!['daily', 'weekly'].includes(frequency)) return 'frequency must be daily or weekly';
   if (body.days_of_week !== undefined && (!Array.isArray(days) || !days.length)) return 'days_of_week must be a non-empty array';
   return null;
@@ -70,9 +70,7 @@ function validateReminderPayload(body, { partial = false } = {}) {
 
 router.get('/summary', authenticate, async (req, res) => {
   try {
-    if (req.user.role !== 'caregiver') {
-      return res.status(403).json({ success: false, message: 'เฉพาะบัญชีผู้ดูแลเท่านั้น' });
-    }
+    if (req.user.role !== 'caregiver') return res.status(403).json({ success: false, message: 'เฉพาะบัญชีผู้ดูแลเท่านั้น' });
 
     const elderly = await linkedElderly(req);
     if (!elderly.length) return res.json({ success: true, data: { elderly: [], today: [], history: [] } });
@@ -80,7 +78,7 @@ router.get('/summary', authenticate, async (req, res) => {
     const ids = elderly.map((item) => item.user_id);
     const today = await pool.query(`
       SELECT r.id AS reminder_id, r.user_id, r.medicine_name, r.dosage,
-             r.reminder_time, r.is_active,
+             r.reminder_time, r.frequency, r.days_of_week, r.start_date, r.end_date, r.is_active,
              CASE WHEN l.id IS NOT NULL AND l.status = 'taken' THEN true ELSE false END AS taken,
              l.status AS log_status, l.taken_at
       FROM reminders r
@@ -129,21 +127,12 @@ router.post('/reminders', authenticate, async (req, res) => {
   try {
     const elderly = await linkedElderly(req);
     const targetId = req.body.elderly_user_id;
-    if (!targetId || !hasLinkedElderly(elderly, targetId)) {
-      return res.status(403).json({ success: false, message: 'ผู้สูงอายุรายนี้ไม่ได้เชื่อมต่อกับคุณ' });
-    }
+    if (!targetId || !hasLinkedElderly(elderly, targetId)) return res.status(403).json({ success: false, message: 'ผู้สูงอายุรายนี้ไม่ได้เชื่อมต่อกับคุณ' });
 
-    const {
-      medicine_name, dosage, reminder_time, frequency = 'daily',
-      days_of_week = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'],
-      start_date, end_date, is_active = true,
-    } = req.body;
-
+    const { medicine_name, dosage, reminder_time, frequency = 'daily', days_of_week = ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'], start_date, end_date, is_active = true } = req.body;
     const result = await pool.query(`
-      INSERT INTO reminders
-        (user_id, medicine_name, dosage, reminder_time, frequency, days_of_week, start_date, end_date, is_active)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-      RETURNING *
+      INSERT INTO reminders (user_id, medicine_name, dosage, reminder_time, frequency, days_of_week, start_date, end_date, is_active)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
     `, [targetId, medicine_name.trim(), dosage || null, reminder_time, frequency, days_of_week, start_date || null, end_date || null, Boolean(is_active)]);
 
     const reminder = result.rows[0];
@@ -181,17 +170,7 @@ router.put('/reminders/:id', authenticate, async (req, res) => {
           updated_at = now()
       WHERE id = $9
       RETURNING *
-    `, [
-      body.medicine_name !== undefined ? String(body.medicine_name).trim() : null,
-      body.dosage !== undefined ? String(body.dosage) : null,
-      body.reminder_time || null,
-      body.frequency || null,
-      body.days_of_week || null,
-      body.start_date !== undefined ? String(body.start_date) : null,
-      body.end_date !== undefined ? String(body.end_date) : null,
-      typeof body.is_active === 'boolean' ? body.is_active : null,
-      req.params.id,
-    ]);
+    `, [body.medicine_name !== undefined ? String(body.medicine_name).trim() : null, body.dosage !== undefined ? String(body.dosage) : null, body.reminder_time || null, body.frequency || null, body.days_of_week || null, body.start_date !== undefined ? String(body.start_date) : null, body.end_date !== undefined ? String(body.end_date) : null, typeof body.is_active === 'boolean' ? body.is_active : null, req.params.id]);
 
     const updated = result.rows[0];
     await notifyElderly(req, updated.user_id, updated.id, 'แก้ไข', `${updated.medicine_name} เวลา ${String(updated.reminder_time).slice(0,5)}`);
@@ -204,7 +183,6 @@ router.put('/reminders/:id', authenticate, async (req, res) => {
 
 router.delete('/reminders/:id', authenticate, async (req, res) => {
   if (req.user.role !== 'caregiver') return res.status(403).json({ success: false, message: 'เฉพาะบัญชีผู้ดูแลเท่านั้น' });
-
   try {
     const elderly = await linkedElderly(req);
     const current = await pool.query('SELECT * FROM reminders WHERE id = $1', [req.params.id]);
