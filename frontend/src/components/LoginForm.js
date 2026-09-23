@@ -3,36 +3,52 @@
 import { useState } from 'react';
 import AhaIcon from './AhaIcon';
 
+const initialRegister = {
+  firstName: '', lastName: '', phone: '', email: '', username: '', password: '', confirmPassword: '',
+  role: 'elderly', age: '', pin: '', termsAccepted: false,
+};
+
 export default function LoginForm({ onSubmit }) {
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
+  const [mode, setMode] = useState('password');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [pin, setPin] = useState('');
-  const [name, setName] = useState('');
-  const [age, setAge] = useState('');
-  const [role, setRole] = useState('elderly');
-  const [step, setStep] = useState('phone');
-  const [error, setError] = useState(null);
+  const [otpPhone, setOtpPhone] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpStep, setOtpStep] = useState('phone');
+  const [register, setRegister] = useState(initialRegister);
+  const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const run = async (payload) => {
-    setError(null);
+    setError('');
     setBusy(true);
     try {
-      await onSubmit({ ...payload, setStep, setError });
+      await onSubmit({ ...payload, setError, setOtpStep });
     } finally {
       setBusy(false);
     }
   };
 
-  const submit = (event) => {
-    event.preventDefault();
-    if (step === 'phone') run({ mode: 'requestOtp', phone });
-    else if (step === 'verify') run({ mode: 'verifyOtp', phone, code });
-    else if (step === 'register') run({ mode: 'register', phone, name, age: role === 'elderly' ? age : null, role, pin });
-    else run({ mode: 'login', phone, pin });
+  const changeMode = (next) => {
+    setMode(next);
+    setError('');
+    if (next === 'otp') setOtpStep('phone');
   };
 
-  const stepIndex = { phone: 1, verify: 2, register: 3, login: 3 }[step];
+  const submit = (event) => {
+    event.preventDefault();
+    if (mode === 'password') return run({ mode: 'loginPassword', identifier, password });
+    if (mode === 'pin') return run({ mode: 'loginPin', phone: otpPhone, pin });
+    if (mode === 'otp') {
+      return otpStep === 'phone'
+        ? run({ mode: 'requestOtp', phone: otpPhone })
+        : run({ mode: 'loginOtp', phone: otpPhone, code: otpCode });
+    }
+    return run({ mode: 'registerPassword', ...register });
+  };
+
+  const updateRegister = (key, value) => setRegister((current) => ({ ...current, [key]: value }));
 
   return (
     <div className="auth-page">
@@ -49,110 +65,96 @@ export default function LoginForm({ onSubmit }) {
           <div className="auth-bubbles">
             <div className="auth-bubble"><AhaIcon name="pill" size={18} />เตือนยาและเวลาอย่างเป็นระบบ</div>
             <div className="auth-bubble"><AhaIcon name="users" size={18} />เชื่อมผู้สูงอายุกับผู้ดูแล</div>
-            <div className="auth-bubble"><AhaIcon name="shield" size={18} />มีศูนย์ฉุกเฉินใน flow หลัก</div>
+            <div className="auth-bubble"><AhaIcon name="shield" size={18} />เข้าสู่ระบบด้วยวิธีที่เหมาะกับคุณ</div>
           </div>
         </section>
 
         <section className="auth-form">
-          <div className="step-dots">
-            {[1, 2, 3].map((number) => <span key={number} className={`step-dot ${number <= stepIndex ? 'active' : ''}`} />)}
+          <div className="auth-heading-row">
+            <div>
+              <div className="auth-kicker">AHA HEALTH ASSISTANT</div>
+              <h2>{mode === 'register' ? 'สร้างบัญชี AHA' : 'เข้าสู่ระบบ'}</h2>
+            </div>
           </div>
 
-          {step === 'phone' && <><h2>เริ่มต้นกับ AHA</h2><p className="sub">ใช้เบอร์โทรเพื่อขอรหัส OTP และเข้าสู่ระบบ</p></>}
-          {step === 'verify' && <><h2>ยืนยันเบอร์โทร</h2><p className="sub">กรอกรหัส OTP 6 หลักที่ส่งไปยัง {phone}</p></>}
-          {step === 'register' && (
-            <>
-              <h2>{role === 'caregiver' ? 'สร้างบัญชีผู้ดูแล' : 'สร้างบัญชีผู้สูงอายุ'}</h2>
-              <p className="sub">{role === 'caregiver' ? 'บัญชีนี้ใช้สำหรับดูแล ติดตาม และจัดการตารางยาของผู้สูงอายุที่เชื่อมต่อ' : 'บัญชีนี้ใช้สำหรับติดตามยาและสุขภาพของผู้สูงอายุ'}</p>
-            </>
+          <div className="auth-tabs" role="tablist" aria-label="วิธีเข้าสู่ระบบ">
+            <button type="button" className={mode === 'password' ? 'active' : ''} onClick={() => changeMode('password')}>บัญชี / รหัสผ่าน</button>
+            <button type="button" className={mode === 'pin' ? 'active' : ''} onClick={() => changeMode('pin')}>PIN 4 หลัก</button>
+            <button type="button" className={mode === 'otp' ? 'active' : ''} onClick={() => changeMode('otp')}>OTP</button>
+          </div>
+
+          {mode !== 'register' && (
+            <button type="button" className="register-link" onClick={() => changeMode('register')}>
+              ยังไม่มีบัญชี? <strong>สมัครสมาชิก</strong>
+            </button>
           )}
-          {step === 'login' && <><h2>ยินดีต้อนรับกลับ</h2><p className="sub">กรอก PIN 4 หลักเพื่อเข้าสู่ AHA</p></>}
+
+          {mode === 'register' && (
+            <button type="button" className="back-link" onClick={() => changeMode('password')}>← กลับไปเข้าสู่ระบบ</button>
+          )}
 
           <form onSubmit={submit}>
-            {step === 'phone' && (
-              <div className="field">
-                <label>เบอร์โทรศัพท์</label>
-                <input type="tel" inputMode="numeric" value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="0XXXXXXXXX" required autoFocus />
-              </div>
-            )}
-
-            {step === 'verify' && (
-              <div className="field">
-                <label>รหัส OTP</label>
-                <input inputMode="numeric" value={code} onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" maxLength={6} required autoFocus />
-              </div>
-            )}
-
-            {step === 'register' && (
+            {mode === 'password' && (
               <>
-                <div className="field">
-                  <label>ประเภทบัญชี</label>
-                  <div className="aha-role-picker">
-                    <button type="button" className={role === 'elderly' ? 'active' : ''} onClick={() => setRole('elderly')}>
-                      <AhaIcon name="heart" size={22} />
-                      <span><strong>ผู้สูงอายุ</strong><small>ติดตามยาและสุขภาพของฉัน</small></span>
-                    </button>
-                    <button type="button" className={role === 'caregiver' ? 'active' : ''} onClick={() => setRole('caregiver')}>
-                      <AhaIcon name="users" size={22} />
-                      <span><strong>ผู้ดูแล</strong><small>ดูแลและติดตามผู้สูงอายุ</small></span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="field">
-                  <label>ชื่อ</label>
-                  <input value={name} onChange={(event) => setName(event.target.value)} placeholder={role === 'caregiver' ? 'ชื่อผู้ดูแล' : 'ชื่อที่ต้องการให้ AHA เรียก'} required />
-                </div>
-
-                {role === 'elderly' && (
-                  <div className="field">
-                    <label>อายุ</label>
-                    <input type="number" min="1" max="120" value={age} onChange={(event) => setAge(event.target.value)} placeholder="อายุ" required />
-                  </div>
-                )}
-
-                {role === 'caregiver' && (
-                  <div className="aha-caregiver-note">
-                    <AhaIcon name="shield" size={20} />
-                    <span>บัญชีผู้ดูแลจะไม่แสดงหน้าหลักแบบผู้สูงอายุ และจะเน้นการติดตามคนที่คุณดูแล</span>
-                  </div>
-                )}
-
-                <div className="field">
-                  <label>PIN 4 หลัก</label>
-                  <input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" required />
-                </div>
+                <p className="sub">ใช้ชื่อผู้ใช้หรืออีเมล และรหัสผ่านที่ตั้งไว้</p>
+                <div className="field"><label>ชื่อผู้ใช้ / อีเมล</label><input value={identifier} onChange={(e) => setIdentifier(e.target.value)} autoComplete="username" placeholder="เช่น aha_user หรือ email@example.com" required autoFocus /></div>
+                <div className="field"><label>รหัสผ่าน</label><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" placeholder="รหัสผ่านของคุณ" required /></div>
               </>
             )}
 
-            {step === 'login' && (
+            {mode === 'pin' && (
               <>
-                <div className="field"><label>เบอร์โทร</label><input value={phone} disabled /></div>
-                <div className="field"><label>PIN 4 หลัก</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(event) => setPin(event.target.value.replace(/\D/g, '').slice(0, 4))} required autoFocus /></div>
+                <p className="sub">เหมาะสำหรับเครื่องที่ตั้ง PIN ไว้แล้ว</p>
+                <div className="field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={otpPhone} onChange={(e) => setOtpPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="0XXXXXXXXX" required autoFocus /></div>
+                <div className="field"><label>PIN 4 หลัก</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" required /></div>
               </>
             )}
 
-            {error && <div className="error">{error}</div>}
+            {mode === 'otp' && (
+              <>
+                <p className="sub">OTP เป็นวิธีเข้าสู่ระบบหลักของ AHA สำหรับการใช้งานในระยะต่อไป</p>
+                <div className="field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={otpPhone} onChange={(e) => setOtpPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="0XXXXXXXXX" required autoFocus /></div>
+                {otpStep === 'code' && <div className="field"><label>รหัส OTP 6 หลัก</label><input inputMode="numeric" maxLength={6} value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="123456" required /></div>}
+              </>
+            )}
+
+            {mode === 'register' && (
+              <>
+                <p className="sub">สมัครด้วยข้อมูลพื้นฐาน แล้วใช้ชื่อผู้ใช้และรหัสผ่านเข้าสู่ระบบได้ทันที</p>
+                <div className="field-row">
+                  <div className="field"><label>ชื่อ</label><input value={register.firstName} onChange={(e) => updateRegister('firstName', e.target.value)} autoComplete="given-name" required /></div>
+                  <div className="field"><label>นามสกุล</label><input value={register.lastName} onChange={(e) => updateRegister('lastName', e.target.value)} autoComplete="family-name" required /></div>
+                </div>
+                <div className="field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={register.phone} onChange={(e) => updateRegister('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} placeholder="0XXXXXXXXX" required /></div>
+                <div className="field"><label>อีเมล <span>(ถ้ามี)</span></label><input type="email" value={register.email} onChange={(e) => updateRegister('email', e.target.value)} autoComplete="email" placeholder="name@example.com" /></div>
+                <div className="field"><label>ชื่อผู้ใช้</label><input value={register.username} onChange={(e) => updateRegister('username', e.target.value.replace(/[^A-Za-z0-9_.-]/g, '').slice(0, 30))} autoComplete="username" placeholder="อย่างน้อย 4 ตัวอักษร" required /></div>
+                <div className="field-row">
+                  <div className="field"><label>รหัสผ่าน</label><input type="password" value={register.password} onChange={(e) => updateRegister('password', e.target.value)} autoComplete="new-password" placeholder="8 ตัวขึ้นไป" required /></div>
+                  <div className="field"><label>ยืนยันรหัสผ่าน</label><input type="password" value={register.confirmPassword} onChange={(e) => updateRegister('confirmPassword', e.target.value)} autoComplete="new-password" required /></div>
+                </div>
+                <div className="field"><label>ประเภทบัญชี</label><div className="role-grid">
+                  <button type="button" className={register.role === 'elderly' ? 'role-card active' : 'role-card'} onClick={() => updateRegister('role', 'elderly')}><AhaIcon name="heart" size={22} /><strong>ผู้สูงอายุ</strong><small>ติดตามยาและสุขภาพ</small></button>
+                  <button type="button" className={register.role === 'caregiver' ? 'role-card active' : 'role-card'} onClick={() => updateRegister('role', 'caregiver')}><AhaIcon name="users" size={22} /><strong>ผู้ดูแล</strong><small>ดูแลและติดตามผู้สูงอายุ</small></button>
+                </div></div>
+                {register.role === 'elderly' && <div className="field"><label>อายุ</label><input type="number" min="1" max="120" value={register.age} onChange={(e) => updateRegister('age', e.target.value)} placeholder="อายุ" required /></div>}
+                <div className="field"><label>PIN 4 หลัก <span>(ใช้สำหรับการเข้าสู่ระบบแบบ PIN)</span></label><input type="password" inputMode="numeric" maxLength={4} value={register.pin} onChange={(e) => updateRegister('pin', e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" required /></div>
+                <label className="terms"><input type="checkbox" checked={register.termsAccepted} onChange={(e) => updateRegister('termsAccepted', e.target.checked)} required /><span>ฉันยอมรับเงื่อนไขการใช้งาน และรับทราบว่าระบบ AHA จะเก็บและใช้ข้อมูลที่จำเป็นต่อการให้บริการสุขภาพตามนโยบายของระบบ</span></label>
+              </>
+            )}
+
+            {error && <div className="error" role="alert">{error}</div>}
             <button className="btn btn-primary btn-lg full" disabled={busy}>
-              {busy ? 'กำลังดำเนินการ…' : step === 'phone' ? 'ขอรหัส OTP' : step === 'verify' ? 'ยืนยัน OTP' : step === 'register' ? 'สร้างบัญชี' : 'เข้าสู่ระบบ'}
+              {busy ? 'กำลังดำเนินการ…' : mode === 'password' ? 'เข้าสู่ระบบ' : mode === 'pin' ? 'เข้าสู่ระบบด้วย PIN' : mode === 'otp' ? (otpStep === 'phone' ? 'ส่งรหัส OTP' : 'ยืนยันและเข้าสู่ระบบ') : 'สมัครสมาชิก'}
               <AhaIcon name="arrow" size={19} />
             </button>
           </form>
 
-          {step === 'verify' && <button className="btn btn-ghost full" style={{ marginTop: 8 }} onClick={() => setStep('phone')}>เปลี่ยนเบอร์โทร</button>}
-          {step === 'login' && <button className="btn btn-ghost full" style={{ marginTop: 8 }} onClick={() => setStep('phone')}>เริ่มขั้นตอนใหม่</button>}
+          {mode === 'otp' && otpStep === 'code' && <button type="button" className="btn btn-ghost full" style={{ marginTop: 8 }} onClick={() => setOtpStep('phone')}>เปลี่ยนเบอร์โทร</button>}
         </section>
       </div>
 
       <style jsx>{`
-        .aha-role-picker { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-        .aha-role-picker button { display:flex; align-items:center; gap:10px; text-align:left; padding:14px; border:2px solid #dce9ef; border-radius:16px; background:#fff; color:#587084; cursor:pointer; }
-        .aha-role-picker button.active { border-color:#159fe0; background:#eefaff; color:#123a54; }
-        .aha-role-picker span { display:flex; flex-direction:column; gap:2px; }
-        .aha-role-picker strong { font-size:17px; }
-        .aha-role-picker small { font-size:12px; line-height:1.3; }
-        .aha-caregiver-note { display:flex; gap:10px; align-items:flex-start; margin:-2px 0 16px; padding:13px 15px; border-radius:15px; background:#f1f8fc; color:#587084; font-size:14px; line-height:1.45; }
-        @media (max-width: 520px) { .aha-role-picker { grid-template-columns:1fr; } }
+        .auth-heading-row{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}.auth-kicker{font-size:11px;letter-spacing:1.6px;color:#159fe0;font-weight:900;margin-bottom:7px}.auth-tabs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;padding:5px;background:#f1f7fa;border:1px solid #dcebf1;border-radius:16px;margin:18px 0 10px}.auth-tabs button{border:0;background:transparent;border-radius:12px;padding:11px 7px;color:#718896;font-weight:850;font-size:13px}.auth-tabs button.active{background:#fff;color:#116f9f;box-shadow:0 5px 15px rgba(27,115,151,.10)}.register-link,.back-link{border:0;background:transparent;padding:5px 0;color:#718896;font-size:14px;text-align:left}.register-link strong,.back-link{color:#127cab}.auth-form form{margin-top:13px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.role-card{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:3px 9px;padding:12px;border:2px solid #dce9ef;border-radius:15px;background:#fff;color:#587084;text-align:left}.role-card.active{border-color:#29abe2;background:#eefaff;color:#123a54}.role-card small{grid-column:2;color:#718896;font-size:11px}.terms{display:flex;align-items:flex-start;gap:9px;padding:12px 0;color:#718896;font-size:12px;line-height:1.5}.terms input{margin-top:3px;width:17px;height:17px;flex:0 0 auto}.field label span{font-weight:500;color:#8aa0ac}.auth-form h2{font-size:30px}.auth-form .sub{margin-bottom:17px}@media(max-width:640px){.auth-tabs button{font-size:12px;padding:10px 4px}.field-row,.role-grid{grid-template-columns:1fr}.auth-card{border-radius:24px}.auth-visual h1{font-size:34px}.auth-form{padding:24px 18px}.auth-form h2{font-size:27px}}
       `}</style>
     </div>
   );
