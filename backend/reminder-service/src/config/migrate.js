@@ -9,30 +9,19 @@ async function migrate() {
     await pool.query(`
       CREATE TABLE IF NOT EXISTS reminders (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
         user_id UUID NOT NULL,
-
         medicine_name VARCHAR(150) NOT NULL,
-
         dosage VARCHAR(100),
-
         reminder_time TIME NOT NULL,
-
         frequency VARCHAR(20) NOT NULL DEFAULT 'daily'
           CHECK (frequency IN ('daily', 'weekly')),
-
         days_of_week TEXT[] NOT NULL DEFAULT ARRAY['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'],
-
         start_date DATE,
-
         end_date DATE,
-
         is_active BOOLEAN NOT NULL DEFAULT true,
-
         last_triggered_key VARCHAR(32),
-
+        last_late_triggered_key VARCHAR(100),
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
     `);
@@ -45,6 +34,11 @@ async function migrate() {
     await pool.query(`
       ALTER TABLE reminders
       ADD COLUMN IF NOT EXISTS last_triggered_key VARCHAR(32);
+    `);
+
+    await pool.query(`
+      ALTER TABLE reminders
+      ADD COLUMN IF NOT EXISTS last_late_triggered_key VARCHAR(100);
     `);
 
     await pool.query(`
