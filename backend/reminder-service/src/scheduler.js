@@ -42,40 +42,40 @@ function isDue(reminder, now, nowDate = new Date()) {
 
   const scheduled = scheduledDateTime(now.date, reminder.reminder_time);
   const diffMinutes = Math.floor((nowDate.getTime() - scheduled.getTime()) / 60000);
-
-  // Allow a short catch-up window so a scheduler restart/container pause
-  // does not permanently lose a medicine reminder.
   return diffMinutes >= 0 && diffMinutes <= MAX_LATE_MINUTES;
 }
 
-async function notifyRecipients(reminder, triggerKey) {
+async function getRecipients(reminder) {
   const authUrl = process.env.AUTH_SERVICE_URL;
-  const notificationUrl = process.env.NOTIFICATION_SERVICE_URL;
   const internalKey = process.env.INTERNAL_API_KEY;
-
-  if (!authUrl || !notificationUrl || !internalKey) {
-    throw new Error('AUTH_SERVICE_URL, NOTIFICATION_SERVICE_URL and INTERNAL_API_KEY are required');
+  if (!authUrl || !internalKey) {
+    throw new Error('AUTH_SERVICE_URL and INTERNAL_API_KEY are required');
   }
 
-  const recipientsResponse = await fetch(
+  const response = await fetch(
     `${authUrl.replace(/\/$/, '')}/family/internal/${reminder.user_id}/recipients`,
     { headers: { 'x-internal-api-key': internalKey } }
   );
 
-  if (!recipientsResponse.ok) {
-    throw new Error(`Recipient lookup failed: ${recipientsResponse.status}`);
+  if (!response.ok) throw new Error(`Recipient lookup failed: ${response.status}`);
+  const payload = await response.json();
+  return Array.isArray(payload.data) ? [...new Set(payload.data)] : [reminder.user_id];
+}
+
+async function notifyRecipients(reminder, triggerKey, { late = false } = {}) {
+  const notificationUrl = process.env.NOTIFICATION_SERVICE_URL;
+  const internalKey = process.env.INTERNAL_API_KEY;
+  if (!notificationUrl || !internalKey) {
+    throw new Error('NOTIFICATION_SERVICE_URL and INTERNAL_API_KEY are required');
   }
 
-  const recipients = await recipientsResponse.json();
-  const ids = Array.isArray(recipients.data)
-    ? [...new Set(recipients.data)]
-    : [reminder.user_id];
+  const recipients = await getRecipients(reminder);
+  const title = late ? 'เลยเวลาทานยา' : triggerKey.startsWith('snooze:') ? 'ถึงเวลาทานยาอีกครั้ง' : 'ถึงเวลาเตือนยา';
+  const message = late
+    ? `ยังไม่ได้ยืนยันการทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''} กรุณาตรวจสอบและยืนยันการทานยา`
+    : `ถึงเวลาทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''}`;
 
-  const isSnooze = triggerKey.startsWith('snooze:');
-  const title = isSnooze ? 'ถึงเวลาทานยาอีกครั้ง' : 'ถึงเวลาเตือนยา';
-  const message = `ถึงเวลาทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''}`;
-
-  for (const userId of ids) {
+  for (const userId of recipients) {
     const response = await fetch(
       `${notificationUrl.replace(/\/$/, '')}/api/notifications`,
       {
@@ -94,17 +94,13 @@ async function notifyRecipients(reminder, triggerKey) {
         }),
       }
     );
-
-    if (!response.ok) {
-      throw new Error(`Notification create failed: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Notification create failed: ${response.status}`);
   }
 }
 
 async function processDueReminders() {
   const now = localParts();
   const nowDate = new Date();
-
   const result = await pool.query(`
     SELECT * FROM reminders
     WHERE is_active = true
@@ -116,9 +112,6 @@ async function processDueReminders() {
     const snoozeDue = isSnoozeDue(reminder, nowDate);
     if (!isDue(reminder, now, nowDate)) continue;
 
-    // Normal reminders use their configured scheduled minute. Snoozed
-    // reminders use the original snooze_until timestamp, so retries keep the
-    // same dedupe key and cannot create duplicate notifications.
     const triggerKey = snoozeDue
       ? `snooze:${new Date(reminder.snooze_until).toISOString().slice(0, 16)}`
       : `${now.date}:${String(reminder.reminder_time).slice(0, 5)}`;
@@ -127,16 +120,15 @@ async function processDueReminders() {
 
     try {
       await notifyRecipients(reminder, triggerKey);
-
       await pool.query(`
         UPDATE reminders
         SET last_triggered_key = $1,
+            last_late_triggered_key = NULL,
             snooze_until = CASE WHEN $2 THEN NULL ELSE snooze_until END,
             updated_at = now()
         WHERE id = $3 AND is_active = true
           AND (last_triggered_key IS DISTINCT FROM $1)
       `, [triggerKey, snoozeDue, reminder.id]);
-
       console.log(`Reminder sent: ${reminder.id} ${triggerKey}`);
     } catch (error) {
       console.error('Reminder notification failed (will retry):', error.message);
@@ -144,16 +136,81 @@ async function processDueReminders() {
   }
 }
 
+function getTriggerDateTime(reminder, nowDate) {
+  const key = String(reminder.last_triggered_key || '');
+  if (key.startsWith('snooze:')) {
+    const value = key.slice('snooze:'.length);
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const now = localParts(nowDate);
+  const normalKey = `${now.date}:${String(reminder.reminder_time).slice(0, 5)}`;
+  if (key !== normalKey) return null;
+  return scheduledDateTime(now.date, reminder.reminder_time);
+}
+
+async function processLateReminders() {
+  const nowDate = new Date();
+  const now = localParts(nowDate);
+  const result = await pool.query(`
+    SELECT r.*
+    FROM reminders r
+    WHERE r.is_active = true
+      AND (r.start_date IS NULL OR r.start_date <= $1::date)
+      AND (r.end_date IS NULL OR r.end_date >= $1::date)
+      AND r.last_triggered_key IS NOT NULL
+      AND (r.last_late_triggered_key IS NULL)
+  `, [now.date]);
+
+  for (const reminder of result.rows) {
+    const triggerAt = getTriggerDateTime(reminder, nowDate);
+    if (!triggerAt) continue;
+
+    const elapsedMinutes = Math.floor((nowDate.getTime() - triggerAt.getTime()) / 60000);
+    if (elapsedMinutes < MAX_LATE_MINUTES) continue;
+
+    const log = await pool.query(`
+      SELECT 1 FROM reminder_logs
+      WHERE reminder_id = $1
+        AND user_id = $2
+        AND scheduled_date = $3::date
+        AND status = 'taken'
+      LIMIT 1
+    `, [reminder.id, reminder.user_id, now.date]);
+
+    if (log.rowCount) continue;
+
+    const lateKey = `late:${reminder.last_triggered_key}`;
+    try {
+      await notifyRecipients(reminder, lateKey, { late: true });
+      await pool.query(`
+        UPDATE reminders
+        SET last_late_triggered_key = $1, updated_at = now()
+        WHERE id = $2 AND is_active = true
+          AND last_late_triggered_key IS DISTINCT FROM $1
+      `, [lateKey, reminder.id]);
+      console.log(`Late reminder sent: ${reminder.id} ${lateKey}`);
+    } catch (error) {
+      console.error('Late reminder notification failed (will retry):', error.message);
+    }
+  }
+}
+
 function startScheduler() {
-  const run = () => processDueReminders().catch((error) => console.error('Scheduler error:', error));
+  const run = () => Promise.all([
+    processDueReminders(),
+    processLateReminders(),
+  ]).catch((error) => console.error('Scheduler error:', error));
   run();
   setInterval(run, 15 * 1000);
-  console.log(`Reminder scheduler started (15s interval, Asia/Bangkok, ${MAX_LATE_MINUTES}m catch-up window)`);
+  console.log(`Reminder scheduler started (15s interval, Asia/Bangkok, ${MAX_LATE_MINUTES}m late alert)`);
 }
 
 module.exports = {
   startScheduler,
   processDueReminders,
+  processLateReminders,
   localParts,
   isDue,
   isSnoozeDue,
