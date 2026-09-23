@@ -3,6 +3,7 @@ require('dotenv').config();
 const pool = require('./config/db');
 
 const TZ = 'Asia/Bangkok';
+const MAX_LATE_MINUTES = 10;
 
 function localParts(date = new Date()) {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -25,6 +26,10 @@ function isSnoozeDue(reminder, nowDate = new Date()) {
   );
 }
 
+function scheduledDateTime(date, time) {
+  return new Date(`${date}T${String(time).slice(0, 5)}:00+07:00`);
+}
+
 function isDue(reminder, now, nowDate = new Date()) {
   if (!reminder.is_active) return false;
   if (isSnoozeDue(reminder, nowDate)) return true;
@@ -35,7 +40,12 @@ function isDue(reminder, now, nowDate = new Date()) {
   const days = Array.isArray(reminder.days_of_week) ? reminder.days_of_week.map(String) : [];
   if (!days.includes(now.day)) return false;
 
-  return String(reminder.reminder_time).slice(0,5) === now.time;
+  const scheduled = scheduledDateTime(now.date, reminder.reminder_time);
+  const diffMinutes = Math.floor((nowDate.getTime() - scheduled.getTime()) / 60000);
+
+  // Do not require the scheduler to hit the exact minute. Railway/container
+  // restarts or a short pause can otherwise make a reminder disappear forever.
+  return diffMinutes >= 0 && diffMinutes <= MAX_LATE_MINUTES;
 }
 
 async function notifyRecipients(reminder, triggerKey) {
@@ -106,9 +116,12 @@ async function processDueReminders() {
     const snoozeDue = isSnoozeDue(reminder, nowDate);
     if (!isDue(reminder, now, nowDate)) continue;
 
+    // For a normal reminder the trigger belongs to the scheduled time, not
+    // the actual scheduler execution time. This prevents duplicate sends
+    // while still allowing late delivery after a restart/pause.
     const triggerKey = snoozeDue
-      ? `snooze:${now.date}:${now.time}`
-      : `${now.date}:${now.time}`;
+      ? `snooze:${nowDate.toISOString().slice(0, 16)}`
+      : `${now.date}:${String(reminder.reminder_time).slice(0, 5)}`;
 
     if (reminder.last_triggered_key === triggerKey) continue;
 
@@ -134,8 +147,8 @@ async function processDueReminders() {
 function startScheduler() {
   const run = () => processDueReminders().catch((error) => console.error('Scheduler error:', error));
   run();
-  setInterval(run, 30 * 1000);
-  console.log('Reminder scheduler started (30s interval, Asia/Bangkok)');
+  setInterval(run, 15 * 1000);
+  console.log(`Reminder scheduler started (15s interval, Asia/Bangkok, ${MAX_LATE_MINUTES}m catch-up window)`);
 }
 
 module.exports = {
