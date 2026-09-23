@@ -38,14 +38,7 @@ async function refreshAccessToken() {
 
 function getApiErrorMessage(data, status) {
   if (data?.message) return data.message;
-
-  if (Array.isArray(data?.errors) && data.errors.length > 0) {
-    return data.errors
-      .map((item) => item?.msg || item?.message)
-      .filter(Boolean)
-      .join(' • ');
-  }
-
+  if (Array.isArray(data?.errors) && data.errors.length > 0) return data.errors.map((item) => item?.msg || item?.message).filter(Boolean).join(' • ');
   return `Request failed (${status})`;
 }
 
@@ -53,10 +46,7 @@ async function request(baseUrl, path, { method = 'GET', body, auth = false, retr
   const token = auth ? getAccessToken() : null;
   const res = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: {
-      ...(body ? { 'Content-Type': 'application/json' } : {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
     credentials: 'include', cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const text = await res.text();
@@ -65,12 +55,7 @@ async function request(baseUrl, path, { method = 'GET', body, auth = false, retr
   if (res.status === 401 && auth && retry) {
     if (await refreshAccessToken()) return request(baseUrl, path, { method, body, auth: true, retry: false });
   }
-  if (!res.ok) {
-    const err = new Error(getApiErrorMessage(data, res.status));
-    err.status = res.status;
-    err.data = data;
-    throw err;
-  }
+  if (!res.ok) { const err = new Error(getApiErrorMessage(data, res.status)); err.status = res.status; err.data = data; throw err; }
   return data;
 }
 
@@ -82,6 +67,8 @@ export const authApi = {
   login: (phone, pin) => request(AUTH_API_BASE, '/auth/login', { method: 'POST', body: { phone, pin } }),
   registerWithPassword: (payload) => request(AUTH_API_BASE, '/auth/register-password', { method: 'POST', body: payload }),
   loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
+  requestPasswordReset: (email) => request(AUTH_API_BASE, '/auth/forgot-password', { method: 'POST', body: { email } }),
+  resetPassword: (token, password, confirmPassword) => request(AUTH_API_BASE, '/auth/reset-password', { method: 'POST', body: { token, password, confirmPassword } }),
   refresh: (refreshToken) => request(AUTH_API_BASE, '/auth/refresh', { method: 'POST', body: { refreshToken } }),
   logout: (refreshToken) => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: { refreshToken } }),
   me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
@@ -116,7 +103,7 @@ export const notificationApi = {
   create: (payload) => request(NOTIFICATION_API_BASE, '/api/notifications', { method: 'POST', body: payload, auth: true }),
   markRead: (id) => request(NOTIFICATION_API_BASE, `/api/notifications/${id}/read`, { method: 'PATCH', auth: true }),
   markAllRead: () => request(NOTIFICATION_API_BASE, '/api/notifications/read-all', { method: 'PATCH', auth: true }),
-  remove: (id) => request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, { method: 'DELETE', auth: true }),
+  remove: (id) => request(NOTIFICATION_API_BASE, `/api/notifications/${id}`, { method: 'DELETE', body: {}, auth: true }),
   pushStatus: () => request(NOTIFICATION_API_BASE, '/api/push/status', { auth: true }),
   pushSubscribe: (subscription) => request(NOTIFICATION_API_BASE, '/api/push/subscribe', { method: 'POST', body: subscription, auth: true }),
   pushUnsubscribe: (endpoint) => request(NOTIFICATION_API_BASE, '/api/push/subscribe', { method: 'DELETE', body: { endpoint }, auth: true }),
