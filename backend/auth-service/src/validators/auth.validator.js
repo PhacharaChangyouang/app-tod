@@ -60,6 +60,14 @@ const validatePasswordLogin = [
     .isLength({ min: 1, max: 72 }),
 ];
 
+// Refresh token may be sent in the request body OR stored in the httpOnly cookie.
+// Keep it optional here because auth.controller.js already supports both sources.
+const validateRefreshToken = body('refreshToken')
+  .optional({ checkFalsy: true })
+  .isString().withMessage('Refresh token must be a string')
+  .trim()
+  .isLength({ min: 1 }).withMessage('Refresh token is required');
+
 function handleValidationErrors(req, res, next) {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
