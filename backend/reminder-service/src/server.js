@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const cors = require('cors');
 const pool = require('./config/db');
 const authenticate = require('./middlewares/authenticate');
+const caregiverRoutes = require('./caregiver.routes');
 const { startScheduler } = require('./scheduler');
 
 const app = express();
@@ -27,6 +28,11 @@ async function ensureRuntimeSchema() {
   await pool.query(`
     ALTER TABLE reminders
     ADD COLUMN IF NOT EXISTS snooze_until TIMESTAMPTZ
+  `);
+
+  await pool.query(`
+    ALTER TABLE reminders
+    ADD COLUMN IF NOT EXISTS last_late_triggered_key VARCHAR(255)
   `);
 }
 
@@ -281,6 +287,10 @@ app.delete('/api/reminders/:id', authenticate, async (req, res) => {
     res.status(500).json({ success: false, message: 'Failed to delete reminder' });
   }
 });
+
+// Caregiver-only dashboard and medication management.
+// These routes are mounted separately so the existing elderly reminder API stays unchanged.
+app.use('/api/caregiver', caregiverRoutes);
 
 app.use((req, res) => res.status(404).json({ success: false, message: 'Not found' }));
 app.use((error, req, res, next) => {
