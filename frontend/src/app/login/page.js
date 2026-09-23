@@ -8,8 +8,7 @@ import { saveSession } from '../../services/auth';
 export default function LoginPage() {
   const router = useRouter();
 
-  const handleSubmit = async ({ mode, phone, pin, code, identifier, password, ...registerData }, helpers) => {
-    const setError = helpers?.setError;
+  const handleSubmit = async ({ mode, phone, pin, code, identifier, password, setError, setOtpStep, ...registerData }) => {
     try {
       let response;
 
@@ -20,7 +19,7 @@ export default function LoginPage() {
       } else if (mode === 'requestOtp') {
         response = await authApi.requestOtp(phone);
         if (!response.success) throw new Error(response.message || 'ไม่สามารถขอ OTP ได้');
-        helpers.setOtpStep('code');
+        setOtpStep('code');
         return;
       } else if (mode === 'loginOtp') {
         response = await authApi.loginOtp(phone, code);
@@ -34,8 +33,7 @@ export default function LoginPage() {
       saveSession({ accessToken: response.accessToken, refreshToken: response.refreshToken, user: response.user });
       router.push('/home');
     } catch (err) {
-      if (setError) setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
-      else throw err;
+      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     }
   };
 
