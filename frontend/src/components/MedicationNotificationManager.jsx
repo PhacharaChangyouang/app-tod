@@ -37,11 +37,15 @@ export default function MedicationNotificationManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const [permission, setPermission] = useState('default');
   const handledActions = useRef(new Set());
 
   useEffect(() => {
     const syncAuth = () => {
       setAuthenticated(Boolean(getAccessToken() && getUser()));
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPermission(Notification.permission);
+      }
     };
 
     syncAuth();
@@ -72,6 +76,8 @@ export default function MedicationNotificationManager() {
       setPushEnabled(enabled);
       localStorage.setItem('aha_push_enabled', String(enabled));
     } catch (err) {
+      // Push is optional for the in-app reminder. The app must still be able
+      // to show the medicine dialog by polling unread notifications.
       console.warn('AHA push status unavailable:', err);
       setPushEnabled(false);
     } finally {
@@ -80,7 +86,7 @@ export default function MedicationNotificationManager() {
   }, []);
 
   const pollUnread = useCallback(async () => {
-    if (!getAccessToken() || !pushEnabled) return;
+    if (!getAccessToken()) return;
 
     try {
       const result = await notificationApi.unread();
@@ -90,7 +96,7 @@ export default function MedicationNotificationManager() {
     } catch (err) {
       if (err?.status !== 401) console.warn('AHA notification polling failed:', err);
     }
-  }, [pushEnabled, showAlert]);
+  }, [showAlert]);
 
   const handleAction = useCallback(async (action, notification) => {
     if (!notification?.id || !notification?.related_id) return;
@@ -157,13 +163,15 @@ export default function MedicationNotificationManager() {
     };
   }, [authenticated, handleServiceWorkerMessage, syncPushState]);
 
+  // In-app alerts are deliberately independent from Web Push permission.
+  // This is what makes the planned popup work while the user is inside AHA.
   useEffect(() => {
-    if (!ready || !pushEnabled) return undefined;
+    if (!ready) return undefined;
 
     pollUnread();
-    const timer = window.setInterval(pollUnread, 10000);
+    const timer = window.setInterval(pollUnread, 5000);
     return () => window.clearInterval(timer);
-  }, [ready, pushEnabled, pollUnread]);
+  }, [ready, pollUnread]);
 
   useEffect(() => {
     if (!authenticated) return undefined;
@@ -202,11 +210,16 @@ export default function MedicationNotificationManager() {
       if (pushEnabled) {
         await disableAhaPush();
         setPushEnabled(false);
+        setPermission('default');
       } else {
         await enableAhaPush();
         setPushEnabled(true);
+        setPermission('granted');
       }
     } catch (err) {
+      if (typeof window !== 'undefined' && 'Notification' in window) {
+        setPermission(Notification.permission);
+      }
       setError(err?.message || 'ไม่สามารถตั้งค่าการแจ้งเตือนได้');
     } finally {
       setBusy(false);
@@ -238,13 +251,15 @@ export default function MedicationNotificationManager() {
       {!pushEnabled && ready && (
         <div style={{
           position: 'fixed', right: 18, bottom: 82, zIndex: 10000,
-          maxWidth: 320, background: '#fff', borderRadius: 16,
+          maxWidth: 340, background: '#fff', borderRadius: 16,
           padding: '14px 16px', boxShadow: '0 10px 35px rgba(0,0,0,.16)',
           border: '1px solid #e2e8f0', color: '#0f172a', fontSize: 14,
         }}>
           <strong>เปิดการแจ้งเตือนยา</strong>
           <div style={{ marginTop: 4, color: '#475569' }}>
-            เพื่อให้ AHA แจ้งเตือนแม้คุณอยู่หน้าอื่นหรือหน้าจอล็อก
+            {permission === 'denied'
+              ? 'การแจ้งเตือนถูกบล็อกอยู่ ให้ปลดบล็อก Notification ในการตั้งค่า Browser แล้วกด 🔕 อีกครั้ง'
+              : 'กด 🔕 เพื่ออนุญาตการแจ้งเตือนและรับแจ้งเตือนแม้อยู่หน้าอื่นหรือหน้าจอล็อก'}
           </div>
         </div>
       )}
