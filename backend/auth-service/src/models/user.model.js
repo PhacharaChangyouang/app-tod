@@ -51,7 +51,7 @@ async function setPhoneVerified(userId) {
 }
 
 async function updatePin(userId, pinHash) {
-  const { rows } = await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2 RETURNING *', [userId, pinHash]);
+  const { rows } = await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2 RETURNING *', [pinHash, userId]);
   return rows[0] || null;
 }
 
