@@ -29,12 +29,12 @@ const validatePasswordRegister = [
   body('firstName').exists().trim().isLength({ min: 1, max: 50 }).withMessage('First name is required'),
   body('lastName').exists().trim().isLength({ min: 1, max: 50 }).withMessage('Last name is required'),
   body('username').exists().trim().matches(/^[A-Za-z0-9_.-]{4,30}$/).withMessage('Username must be 4-30 letters, numbers, dot, dash or underscore'),
-  body('email').optional({ checkFalsy: true }).isEmail().withMessage('Invalid email address'),
+  body('email').exists().trim().isEmail().withMessage('Email is required and must be valid'),
   body('password').exists().isLength({ min: 8, max: 72 }).withMessage('Password must be 8-72 characters'),
   body('confirmPassword').exists().withMessage('Password confirmation is required'),
   body('role').exists().isIn(['elderly', 'caregiver']).withMessage('Role must be either elderly or caregiver'),
   body('age').optional({ checkFalsy: true }).isInt({ min: 1, max: 120 }).withMessage('Age must be a valid number'),
-  body('pin').optional({ checkFalsy: true }).matches(/^\d{4}$/).withMessage('PIN must be exactly 4 digits'),
+  body('pin').exists().matches(/^\d{4}$/).withMessage('PIN must be exactly 4 digits'),
   body('termsAccepted').equals('true').withMessage('Terms must be accepted'),
 ];
 
