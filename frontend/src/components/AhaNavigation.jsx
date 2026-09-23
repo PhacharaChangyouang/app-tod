@@ -12,10 +12,7 @@ function Brand() {
           <path d="M40 29c7 0 8-13 17-13" stroke="#22B8AA" strokeWidth="8" strokeLinecap="round" />
         </svg>
       </span>
-      <span>
-        <strong>AHA</strong>
-        <small>AI Health Assistant</small>
-      </span>
+      <span><strong>AHA</strong><small>AI Health Assistant</small></span>
     </div>
   );
 }
@@ -24,7 +21,7 @@ export default function AhaNavigation() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (!pathname || pathname === '/' || pathname.startsWith('/login')) return null;
+  if (!pathname || pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) return null;
 
   const items = [
     ['home', 'หน้าหลัก', '/home'],
@@ -32,6 +29,7 @@ export default function AhaNavigation() {
     ['mic', 'พูดกับ AHA', '/voice'],
     ['bell', 'แจ้งเตือน', '/notifications'],
     ['warning', 'ฉุกเฉิน', '/emergency'],
+    ['activity', 'โปรไฟล์', '/profile'],
   ];
 
   return (
@@ -57,20 +55,8 @@ export default function AhaNavigation() {
       </nav>
 
       <div className="aha-v3-side-spacer" />
-
-      <div className="aha-v3-side-care">
-        <AhaIcon name="users" size={25} />
-        <div>
-          <strong>ผู้ดูแล</strong>
-          <span><i /> เชื่อมต่อแล้ว</span>
-        </div>
-      </div>
-
-      <div className="aha-v3-side-wellness">
-        <AhaIcon name="heart" size={31} />
-        <strong>สุขภาพดี<br />เริ่มได้ทุกวัน</strong>
-        <span className="aha-v3-wave">〰</span>
-      </div>
+      <div className="aha-v3-side-care"><AhaIcon name="users" size={25} /><div><strong>ผู้ดูแล</strong><span><i /> เชื่อมต่อแล้ว</span></div></div>
+      <div className="aha-v3-side-wellness"><AhaIcon name="heart" size={31} /><strong>สุขภาพดี<br />เริ่มได้ทุกวัน</strong><span className="aha-v3-wave">〰</span></div>
     </aside>
   );
 }
