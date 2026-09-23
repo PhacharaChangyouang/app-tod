@@ -26,8 +26,21 @@ function rememberId(id) {
   localStorage.setItem(SEEN_KEY, JSON.stringify(next));
 }
 
+function normalizeNotification(item) {
+  if (!item) return null;
+  return {
+    ...item,
+    id: item.id || item.notificationId || null,
+    related_id: item.related_id || item.relatedId || null,
+    title: item.title || 'AHA แจ้งเตือน',
+    message: item.message || 'มีการแจ้งเตือนจาก AHA',
+    type: item.type || 'notification',
+  };
+}
+
 function isMedicineNotification(item) {
-  return item?.type === 'medicine_reminder' && item?.related_id;
+  const n = normalizeNotification(item);
+  return n?.type === 'medicine_reminder' && n.related_id;
 }
 
 export default function MedicationNotificationManager() {
@@ -38,15 +51,7 @@ export default function MedicationNotificationManager() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState('default');
-  const [isMobile, setIsMobile] = useState(false);
   const handledActions = useRef(new Set());
-
-  useEffect(() => {
-    const updateViewport = () => setIsMobile(window.innerWidth <= 768);
-    updateViewport();
-    window.addEventListener('resize', updateViewport);
-    return () => window.removeEventListener('resize', updateViewport);
-  }, []);
 
   useEffect(() => {
     const syncAuth = () => {
@@ -55,16 +60,15 @@ export default function MedicationNotificationManager() {
         setPermission(Notification.permission);
       }
     };
-
     syncAuth();
     const timer = window.setInterval(syncAuth, 1000);
     return () => window.clearInterval(timer);
   }, []);
 
-  const showAlert = useCallback((notification) => {
+  const showAlert = useCallback((rawNotification) => {
+    const notification = normalizeNotification(rawNotification);
     if (!isMedicineNotification(notification)) return;
     if (getSeenIds().includes(notification.id)) return;
-
     rememberId(notification.id);
     setAlert(notification);
   }, []);
@@ -93,7 +97,6 @@ export default function MedicationNotificationManager() {
 
   const pollUnread = useCallback(async () => {
     if (!getAccessToken()) return;
-
     try {
       const result = await notificationApi.unread();
       const notifications = Array.isArray(result?.data) ? result.data : [];
@@ -104,13 +107,13 @@ export default function MedicationNotificationManager() {
     }
   }, [showAlert]);
 
-  const handleAction = useCallback(async (action, notification) => {
+  const handleAction = useCallback(async (action, rawNotification) => {
+    const notification = normalizeNotification(rawNotification);
     if (!notification?.id || !notification?.related_id) return;
 
     const actionKey = `${notification.id}:${action}`;
     if (handledActions.current.has(actionKey)) return;
     handledActions.current.add(actionKey);
-
     setBusy(true);
     setError('');
 
@@ -157,7 +160,6 @@ export default function MedicationNotificationManager() {
     }
 
     syncPushState();
-
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', handleServiceWorkerMessage);
     }
@@ -169,11 +171,8 @@ export default function MedicationNotificationManager() {
     };
   }, [authenticated, handleServiceWorkerMessage, syncPushState]);
 
-  // In-app alerts are independent from Web Push permission.
-  // Poll frequently enough for the normal UI alert to appear close to the due time.
   useEffect(() => {
     if (!ready) return undefined;
-
     pollUnread();
     const timer = window.setInterval(pollUnread, 3000);
     return () => window.clearInterval(timer);
@@ -186,11 +185,7 @@ export default function MedicationNotificationManager() {
     const action = url.searchParams.get('aha_action');
     const reminderId = url.searchParams.get('reminderId');
     const notificationId = url.searchParams.get('notificationId');
-
     if (!action || !reminderId || !notificationId) return undefined;
-
-    const key = `${notificationId}:${action}`;
-    if (handledActions.current.has(key)) return undefined;
 
     handleAction(action, {
       id: notificationId,
@@ -202,16 +197,13 @@ export default function MedicationNotificationManager() {
     url.searchParams.delete('reminderId');
     url.searchParams.delete('notificationId');
     window.history.replaceState({}, '', url.toString());
-
     return undefined;
   }, [authenticated, handleAction]);
 
   const togglePush = async () => {
     if (!authenticated) return;
-
     setBusy(true);
     setError('');
-
     try {
       if (pushEnabled) {
         await disableAhaPush();
@@ -234,9 +226,6 @@ export default function MedicationNotificationManager() {
 
   if (!authenticated) return null;
 
-  const bellBottom = isMobile ? 92 : 18;
-  const hintBottom = bellBottom + 64;
-
   return (
     <>
       <button
@@ -246,39 +235,56 @@ export default function MedicationNotificationManager() {
         aria-label={pushEnabled ? 'ปิดการแจ้งเตือน AHA' : 'เปิดการแจ้งเตือน AHA'}
         title={pushEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน'}
         style={{
-          position: 'fixed', right: isMobile ? 14 : 18, bottom: bellBottom, zIndex: 10001,
-          width: isMobile ? 50 : 54, height: isMobile ? 50 : 54, borderRadius: '50%',
-          border: '2px solid rgba(255,255,255,.9)',
-          background: pushEnabled ? '#16a34a' : '#64748b',
-          color: '#fff', boxShadow: '0 8px 24px rgba(0,0,0,.18)',
-          cursor: busy ? 'wait' : 'pointer', fontSize: isMobile ? 22 : 24,
+          position: 'fixed',
+          right: 14,
+          top: 'max(76px, env(safe-area-inset-top) + 62px)',
+          zIndex: 10001,
+          width: 50,
+          height: 50,
+          borderRadius: '50%',
+          border: '2px solid rgba(255,255,255,.95)',
+          background: pushEnabled ? '#0ea981' : '#64748b',
+          color: '#fff',
+          boxShadow: '0 8px 24px rgba(0,0,0,.18)',
+          cursor: busy ? 'wait' : 'pointer',
+          fontSize: 0,
+          display: 'grid',
+          placeItems: 'center',
         }}
       >
-        {pushEnabled ? '🔔' : '🔕'}
+        <img src="/icons/aha-icon.svg" alt="" width="29" height="29" style={{ borderRadius: 8 }} />
+        <span style={{ position: 'absolute', right: 0, bottom: 0, width: 16, height: 16, borderRadius: '50%', background: pushEnabled ? '#16a34a' : '#64748b', border: '2px solid #fff' }} />
       </button>
 
       {!pushEnabled && ready && (
         <div style={{
-          position: 'fixed', right: isMobile ? 14 : 18, bottom: hintBottom, zIndex: 10000,
-          width: isMobile ? 'min(310px, calc(100vw - 28px))' : 340,
-          background: '#fff', borderRadius: 16, padding: '12px 14px',
+          position: 'fixed',
+          right: 14,
+          top: 'max(132px, env(safe-area-inset-top) + 118px)',
+          zIndex: 10000,
+          width: 'min(330px, calc(100vw - 28px))',
+          background: '#fff',
+          borderRadius: 16,
+          padding: '13px 15px',
           boxShadow: '0 10px 35px rgba(0,0,0,.16)',
-          border: '1px solid #e2e8f0', color: '#0f172a', fontSize: 13,
+          border: '1px solid #dbe5ee',
+          color: '#0f172a',
+          fontSize: 15,
         }}>
           <strong>เปิดการแจ้งเตือนยา</strong>
           <div style={{ marginTop: 4, color: '#475569', lineHeight: 1.45 }}>
             {permission === 'denied'
               ? 'การแจ้งเตือนถูกบล็อก ให้เปิด Notification ในการตั้งค่า Browser แล้วลองอีกครั้ง'
-              : 'กด 🔕 เพื่อเปิดแจ้งเตือนเมื่ออยู่นอกหน้า AHA'}
+              : 'กดปุ่มนี้เพื่ออนุญาตให้ AHA แจ้งเตือนเมื่อถึงเวลาทานยา'}
           </div>
         </div>
       )}
 
       {error && (
         <div role="alert" style={{
-          position: 'fixed', left: '50%', bottom: isMobile ? 12 : 18, transform: 'translateX(-50%)',
-          zIndex: 10002, background: '#991b1b', color: '#fff', padding: '10px 14px',
-          borderRadius: 12, maxWidth: 'calc(100vw - 40px)', fontSize: 14,
+          position: 'fixed', left: '50%', bottom: 'max(18px, env(safe-area-inset-bottom) + 18px)', transform: 'translateX(-50%)',
+          zIndex: 10002, background: '#991b1b', color: '#fff', padding: '12px 16px',
+          borderRadius: 12, maxWidth: 'calc(100vw - 40px)', fontSize: 16, lineHeight: 1.4,
         }}>
           {error}
         </div>
@@ -290,50 +296,76 @@ export default function MedicationNotificationManager() {
           aria-modal="true"
           aria-labelledby="aha-medicine-alert-title"
           style={{
-            position: 'fixed', inset: 0, zIndex: 10003, display: 'flex',
-            alignItems: 'center', justifyContent: 'center', padding: isMobile ? 12 : 20,
-            background: 'rgba(15,23,42,.58)', backdropFilter: 'blur(4px)',
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10003,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px',
+            background: 'rgba(15,23,42,.62)',
+            backdropFilter: 'blur(5px)',
           }}
         >
           <div style={{
-            width: 'min(520px, 100%)', background: '#fff', borderRadius: isMobile ? 22 : 28,
-            padding: isMobile ? '24px 18px 18px' : '30px 26px 24px',
-            boxShadow: '0 24px 70px rgba(0,0,0,.3)', textAlign: 'center',
+            width: 'min(520px, 100%)',
+            background: '#fff',
+            borderRadius: 26,
+            padding: '26px 22px 22px',
+            boxShadow: '0 24px 70px rgba(0,0,0,.3)',
+            textAlign: 'center',
+            border: `4px solid ${alert.title?.includes('เลยเวลา') ? '#f59e0b' : '#0ea981'}`,
           }}>
-            <div style={{ fontSize: isMobile ? 46 : 52, lineHeight: 1, marginBottom: 12 }}>💊</div>
-            <div style={{ fontSize: 16, color: '#64748b', marginBottom: 6 }}>AHA แจ้งเตือน</div>
-            <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: isMobile ? 25 : 30, lineHeight: 1.25, color: '#0f172a' }}>
-              ถึงเวลาทานยาแล้ว
+            <img src="/icons/aha-icon.svg" alt="AHA" width="70" height="70" style={{ display: 'block', margin: '0 auto 12px', borderRadius: 18 }} />
+            <div style={{ fontSize: 18, color: alert.title?.includes('เลยเวลา') ? '#b45309' : '#0b7d63', fontWeight: 800, marginBottom: 7 }}>
+              {alert.title || 'AHA แจ้งเตือน'}
+            </div>
+            <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: 'clamp(28px, 6vw, 36px)', lineHeight: 1.2, color: '#0f172a', fontWeight: 900 }}>
+              {alert.title?.includes('เลยเวลา') ? 'เลยเวลาทานยาแล้ว' : 'ถึงเวลาทานยาแล้ว'}
             </h2>
-            <p style={{ margin: '14px 0 22px', fontSize: isMobile ? 18 : 20, lineHeight: 1.5, color: '#334155' }}>
+            <p style={{ margin: '14px 0 24px', fontSize: 'clamp(20px, 4.5vw, 24px)', lineHeight: 1.55, color: '#334155', fontWeight: 700 }}>
               {alert.message}
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => handleAction('snooze', alert)}
                 style={{
-                  minHeight: isMobile ? 56 : 58, borderRadius: 15, border: '2px solid #cbd5e1',
-                  background: '#f8fafc', color: '#334155', fontSize: isMobile ? 16 : 19,
-                  fontWeight: 700, cursor: 'pointer', padding: '0 8px',
+                  minHeight: 64,
+                  borderRadius: 15,
+                  border: '2px solid #168ee0',
+                  background: '#eef8ff',
+                  color: '#075b95',
+                  fontSize: 'clamp(17px, 4vw, 21px)',
+                  fontWeight: 900,
+                  cursor: busy ? 'wait' : 'pointer',
                 }}
               >
-                ⏰ เลื่อน 10 นาที
+                เลื่อน 10 นาที
               </button>
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => handleAction('taken', alert)}
                 style={{
-                  minHeight: isMobile ? 56 : 58, borderRadius: 15, border: 0, background: '#16a34a',
-                  color: '#fff', fontSize: isMobile ? 17 : 20, fontWeight: 800,
-                  cursor: 'pointer', padding: '0 8px',
+                  minHeight: 64,
+                  borderRadius: 15,
+                  border: 0,
+                  background: '#0ea981',
+                  color: '#fff',
+                  fontSize: 'clamp(18px, 4vw, 22px)',
+                  fontWeight: 900,
+                  cursor: busy ? 'wait' : 'pointer',
                 }}
               >
-                ✓ โอเค / ทานแล้ว
+                ทานยาแล้ว
               </button>
+            </div>
+
+            <div style={{ marginTop: 13, color: '#64748b', fontSize: 15, lineHeight: 1.45 }}>
+              หากยังไม่ยืนยัน ระบบจะแจ้งเตือนอีกครั้งเมื่อเลยเวลา 10 นาที
             </div>
           </div>
         </div>
