@@ -80,6 +80,13 @@ export const reminderApi = {
   remove: (id) => request(REMINDER_API_BASE, `/api/reminders/${id}`, { method: 'DELETE', auth: true }),
 };
 
+export const caregiverApi = {
+  summary: () => request(REMINDER_API_BASE, '/api/caregiver/summary', { auth: true }),
+  createReminder: (payload) => request(REMINDER_API_BASE, '/api/caregiver/reminders', { method: 'POST', body: payload, auth: true }),
+  updateReminder: (id, payload) => request(REMINDER_API_BASE, `/api/caregiver/reminders/${id}`, { method: 'PUT', body: payload, auth: true }),
+  removeReminder: (id) => request(REMINDER_API_BASE, `/api/caregiver/reminders/${id}`, { method: 'DELETE', auth: true }),
+};
+
 export const notificationApi = {
   list: () => request(NOTIFICATION_API_BASE, '/api/notifications', { auth: true }),
   unread: () => request(NOTIFICATION_API_BASE, '/api/notifications/unread', { auth: true }),
