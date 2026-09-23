@@ -10,7 +10,7 @@ export default function AhaResponsiveFix() {
       }
 
       @media (max-width: 760px) {
-        /* The SAME desktop navigation DOM is visible on mobile as a 5-tab bar. */
+        /* Use the same navigation DOM on desktop and mobile. Mobile gets six compact tabs including Profile. */
         .aha-v3-sidebar[data-aha-navigation="true"] {
           display: flex !important;
           flex-direction: column !important;
@@ -21,18 +21,29 @@ export default function AhaResponsiveFix() {
 
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links {
           display: grid !important;
-          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+          width: 100% !important;
         }
 
-        /* Keep all five tabs clickable and proportional on narrow phones. */
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button {
           display: flex !important;
           width: 100% !important;
           min-width: 0 !important;
           overflow: hidden !important;
+          padding-left: 2px !important;
+          padding-right: 2px !important;
         }
 
-        /* Five-tab menu is the only bottom navigation. */
+        /* Keep labels readable while preventing the six-tab bar from overflowing. */
+        .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button span {
+          min-width: 0 !important;
+          max-width: 100% !important;
+          overflow: hidden !important;
+          text-overflow: ellipsis !important;
+          white-space: nowrap !important;
+        }
+
+        /* Six-tab menu is the only bottom navigation. */
         .footer-nav,
         .home-footer-nav,
         .aha-v3-mobile-nav,
@@ -50,6 +61,9 @@ export default function AhaResponsiveFix() {
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button {
           padding-left: 1px !important;
           padding-right: 1px !important;
+        }
+        .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button span {
+          font-size: 10px !important;
         }
       }
     `}</style>
