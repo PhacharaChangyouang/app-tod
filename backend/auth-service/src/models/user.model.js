@@ -29,10 +29,33 @@ async function updatePin(userId, pinHash) {
   return rows[0] || null;
 }
 
+async function updateProfile(userId, { name, age, role }) {
+  const { rows } = await pool.query(
+    `UPDATE users
+     SET name = COALESCE($2, name),
+         age = COALESCE($3, age),
+         role = COALESCE($4, role)
+     WHERE id = $1
+     RETURNING *`,
+    [userId, name ?? null, age ?? null, role ?? null]
+  );
+  return rows[0] || null;
+}
+
+async function updatePhone(userId, phone) {
+  const { rows } = await pool.query(
+    `UPDATE users SET phone = $2, phone_verified = true WHERE id = $1 RETURNING *`,
+    [userId, phone]
+  );
+  return rows[0] || null;
+}
+
 module.exports = {
   findByPhone,
   findById,
   create,
   setPhoneVerified,
   updatePin,
+  updateProfile,
+  updatePhone,
 };
