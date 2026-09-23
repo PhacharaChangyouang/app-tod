@@ -66,6 +66,10 @@ export const authApi = {
   login: (phone, pin) => request(AUTH_API_BASE, '/auth/login', { method: 'POST', body: { phone, pin } }),
   refresh: (refreshToken) => request(AUTH_API_BASE, '/auth/refresh', { method: 'POST', body: { refreshToken } }),
   logout: (refreshToken) => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: { refreshToken } }),
+  me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
+  updateMe: (payload) => request(AUTH_API_BASE, '/auth/me', { method: 'PATCH', body: payload, auth: true }),
+  changePin: (currentPin, newPin) => request(AUTH_API_BASE, '/auth/me/change-pin', { method: 'POST', body: { currentPin, newPin }, auth: true }),
+  changePhone: (phone, code) => request(AUTH_API_BASE, '/auth/me/change-phone', { method: 'POST', body: { phone, code }, auth: true }),
 };
 
 export const reminderApi = {
