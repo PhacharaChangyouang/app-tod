@@ -36,52 +36,6 @@ function Brand() {
   );
 }
 
-function SideNav({ active, router, onVoice, voice }) {
-  const items = [
-    ['home', 'หน้าหลัก', '/home'],
-    ['pill', 'ยา', '/reminders'],
-    ['mic', voice ? 'กำลังฟัง…' : 'พูดกับ AHA', '__voice__'],
-    ['bell', 'แจ้งเตือน', '/notifications'],
-    ['warning', 'ฉุกเฉิน', '/emergency'],
-  ];
-
-  return (
-    <aside className="aha-v3-sidebar">
-      <Brand />
-      <nav className="aha-v3-side-links" aria-label="เมนูหลัก AHA">
-        {items.map(([icon, label, path]) => (
-          <button
-            key={path}
-            type="button"
-            className={`${active === path ? 'active' : ''}${path === '__voice__' ? ' aha-v3-nav-voice' : ''}${path === '/emergency' ? ' danger' : ''}`}
-            onClick={() => path === '__voice__' ? onVoice() : router.push(path)}
-            aria-label={label}
-          >
-            <AhaIcon name={icon} size={path === '__voice__' ? 26 : 24} />
-            <span>{label}</span>
-          </button>
-        ))}
-      </nav>
-
-      <div className="aha-v3-side-spacer" />
-
-      <div className="aha-v3-side-care">
-        <AhaIcon name="users" size={25} />
-        <div>
-          <strong>ผู้ดูแล</strong>
-          <span><i /> เชื่อมต่อแล้ว</span>
-        </div>
-      </div>
-
-      <div className="aha-v3-side-wellness">
-        <AhaIcon name="heart" size={31} />
-        <strong>สุขภาพดี<br />เริ่มได้ทุกวัน</strong>
-        <span className="aha-v3-wave">〰</span>
-      </div>
-    </aside>
-  );
-}
-
 function StatusPill({ done, current }) {
   return (
     <span className={`aha-v3-status ${done ? 'done' : current ? 'wait' : 'later'}`}>
@@ -169,8 +123,6 @@ export default function HomePage() {
   return (
     <div className="aha-v3-page">
       <div className="aha-v3-layout">
-        <SideNav active="/home" router={router} onVoice={startVoice} voice={voice} />
-
         <div className="aha-v3-main">
           <header className="aha-v3-topbar">
             <Brand />
