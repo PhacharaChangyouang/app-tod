@@ -83,6 +83,17 @@ async function updateConnection(req, res, next) {
 
 async function listRecipientIds(req, res, next) {
   try {
+    // Internal services call this endpoint with x-internal-api-key.
+    // In that case req.user is the system identity, so use the requested userId.
+    // Normal authenticated calls are still scoped to the logged-in user.
+    const targetUserId = req.user?.role === 'system'
+      ? req.params.userId
+      : req.user.id;
+
+    if (!targetUserId) {
+      return res.status(400).json({ success: false, message: 'userId is required' });
+    }
+
     const result = await pool.query(
       `
       SELECT requester_id AS user_id
@@ -95,7 +106,7 @@ async function listRecipientIds(req, res, next) {
       UNION
       SELECT $1::uuid AS user_id
       `,
-      [req.params.userId]
+      [targetUserId]
     );
     res.json({ success: true, data: result.rows.map((row) => row.user_id) });
   } catch (error) {
