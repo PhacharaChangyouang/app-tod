@@ -31,6 +31,7 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
+  const [alertSound, setAlertSound] = useState(true);
 
   useEffect(() => {
     const session = getSession();
@@ -42,6 +43,7 @@ export default function ProfilePage() {
     setRole(initial.role || 'elderly');
     setPhone(initial.phone || '');
     setTheme(localStorage.getItem('aha_theme') || 'green');
+    setAlertSound(localStorage.getItem('aha_alert_sound') !== 'false');
     setAvatar(localStorage.getItem(`aha_avatar_${initial.id}`) || '');
     document.documentElement.dataset.ahaTheme = localStorage.getItem('aha_theme') || 'green';
 
@@ -172,6 +174,12 @@ export default function ProfilePage() {
           <div className="aha-theme-grid">{THEMES.map((item) => <button key={item.key} type="button" className={`aha-theme-option ${theme === item.key ? 'active' : ''}`} onClick={() => selectTheme(item.key)}><span style={{ background: item.color }} />{item.name}{theme === item.key && <b>✓</b>}</button>)}</div>
         </section>
 
+
+        <section className="aha-profile-section">
+          <div className="aha-profile-section-heading"><div><h2>เสียงแจ้งเตือน</h2><p>เลือกว่าจะให้ระบบเล่นเสียงเมื่อมีการแจ้งเตือนภายใน AHA</p></div></div>
+          <button type="button" className={`aha-profile-sound-toggle ${alertSound ? 'active' : ''}`} aria-pressed={alertSound} onClick={() => { const next=!alertSound; setAlertSound(next); localStorage.setItem('aha_alert_sound', String(next)); setMessage(next ? 'เปิดเสียงแจ้งเตือนแล้ว' : 'ปิดเสียงแจ้งเตือนแล้ว'); setError(''); }}><span><AhaIcon name={alertSound ? 'bell' : 'bell'} size={20} /></span><strong>{alertSound ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'}</strong><i aria-hidden="true"><b /></i></button>
+        </section>
+
         <section className="aha-profile-section">
           <div className="aha-profile-section-heading"><div><h2>เปลี่ยนเบอร์โทรศัพท์</h2><p>ต้องยืนยัน OTP ไปยังเบอร์ใหม่</p></div></div>
           <div className="aha-profile-fields single"><label>เบอร์โทรศัพท์ใหม่<input value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" placeholder="0XXXXXXXXX" /></label></div>
@@ -198,6 +206,7 @@ export default function ProfilePage() {
         .aha-profile-identity,.aha-profile-section,.aha-profile-account{background:#fff;border:1px solid #dbeae3;border-radius:22px;box-shadow:0 10px 28px rgba(35,95,70,.06)}
         .aha-profile-identity{padding:22px;display:flex;align-items:center;gap:18px}.aha-profile-avatar-wrap{flex:0 0 auto}.aha-profile-avatar{width:92px;height:92px;border-radius:26px;border:0;background:linear-gradient(145deg,#2f9b68,#58b989);color:#fff;display:grid;place-items:center;font-size:38px;font-weight:900;position:relative;padding:0;overflow:hidden}.aha-profile-avatar img{width:100%;height:100%;object-fit:cover}.aha-profile-avatar i{position:absolute;right:4px;bottom:4px;width:29px;height:29px;border-radius:10px;background:#fff;color:#2f9b68;display:grid;place-items:center;font-style:normal;box-shadow:0 3px 10px rgba(0,0,0,.12)}
         .aha-profile-identity-copy h1{font-size:28px;margin:0 0 5px}.aha-profile-identity-copy p{margin:0;color:#71877e;font-size:15px}.aha-profile-identity-copy>div{display:flex;gap:8px;margin-top:10px}.aha-profile-identity-copy button{border:0;background:#edf8f2;color:#287c4e;border-radius:10px;padding:8px 11px;font-weight:800}
+        .aha-profile-sound-toggle{width:100%;min-height:58px;border:1px solid #d9e5e0;background:#f8faf9;border-radius:15px;padding:10px 12px;display:flex;align-items:center;gap:10px;color:#536a61}.aha-profile-sound-toggle>span{width:38px;height:38px;border-radius:11px;background:#edf3f0;display:grid;place-items:center}.aha-profile-sound-toggle strong{flex:1;text-align:left}.aha-profile-sound-toggle>i{width:46px;height:26px;border-radius:99px;background:#cbd5d1;padding:3px;display:flex;align-items:center}.aha-profile-sound-toggle>i b{width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:transform .18s ease}.aha-profile-sound-toggle.active{border-color:#bcd9cd;color:#256b50;background:#f2f8f5}.aha-profile-sound-toggle.active>i{background:#3b8d6b}.aha-profile-sound-toggle.active>i b{transform:translateX(20px)}
         .aha-profile-alert{padding:13px 16px;border-radius:14px;font-weight:800}.aha-profile-alert.success{background:#edf9f2;color:#287c4e;border:1px solid #ccebd8}.aha-profile-alert.error{background:#fff1f1;color:#b82d2a;border:1px solid #ffd1cf}
         .aha-profile-section{padding:22px}.aha-profile-section-heading{margin-bottom:17px}.aha-profile-section-heading h2{margin:0;font-size:21px}.aha-profile-section-heading p{margin:5px 0 0;color:#789087;font-size:14px;line-height:1.55}
         .aha-profile-fields,.aha-profile-pin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.aha-profile-fields.single{grid-template-columns:minmax(0,420px)}.aha-profile-pin-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:680px}
