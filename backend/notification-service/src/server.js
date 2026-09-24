@@ -276,6 +276,63 @@ app.delete('/api/push/subscribe', authenticate, async (req, res) => {
 });
 
 /* --------------------------------------------------------------------------
+ * SUPPORT CONTACT (Resend)
+ * -------------------------------------------------------------------------- */
+
+function escapeSupportHtml(value) {
+  return String(value || '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;',
+  }[char]));
+}
+
+app.post('/api/support/contact', authenticate, async (req, res) => {
+  const name = String(req.body?.name || '').trim().slice(0, 100);
+  const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
+  const issue = String(req.body?.issue || '').trim().slice(0, 4000);
+  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!name || !emailPattern.test(email) || issue.length < 5) {
+    return res.status(400).json({ success: false, message: 'กรุณากรอกชื่อ อีเมล และรายละเอียดปัญหาให้ครบถ้วน' });
+  }
+
+  const apiKey = process.env.RESEND_API_KEY;
+  const supportInbox = process.env.SUPPORT_EMAIL;
+  const supportFrom = process.env.SUPPORT_FROM_EMAIL || 'AHA Support <support@ahahealth.online>';
+
+  if (!apiKey || !supportInbox) {
+    return res.status(503).json({ success: false, message: 'ระบบติดต่อผู้ดูแลยังไม่ได้ตั้งค่า' });
+  }
+
+  try {
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: supportFrom,
+        to: [supportInbox],
+        reply_to: email,
+        subject: `[AHA Support] ${name} ติดต่อผู้ดูแลระบบ`,
+        html: `<div style="font-family:Arial,sans-serif;line-height:1.6;color:#172033"><h2>AHA Support</h2><p><strong>ชื่อ:</strong> ${escapeSupportHtml(name)}</p><p><strong>อีเมลตอบกลับ:</strong> ${escapeSupportHtml(email)}</p><p><strong>บัญชี AHA:</strong> ${escapeSupportHtml(req.user?.id || '-')}</p><p><strong>รายละเอียด:</strong></p><div style="white-space:pre-wrap;padding:14px;background:#f5f7fa;border-radius:12px">${escapeSupportHtml(issue)}</div></div>`,
+      }),
+    });
+
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      console.error('Resend support email failed:', response.status, payload);
+      return res.status(502).json({ success: false, message: 'ส่งข้อความถึงผู้ดูแลระบบไม่สำเร็จ กรุณาลองใหม่' });
+    }
+
+    return res.status(201).json({ success: true, message: 'ส่งข้อความถึงผู้ดูแลระบบแล้ว', id: payload.id || null });
+  } catch (error) {
+    console.error('Support contact failed:', error);
+    return res.status(502).json({ success: false, message: 'ส่งข้อความถึงผู้ดูแลระบบไม่สำเร็จ กรุณาลองใหม่' });
+  }
+});
+
+/* --------------------------------------------------------------------------
  * NOTIFICATIONS
  * -------------------------------------------------------------------------- */
 
