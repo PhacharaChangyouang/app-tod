@@ -32,7 +32,7 @@ export default function AhaResponsiveFix() {
       .aha-auth-heading .aha-auth-kicker { color:#2f6bff !important; font-size:12px !important; font-weight:700 !important; letter-spacing:.10em !important; }
       .aha-auth-heading h2 { color:#151c24 !important; font-size:29px !important; line-height:1.25 !important; margin:5px 0 !important; letter-spacing:-.35px !important; }
       .aha-auth-heading p { color:#737d88 !important; font-size:13px !important; line-height:1.55 !important; }
-      .aha-auth-tabs { display:grid !important; grid-template-columns:repeat(3,1fr) !important; background:#f5f7fa !important; border:1px solid #e2e7ed !important; border-radius:12px !important; padding:3px !important; gap:3px !important; margin-bottom:20px !important; }
+      .aha-auth-tabs { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)) !important; background:#f5f7fa !important; border:1px solid #e2e7ed !important; border-radius:12px !important; padding:3px !important; gap:3px !important; margin-bottom:20px !important; }
       .aha-auth-tabs button { min-height:39px !important; border:0 !important; border-radius:9px !important; background:transparent !important; color:#737d88 !important; font-size:12px !important; font-weight:600 !important; }
       .aha-auth-tabs button.active { background:#fff !important; color:#2f6bff !important; box-shadow:0 2px 7px rgba(28,52,77,.08) !important; }
       .aha-auth-field { margin-bottom:14px !important; }
@@ -244,10 +244,18 @@ export default function AhaResponsiveFix() {
       .aha-v3-bottom-grid { gap:var(--aha-home-gap) !important; }
       .aha-v3-action-stack { gap:var(--aha-home-gap) !important; margin-top:var(--aha-home-gap) !important; }
 
-      /* Keep the three Home action arrows comfortably inside their cards. */
-      .aha-v3-action .aha-v3-arrow { flex:0 0 auto; margin-right:6px; }
+      /* Home action cards: equal thirds with balanced inner spacing. */
+      .aha-v3-action-stack { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; align-items:stretch !important; }
+      .aha-v3-action { width:100% !important; min-width:0 !important; height:auto !important; min-height:118px !important; box-sizing:border-box !important; grid-template-columns:50px minmax(0,1fr) 36px !important; gap:10px !important; padding:14px 16px !important; }
+      .aha-v3-action .aha-v3-arrow { width:34px !important; height:34px !important; margin:0 !important; justify-self:end !important; align-self:center !important; }
+      html[data-aha-appearance="dark"] .aha-v3-clock { background:#f4f6f8 !important; color:#111 !important; border:1px solid #fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-icon { background:#f4f6f8 !important; color:#111 !important; border-color:#fff !important; }
       @media (max-width:760px) {
-        .aha-v3-action .aha-v3-arrow { margin-right:0 !important; margin-bottom:6px !important; }
+        .aha-v3-action-stack { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:10px !important; }
+        .aha-v3-action { min-height:150px !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; padding:14px 10px 12px !important; text-align:center !important; }
+        .aha-v3-action .aha-v3-action-icon { flex:0 0 auto !important; }
+        .aha-v3-action strong { width:100% !important; min-width:0 !important; font-size:clamp(13px,3.8vw,17px) !important; line-height:1.25 !important; overflow-wrap:anywhere !important; }
+        .aha-v3-action .aha-v3-arrow { flex:0 0 34px !important; align-self:center !important; margin:0 !important; }
       }
 
       /* ---------- MOBILE ---------- */
