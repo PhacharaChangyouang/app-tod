@@ -76,29 +76,59 @@ export default function AhaResponsiveFix() {
       .aha-v3-top-actions > button:nth-child(2) { display:grid !important; place-items:center !important; width:44px !important; height:44px !important; padding:0 !important; border:1px solid #d9e2ea !important; background:#fff !important; border-radius:50% !important; cursor:pointer !important; visibility:visible !important; opacity:1 !important; }
       .aha-v3-top-actions > button:nth-child(2) .aha-v3-user-avatar { display:grid !important; place-items:center !important; width:34px !important; height:34px !important; border-radius:50% !important; background:#2f6bff !important; color:#fff !important; font-weight:700 !important; }
 
-      /* ---------- GLOBAL APPEARANCE ---------- */
-      html[data-aha-appearance="dark"] body,
-      html[data-aha-appearance="dark"] .aha-v3-page,
-      html[data-aha-appearance="dark"] .aha-page { background:#0f1013 !important; color:#fff !important; }
-      html[data-aha-appearance="dark"] .aha-v3-main,
-      html[data-aha-appearance="dark"] .aha-v3-content { color:#fff !important; }
+      /* ---------- AHA DESIGN SYSTEM / APPEARANCE ---------- */
+      :root {
+        --aha-bg:#f7f7f5;
+        --aha-surface:#ffffff;
+        --aha-surface-soft:#f1f2f4;
+        --aha-text:#111111;
+        --aha-text-secondary:#62666d;
+        --aha-border:#e2e3e6;
+        --aha-primary:#2f6bff;
+        --aha-success:#16856f;
+        --aha-warning:#b66b00;
+        --aha-danger:#c8323e;
+        --aha-radius:20px;
+        --aha-shadow:0 7px 24px rgba(15,23,42,.055);
+        color-scheme:light;
+      }
+      html[data-aha-appearance="dark"] {
+        --aha-bg:#000000;
+        --aha-surface:#171719;
+        --aha-surface-soft:#242427;
+        --aha-text:#ffffff;
+        --aha-text-secondary:#b8b8bd;
+        --aha-border:#343438;
+        --aha-primary:#6f96ff;
+        --aha-success:#54c8aa;
+        --aha-warning:#ffbd59;
+        --aha-danger:#ff6670;
+        --aha-shadow:none;
+        color-scheme:dark;
+      }
+      html[data-aha-appearance="light"] { color-scheme:light; }
+      body { background:var(--aha-bg); color:var(--aha-text); }
+      .aha-v3-page,.aha-page { background:var(--aha-bg) !important; color:var(--aha-text) !important; }
+      .aha-v3-main,.aha-v3-content { color:var(--aha-text) !important; }
+      .aha-v3-card,.aha-v3-today-card,.aha-v3-topbar,.aha-shell,.card,.panel {
+        background:var(--aha-surface) !important;
+        border-color:var(--aha-border) !important;
+        color:var(--aha-text) !important;
+      }
       html[data-aha-appearance="dark"] .aha-v3-card,
       html[data-aha-appearance="dark"] .aha-v3-today-card,
-      html[data-aha-appearance="dark"] .aha-v3-topbar,
       html[data-aha-appearance="dark"] .aha-shell,
       html[data-aha-appearance="dark"] .card,
-      html[data-aha-appearance="dark"] .panel { background:#181a1f !important; border-color:#34363d !important; color:#fff !important; }
-      html[data-aha-appearance="dark"] h1,
-      html[data-aha-appearance="dark"] h2,
-      html[data-aha-appearance="dark"] h3,
-      html[data-aha-appearance="dark"] h4,
-      html[data-aha-appearance="dark"] label,
-      html[data-aha-appearance="dark"] strong { color:#fff !important; }
+      html[data-aha-appearance="dark"] .panel { box-shadow:none !important; }
       html[data-aha-appearance="dark"] input,
       html[data-aha-appearance="dark"] select,
-      html[data-aha-appearance="dark"] textarea { background:#101216 !important; border-color:#3a3d45 !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] textarea {
+        background:var(--aha-surface-soft) !important;
+        border-color:var(--aha-border) !important;
+        color:var(--aha-text) !important;
+      }
       html[data-aha-appearance="dark"] input::placeholder,
-      html[data-aha-appearance="dark"] textarea::placeholder { color:#a7a7a7 !important; }
+      html[data-aha-appearance="dark"] textarea::placeholder { color:var(--aha-text-secondary) !important; }
 
       /* ---------- MOBILE ---------- */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility:visible !important; opacity:1 !important; }
