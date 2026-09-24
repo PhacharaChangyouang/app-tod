@@ -402,7 +402,7 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
   }
 
   try {
-    let recipientIds = [req.user.id];
+    let recipientIds = [];
     try {
       const recipientsResponse = await fetch(
         `${authUrl.replace(/\/$/, '')}/family/internal/${req.user.id}/recipients`,
@@ -411,20 +411,26 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
       if (recipientsResponse.ok) {
         const recipientsPayload = await recipientsResponse.json();
         if (Array.isArray(recipientsPayload.data) && recipientsPayload.data.length) {
-          recipientIds = [...new Set(recipientsPayload.data)];
+          recipientIds = [...new Set(recipientsPayload.data)]
+            .filter((userId) => String(userId) !== String(req.user.id));
         }
       } else {
         const lookupBody = await recipientsResponse.text();
         console.error('Emergency recipient lookup failed:', recipientsResponse.status, lookupBody);
-        // Do not block SOS for the sender when the family lookup service is temporarily unavailable.
-        // The sender still receives an emergency record; linked recipients will resume once the
-        // Auth service integration is healthy.
-        console.error('Emergency degraded mode: creating sender notification only');
+        // Never notify the sender as a substitute for the intended linked recipient.
+        console.error('Emergency recipient lookup unavailable; no cross-user notification created');
       }
     } catch (lookupError) {
       console.error('Emergency recipient lookup error:', lookupError);
-      // SOS is safety-critical: never turn a family-service outage into a failed emergency action.
-      console.error('Emergency degraded mode: creating sender notification only');
+      console.error('Emergency recipient lookup unavailable; no cross-user notification created');
+    }
+
+    if (!recipientIds.length) {
+      return res.status(424).json({
+        success: false,
+        code: 'NO_LINKED_EMERGENCY_RECIPIENT',
+        message: 'ไม่พบผู้ใช้ที่เชื่อมต่อสำหรับรับแจ้งเหตุฉุกเฉิน',
+      });
     }
 
     const locationText = latitude != null && longitude != null
@@ -442,7 +448,7 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
         RETURNING *
       `, [
         userId,
-        String(userId) === String(req.user.id) ? 'ส่งคำขอฉุกเฉินแล้ว' : 'แจ้งเหตุฉุกเฉินจากผู้ใช้ที่เชื่อมต่อ',
+        'แจ้งเหตุฉุกเฉินจากผู้ใช้ที่เชื่อมต่อ',
         `${message}${locationText}`,
         `emergency:${req.user.id}:${userId}:${Date.now()}`,
       ]);
