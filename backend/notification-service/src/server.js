@@ -417,19 +417,26 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
       } else {
         const lookupBody = await recipientsResponse.text();
         console.error('Emergency recipient lookup failed:', recipientsResponse.status, lookupBody);
-        // Never notify the sender as a substitute for the intended linked recipient.
-        console.error('Emergency recipient lookup unavailable; no cross-user notification created');
+        return res.status(502).json({
+          success: false,
+          code: 'EMERGENCY_RECIPIENT_LOOKUP_FAILED',
+          message: 'ระบบเชื่อมต่อผู้ดูแลขัดข้อง กรุณาลองใหม่อีกครั้ง',
+        });
       }
     } catch (lookupError) {
       console.error('Emergency recipient lookup error:', lookupError);
-      console.error('Emergency recipient lookup unavailable; no cross-user notification created');
+      return res.status(502).json({
+        success: false,
+        code: 'EMERGENCY_RECIPIENT_LOOKUP_FAILED',
+        message: 'ระบบเชื่อมต่อผู้ดูแลขัดข้อง กรุณาลองใหม่อีกครั้ง',
+      });
     }
 
     if (!recipientIds.length) {
-      return res.status(424).json({
+      return res.status(404).json({
         success: false,
-        code: 'NO_LINKED_EMERGENCY_RECIPIENT',
-        message: 'ไม่พบผู้ใช้ที่เชื่อมต่อสำหรับรับแจ้งเหตุฉุกเฉิน',
+        code: 'NO_ACCEPTED_FAMILY_CONNECTION',
+        message: 'บัญชีนี้ยังไม่มีผู้ใช้ฝั่งตรงข้ามที่เชื่อมต่อและยืนยันแล้ว',
       });
     }
 
