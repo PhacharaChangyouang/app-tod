@@ -432,13 +432,14 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
       const result = await pool.query(`
         INSERT INTO notifications
           (user_id, type, title, message, dedupe_key, delivered_at)
-        VALUES ($1, 'emergency', 'แจ้งเหตุฉุกเฉิน', $2, $3, now())
+        VALUES ($1, 'emergency', $2, $3, $4, now())
         ON CONFLICT (dedupe_key) DO NOTHING
         RETURNING *
       `, [
         userId,
+        String(userId) === String(req.user.id) ? 'ส่งคำขอฉุกเฉินแล้ว' : 'แจ้งเหตุฉุกเฉินจากผู้ใช้ที่เชื่อมต่อ',
         `${message}${locationText}`,
-        `emergency:${req.user.id}:${userId}:${new Date().toISOString().slice(0,16)}`,
+        `emergency:${req.user.id}:${userId}:${Date.now()}`,
       ]);
 
       if (result.rowCount) {
