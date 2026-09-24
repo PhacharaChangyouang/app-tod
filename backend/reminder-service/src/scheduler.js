@@ -47,7 +47,11 @@ async function getRecipients(reminder) {
   const response = await fetch(`${authUrl.replace(/\/$/, '')}/family/internal/${reminder.user_id}/recipients`, { headers: { 'x-internal-api-key': internalKey } });
   if (!response.ok) throw new Error(`Recipient lookup failed: ${response.status}`);
   const payload = await response.json();
-  return Array.isArray(payload.data) ? [...new Set(payload.data)] : [reminder.user_id];
+  // Medicine reminders must always notify the reminder owner (elderly).
+  // Family lookup now intentionally returns only linked counterparts, so add
+  // the owner explicitly and then de-duplicate recipients.
+  const linkedRecipients = Array.isArray(payload.data) ? payload.data : [];
+  return [...new Set([reminder.user_id, ...linkedRecipients])];
 }
 
 async function notifyRecipients(reminder, triggerKey, { late = false } = {}) {
