@@ -59,6 +59,16 @@ function CaregiverCalendar() {
 
 export default function AhaCaregiverEnhancements() {
   const pathname = usePathname();
+
+  useEffect(() => {
+    if (pathname !== '/profile') return;
+    if (!localStorage.getItem('aha_profile_theme_v2')) {
+      localStorage.setItem('aha_theme', 'blue');
+      document.documentElement.dataset.ahaTheme = 'blue';
+      localStorage.setItem('aha_profile_theme_v2', '1');
+    }
+  }, [pathname]);
+
   return <>
     <AvatarSync />
     {pathname === '/family' && <CaregiverCalendar />}
@@ -92,6 +102,8 @@ export default function AhaCaregiverEnhancements() {
       .aha-theme-option.active { border-color:#2f6bff !important; background:#eef4ff !important; color:#245be0 !important; }
       .aha-theme-option span { box-shadow:0 0 0 2px #fff,0 0 0 3px #dbe6f7 !important; }
       .aha-v3-top-actions > button:nth-child(2) .aha-v3-user-avatar { background-color:#2f6bff !important; background-size:cover !important; background-position:center !important; background-repeat:no-repeat !important; }
+      @media (min-width:1051px) { .aha-care-calendar { width:calc(100% - 260px); margin-left:232px; margin-right:28px; } }
+      @media (min-width:761px) and (max-width:1050px) { .aha-care-calendar { width:calc(100% - 220px); margin-left:200px; margin-right:20px; } }
       @media (max-width:760px) { .aha-care-calendar { width:calc(100% - 20px); padding:16px; border-radius:20px; }.aha-care-calendar-head h2{font-size:19px}.aha-care-calendar-head p{font-size:11px}.aha-care-calendar-grid span{min-height:34px;font-size:12px}.aha-care-calendar-month{margin-top:14px} }
     `}</style>
   </>;
