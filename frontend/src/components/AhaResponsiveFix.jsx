@@ -3,7 +3,8 @@
 export default function AhaResponsiveFix() {
   return (
     <style jsx global>{`
-      /* Final responsive layer. This does not change reminder/notification logic. */
+      /* Final responsive layer. Visual/navigation only; reminder, notification,
+         authentication, API and database logic are untouched. */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility: visible !important; opacity: 1 !important; }
 
       /* Login: keep forgot-password separate and put the signup prompt underneath as normal text. */
@@ -12,8 +13,28 @@ export default function AhaResponsiveFix() {
       .aha-auth-row .aha-auth-link:last-child { align-self:center !important; color:#71858c !important; background:transparent !important; border:0 !important; box-shadow:none !important; padding:2px 0 !important; font-weight:500 !important; }
       .aha-auth-row .aha-auth-link:last-child strong { color:#2085b1 !important; font-weight:900 !important; }
 
+      /* Home hero: keep the elderly photo's visual size, but make the image itself
+         fill the complete height of the hero card without stretching the person. */
+      .aha-v3-hero-photo {
+        align-self: stretch !important;
+        min-height: 100% !important;
+        height: auto !important;
+        overflow: hidden !important;
+        position: relative !important;
+      }
+      .aha-v3-hero-photo img {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        object-fit: cover !important;
+        object-position: center center !important;
+      }
+      .aha-v3-hero-photo .aha-v3-hero-note { position: absolute !important; }
+
       @media (max-width: 760px) {
-        /* Use the same navigation DOM on desktop and mobile. Mobile gets six compact tabs including Profile. */
+        /* Exactly five bottom navigation destinations:
+           Home / Medicine / Talk to AHA / Notifications / Emergency. */
         .aha-v3-sidebar[data-aha-navigation="true"] {
           display: flex !important;
           flex-direction: column !important;
@@ -23,7 +44,7 @@ export default function AhaResponsiveFix() {
         }
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links {
           display: grid !important;
-          grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+          grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
           width: 100% !important;
         }
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button {
@@ -41,12 +62,18 @@ export default function AhaResponsiveFix() {
           text-overflow: ellipsis !important;
           white-space: nowrap !important;
         }
-        .footer-nav,
-        .home-footer-nav,
-        .aha-v3-mobile-nav,
-        .aha-mobile-nav { display: none !important; }
+        /* Profile is not a bottom-tab. It remains available from the top-right
+           account control on Home and other authenticated pages. */
         .aha-v3-page,
         .aha-page { padding-bottom: 94px !important; }
+
+        .aha-v3-hero-photo {
+          min-height: 100% !important;
+        }
+        .aha-v3-hero-photo img {
+          height: 100% !important;
+          object-fit: cover !important;
+        }
       }
 
       @media (max-width: 390px) {
