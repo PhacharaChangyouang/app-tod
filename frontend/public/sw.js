@@ -58,7 +58,7 @@ self.addEventListener('push', (event) => {
 
     // Important care and emergency events should still create an OS notification
     // even while AHA is open, so caregivers do not miss them.
-    const forceSystemNotification = payload.type === 'caregiver_medicine_status' || payload.type === 'emergency';
+    const forceSystemNotification = payload.type === 'medicine_reminder' || payload.type === 'caregiver_medicine_status' || payload.type === 'emergency';
     if (hasVisibleClient && !forceSystemNotification) return;
 
     const actions = Array.isArray(payload.actions) && payload.actions.length
