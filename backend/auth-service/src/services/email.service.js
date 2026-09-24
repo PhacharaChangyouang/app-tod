@@ -13,7 +13,6 @@ async function sendPasswordResetEmail({ to, name, token }) {
 
   const resetUrl = `${FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
   const greeting = name ? `คุณ${escapeHtml(name)}` : 'ผู้ใช้งาน AHA';
-  const logoUrl = `${FRONTEND_URL}/elderly-hero.svg`;
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
@@ -28,7 +27,7 @@ async function sendPasswordResetEmail({ to, name, token }) {
 <tr><td style="background:#244fcb;padding:24px 28px;color:#ffffff">
 <table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td style="vertical-align:middle">
 <div style="font-size:28px;font-weight:900;color:#ffffff">AHA</div><div style="font-size:12px;color:#ffffff;margin-top:3px">AI Health Assistant</div>
-</td><td align="right"><img src="${logoUrl}" width="78" height="78" alt="AHA" style="display:block;max-width:78px;border:0;border-radius:16px;background:#ffffff"></td></tr></table>
+</td><td align="right"><div style="display:inline-block;border:1px solid rgba(255,255,255,.65);border-radius:999px;padding:8px 12px;font-size:11px;font-weight:800;color:#ffffff">SECURE ACCOUNT</div></td></tr></table>
 </td></tr>
 <tr><td style="padding:30px 28px;color:#111111">
 <div style="font-size:12px;font-weight:800;letter-spacing:.08em;color:#111111">ACCOUNT SECURITY</div>
