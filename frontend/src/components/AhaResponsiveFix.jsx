@@ -130,6 +130,64 @@ export default function AhaResponsiveFix() {
       html[data-aha-appearance="dark"] input::placeholder,
       html[data-aha-appearance="dark"] textarea::placeholder { color:var(--aha-text-secondary) !important; }
 
+      /* ---------- DARK MODE: HOME + PRIMARY NAV ----------
+         Keep semantic accents, but restore readable hierarchy on dark surfaces. */
+      html[data-aha-appearance="dark"] .aha-v3-topbar {
+        background:#111113 !important; border-color:#303034 !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-brand strong,
+      html[data-aha-appearance="dark"] .aha-v3-card-title,
+      html[data-aha-appearance="dark"] .aha-v3-section-title h2,
+      html[data-aha-appearance="dark"] .aha-v3-next-inner strong,
+      html[data-aha-appearance="dark"] .aha-v3-next-inner span,
+      html[data-aha-appearance="dark"] .aha-v3-mini-row strong,
+      html[data-aha-appearance="dark"] .aha-v3-med-row strong,
+      html[data-aha-appearance="dark"] .aha-v3-med-row time {
+        color:#fff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-brand small,
+      html[data-aha-appearance="dark"] .aha-v3-next-inner small,
+      html[data-aha-appearance="dark"] .aha-v3-mini-row time,
+      html[data-aha-appearance="dark"] .aha-v3-med-row small,
+      html[data-aha-appearance="dark"] .aha-v3-empty,
+      html[data-aha-appearance="dark"] .aha-v3-empty-mini {
+        color:#b8b8bd !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-ring:after { background:#171719 !important; }
+      html[data-aha-appearance="dark"] .aha-v3-ring b { color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-ring span { color:#b8b8bd !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-card {
+        background:#171719 !important; border-color:#343438 !important; color:#fff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-care-card h2 { color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-card p { color:#b8b8bd !important; }
+      html[data-aha-appearance="dark"] .aha-v3-wellness {
+        background:#171719 !important; border:1px solid #343438 !important; color:#fff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-wellness h2 { color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-wellness p { color:#b8b8bd !important; }
+      html[data-aha-appearance="dark"] .aha-v3-primary-button { background:#2f6bff !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-take-button { background:#14372f !important; border-color:#285c50 !important; color:#8de0ca !important; }
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] {
+        background:#111113 !important; border-color:#303034 !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button {
+        color:#b8b8bd !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.active {
+        color:#fff !important; background:#242427 !important;
+      }
+      @media (max-width:760px) {
+        .aha-v3-sidebar[data-aha-navigation="true"] {
+          background:var(--aha-surface,#fff) !important;
+          border:1px solid var(--aha-border,#e2e3e6) !important;
+          box-shadow:0 8px 28px rgba(0,0,0,.12) !important;
+        }
+        html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] {
+          background:#171719 !important; border-color:#343438 !important; box-shadow:none !important;
+        }
+      }
+
       /* ---------- MOBILE ---------- */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility:visible !important; opacity:1 !important; }
       @media (max-width:760px) {
