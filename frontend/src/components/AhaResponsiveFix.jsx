@@ -46,7 +46,7 @@ export default function AhaResponsiveFix() {
       .aha-auth-row { display:flex !important; flex-direction:row !important; justify-content:flex-end !important; align-items:center !important; margin:1px 0 18px !important; }
       .aha-auth-row .aha-auth-link { color:#000 !important; background:transparent !important; border:0 !important; box-shadow:none !important; padding:2px 0 !important; font-size:13px !important; font-weight:500 !important; text-decoration:none !important; }
       .aha-auth-row .aha-auth-link:first-child { color:#2f6bff !important; font-weight:600 !important; }
-      .aha-auth-row .aha-auth-link:last-child { color:#000 !important; cursor:default !important; pointer-events:none !important; }
+      .aha-auth-row .aha-auth-link:last-child { color:#000 !important; cursor:pointer !important; pointer-events:auto !important; }
       .aha-auth-row .aha-auth-link:last-child strong { color:#2f6bff !important; font-weight:600 !important; }
 
       /* Only password-login forms contain .aha-auth-row. Reflow that form
