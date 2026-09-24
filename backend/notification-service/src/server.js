@@ -402,19 +402,25 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
   }
 
   try {
-    const recipientsResponse = await fetch(
-      `${authUrl.replace(/\/$/, '')}/family/internal/${req.user.id}/recipients`,
-      { headers: { 'x-internal-api-key': internalKey } }
-    );
-
-    if (!recipientsResponse.ok) {
+    let recipientIds = [req.user.id];
+    try {
+      const recipientsResponse = await fetch(
+        `${authUrl.replace(/\/$/, '')}/family/internal/${req.user.id}/recipients`,
+        { headers: { 'x-internal-api-key': internalKey } }
+      );
+      if (recipientsResponse.ok) {
+        const recipientsPayload = await recipientsResponse.json();
+        if (Array.isArray(recipientsPayload.data) && recipientsPayload.data.length) {
+          recipientIds = [...new Set(recipientsPayload.data)];
+        }
+      } else {
+        console.error('Emergency recipient lookup failed:', recipientsResponse.status, await recipientsResponse.text());
+        return res.status(502).json({ success: false, message: 'Unable to load emergency recipients' });
+      }
+    } catch (lookupError) {
+      console.error('Emergency recipient lookup error:', lookupError);
       return res.status(502).json({ success: false, message: 'Unable to load emergency recipients' });
     }
-
-    const recipientsPayload = await recipientsResponse.json();
-    const recipientIds = Array.isArray(recipientsPayload.data)
-      ? [...new Set(recipientsPayload.data)]
-      : [req.user.id];
 
     const locationText = latitude != null && longitude != null
       ? ` ตำแหน่ง: https://www.google.com/maps?q=${latitude},${longitude}${accuracy ? ` (คลาดเคลื่อนประมาณ ${Math.round(accuracy)} ม.)` : ''}`
