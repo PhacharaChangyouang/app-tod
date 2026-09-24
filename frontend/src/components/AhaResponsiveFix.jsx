@@ -76,6 +76,30 @@ export default function AhaResponsiveFix() {
       .aha-v3-top-actions > button:nth-child(2) { display:grid !important; place-items:center !important; width:44px !important; height:44px !important; padding:0 !important; border:1px solid #d9e2ea !important; background:#fff !important; border-radius:50% !important; cursor:pointer !important; visibility:visible !important; opacity:1 !important; }
       .aha-v3-top-actions > button:nth-child(2) .aha-v3-user-avatar { display:grid !important; place-items:center !important; width:34px !important; height:34px !important; border-radius:50% !important; background:#2f6bff !important; color:#fff !important; font-weight:700 !important; }
 
+      /* ---------- GLOBAL APPEARANCE ---------- */
+      html[data-aha-appearance="dark"] body,
+      html[data-aha-appearance="dark"] .aha-v3-page,
+      html[data-aha-appearance="dark"] .aha-page { background:#0f1013 !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-main,
+      html[data-aha-appearance="dark"] .aha-v3-content { color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-v3-card,
+      html[data-aha-appearance="dark"] .aha-v3-today-card,
+      html[data-aha-appearance="dark"] .aha-v3-topbar,
+      html[data-aha-appearance="dark"] .aha-shell,
+      html[data-aha-appearance="dark"] .card,
+      html[data-aha-appearance="dark"] .panel { background:#181a1f !important; border-color:#34363d !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] h1,
+      html[data-aha-appearance="dark"] h2,
+      html[data-aha-appearance="dark"] h3,
+      html[data-aha-appearance="dark"] h4,
+      html[data-aha-appearance="dark"] label,
+      html[data-aha-appearance="dark"] strong { color:#fff !important; }
+      html[data-aha-appearance="dark"] input,
+      html[data-aha-appearance="dark"] select,
+      html[data-aha-appearance="dark"] textarea { background:#101216 !important; border-color:#3a3d45 !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] input::placeholder,
+      html[data-aha-appearance="dark"] textarea::placeholder { color:#a7a7a7 !important; }
+
       /* ---------- MOBILE ---------- */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility:visible !important; opacity:1 !important; }
       @media (max-width:760px) {
