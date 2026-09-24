@@ -43,6 +43,7 @@ export default function MedicationNotificationManager() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState('default');
+  const [showPushHint,setShowPushHint]=useState(false);
   const handledActions = useRef(new Set());
   const bellDrag = useRef({ active:false, moved:false, pointerId:null, dx:0, dy:0 });
   const [bellPosition,setBellPosition]=useState(null);
@@ -195,6 +196,8 @@ export default function MedicationNotificationManager() {
 
   const togglePush = async () => {
     if (bellDrag.current.moved) return;
+    setShowPushHint(true);
+    window.setTimeout(()=>setShowPushHint(false),5000);
     if (!authenticated) return;
     setBusy(true);
     setError('');
@@ -244,7 +247,7 @@ export default function MedicationNotificationManager() {
         <span className="aha-notification-status" aria-hidden="true" />
       </button>
 
-      {!pushEnabled && ready && (
+      {showPushHint && !pushEnabled && ready && (
         <div style={{ position: 'fixed', right: 14, top: 'max(132px, env(safe-area-inset-top) + 118px)', zIndex: 10000, width: 'min(330px, calc(100vw - 28px))', background: '#fff', borderRadius: 16, padding: '13px 15px', boxShadow: '0 10px 35px rgba(0,0,0,.16)', border: '1px solid #dbe5ee', color: '#0f172a', fontSize: 15 }}>
           <strong>เปิดการแจ้งเตือนยา</strong>
           <div style={{ marginTop: 4, color: '#475569', lineHeight: 1.45 }}>
