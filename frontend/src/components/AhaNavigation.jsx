@@ -23,13 +23,14 @@ export default function AhaNavigation() {
 
   if (!pathname || pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) return null;
 
+  // Keep the primary navigation at exactly five destinations.
+  // Profile is intentionally handled from the top-right account control.
   const items = [
     ['home', 'หน้าหลัก', '/home'],
     ['pill', 'ยา', '/reminders'],
     ['mic', 'พูดกับ AHA', '/voice'],
-    ['bell', 'แจ้งเตือน', '/notifications'],
+    ['bell', 'การแจ้งเตือน', '/notifications'],
     ['warning', 'ฉุกเฉิน', '/emergency'],
-    ['activity', 'โปรไฟล์', '/profile'],
   ];
 
   return (
