@@ -43,9 +43,9 @@ self.addEventListener('push', (event) => {
     const clients = await getWindowClients();
     const hasVisibleClient = clients.some((client) => client.visibilityState === 'visible');
 
-    if (payload.type === 'medicine_reminder') {
+    if (payload.type === 'medicine_reminder' || payload.type === 'caregiver_medicine_status' || payload.type === 'emergency') {
       await postToClients({
-        type: 'AHA_MEDICINE_REMINDER',
+        type: payload.type === 'medicine_reminder' ? 'AHA_MEDICINE_REMINDER' : 'AHA_GENERAL_NOTIFICATION',
         notification: {
           id: payload.notificationId,
           related_id: payload.relatedId,
@@ -56,7 +56,10 @@ self.addEventListener('push', (event) => {
       });
     }
 
-    if (hasVisibleClient) return;
+    // Important care and emergency events should still create an OS notification
+    // even while AHA is open, so caregivers do not miss them.
+    const forceSystemNotification = payload.type === 'caregiver_medicine_status' || payload.type === 'emergency';
+    if (hasVisibleClient && !forceSystemNotification) return;
 
     const actions = Array.isArray(payload.actions) && payload.actions.length
       ? payload.actions
