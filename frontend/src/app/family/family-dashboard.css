@@ -19,3 +19,30 @@
 /* Fluid Android/mobile layout: supports narrow and wide phone screens without fixed device assumptions. */
 @media(max-width:760px){.aha-family-page{overflow-x:hidden}.aha-family-shell{width:min(100% - 20px,1120px);padding-left:max(0px,env(safe-area-inset-left));padding-right:max(0px,env(safe-area-inset-right))}.caregiver-focus,.family-chart-card,.medication-section,.medication-manage-bar,.med-editor,.aha-family-connect-card,.aha-family-section{min-width:0;max-width:100%}.elderly-selector{width:100%;max-width:100%}.elderly-selector button{min-width:min(78vw,210px);max-width:88vw}.caregiver-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.caregiver-stats div{min-width:0}.aha-family-header h1{font-size:clamp(21px,6.4vw,25px)}.caregiver-focus-head h2{font-size:clamp(19px,5.6vw,22px)}.medication-row,.aha-family-person-card{max-width:100%}.aha-family-connect-form input{width:100%}}
 @media(max-width:380px){.aha-family-shell{width:calc(100% - 12px)}.aha-family-header{gap:8px}.aha-family-back{width:40px;height:40px;flex:0 0 40px}.caregiver-stats{gap:6px}.caregiver-stats div{padding:11px 9px}.caregiver-stats strong{font-size:21px}.caregiver-stats span{font-size:10px}.elderly-selector button{min-width:82vw}.aha-family-section,.family-chart-card,.medication-section,.med-editor{padding-left:13px;padding-right:13px}}
+
+
+/* Appearance parity: Family dashboard follows the shared AHA light/dark tokens. */
+.aha-family-page{background:var(--aha-bg,#f4f7fb);color:var(--aha-text,#172033)}
+.aha-family-header h1,.caregiver-focus-head h2,.elderly-overview-title h3,.section-heading h3,.medication-manage-bar h3,.aha-family-card-copy h2,.aha-family-section-title h2,.aha-family-person-main strong{color:var(--aha-text,#172033)}
+.aha-family-header p,.elderly-overview-title p,.section-heading p,.medication-manage-bar p,.aha-family-card-copy p,.aha-family-person-main span,.aha-family-person-main small,.chart-legend,.chart-label,.med-main span{color:var(--aha-text-secondary,#718096)}
+.aha-family-back,.elderly-selector button,.elderly-overview,.family-chart-card,.medication-section,.medication-manage-bar,.med-editor,.aha-family-connect-card,.aha-family-section,.aha-family-person-card,.med-actions button,.cancel-edit{background:var(--aha-surface,#fff);border-color:var(--aha-border,#e1e7ef);color:var(--aha-text,#172033)}
+.caregiver-stats div,.chart-empty,.aha-family-empty{background:var(--aha-surface-soft,#f8fafc);border-color:var(--aha-border,#e5eaf0);color:var(--aha-text-secondary,#718096)}
+.elderly-selector strong,.med-main strong{color:var(--aha-text,#213a50)}
+.elderly-overview-title{border-color:var(--aha-border,#e8edf3)}
+.medication-row{border-color:var(--aha-border,#edf1f5)}
+.editor-grid label{color:var(--aha-text-secondary,#637989)}
+.editor-grid input,.editor-grid select,.aha-family-connect-form input{background:var(--aha-surface-soft,#fff);border-color:var(--aha-border,#dce3ec);color:var(--aha-text,#234257)}
+.aha-family-card-icon,.elderly-avatar,.aha-family-avatar{background:#e8f3ef;color:#2f7d6a}
+html[data-aha-appearance="dark"] .aha-family-card-icon,
+html[data-aha-appearance="dark"] .elderly-avatar,
+html[data-aha-appearance="dark"] .aha-family-avatar{background:#173b33;color:#79d6bc}
+html[data-aha-appearance="dark"] .elderly-selector button.active{background:#172c27;border-color:#3e7668}
+html[data-aha-appearance="dark"] .caregiver-count{background:#173b33;color:#79d6bc}
+html[data-aha-appearance="dark"] .care-status,.med-state.taken,.aha-family-status.connected{background:#173b33;color:#79d6bc}
+html[data-aha-appearance="dark"] .med-state.waiting,.aha-family-status.waiting{background:#3a2c16;color:#ffd080}
+html[data-aha-appearance="dark"] .caregiver-stats .warning{background:#352a18;border-color:#5e4928}
+html[data-aha-appearance="dark"] .chart-grid{stroke:#343438}
+html[data-aha-appearance="dark"] .chart-label{fill:#b8b8bd}
+html[data-aha-appearance="dark"] .chart-dot-taken,html[data-aha-appearance="dark"] .chart-dot-total{stroke:#171719}
+html[data-aha-appearance="dark"] .aha-family-actions .secondary{background:#242427;border-color:#343438;color:#fff}
+html[data-aha-appearance="dark"] .med-actions .danger{background:#351719;color:#ff7b82;border-color:#5f2b30}
