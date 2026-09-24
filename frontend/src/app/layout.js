@@ -3,6 +3,7 @@ import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
 import AhaVisualPolish from '../components/AhaVisualPolish';
 import AhaResponsiveFix from '../components/AhaResponsiveFix';
+import AhaCaregiverEnhancements from '../components/AhaCaregiverEnhancements';
 import FamilyHomeShortcut from '../components/FamilyHomeShortcut';
 
 export const metadata = {
@@ -30,6 +31,7 @@ export default function RootLayout({ children }) {
         <AhaNavigation />
         <AhaVisualPolish />
         <AhaResponsiveFix />
+        <AhaCaregiverEnhancements />
         <FamilyHomeShortcut />
         <MedicationNotificationManager />
       </body>
