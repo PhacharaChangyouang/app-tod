@@ -188,6 +188,62 @@ export default function AhaResponsiveFix() {
         }
       }
 
+      /* ---------- THEME CONTRAST SAFETY ---------- */
+      html[data-aha-appearance="dark"] .aha-page .card,
+      html[data-aha-appearance="dark"] .aha-page .reminder-card,
+      html[data-aha-appearance="dark"] .aha-page .notification-item,
+      html[data-aha-appearance="dark"] .aha-page .timeline-item,
+      html[data-aha-appearance="dark"] .aha-page .empty,
+      html[data-aha-appearance="dark"] .aha-page .location-box,
+      html[data-aha-appearance="dark"] .aha-page .switch-row,
+      html[data-aha-appearance="dark"] .aha-page .modal-card {
+        background:var(--aha-surface) !important; border-color:var(--aha-border) !important; color:var(--aha-text) !important;
+      }
+      html[data-aha-appearance="dark"] .aha-page .muted,
+      html[data-aha-appearance="dark"] .aha-page .small { color:var(--aha-text-secondary) !important; }
+      html[data-aha-appearance="dark"] .aha-page .notification-item.unread { background:#20252a !important; }
+      html[data-aha-appearance="dark"] .aha-page .notification-icon,
+      html[data-aha-appearance="dark"] .aha-page .pill-icon,
+      html[data-aha-appearance="dark"] .aha-page .quick-icon {
+        background:#252b31 !important; color:#8fcfff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-page .tag { background:#16362d !important; color:#7ed8bd !important; }
+      html[data-aha-appearance="dark"] .aha-page .btn-soft { background:#202b34 !important; color:#9bd9ff !important; border-color:#394752 !important; }
+      html[data-aha-appearance="dark"] .aha-emergency-page { color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-emergency-hero { background:#1b1516 !important; border-color:#63353a !important; }
+      html[data-aha-appearance="dark"] .aha-emergency-hero h1 { color:#ff7b82 !important; }
+      html[data-aha-appearance="dark"] .aha-emergency-hero>p { color:#d2b7b9 !important; }
+      html[data-aha-appearance="dark"] .aha-emergency-call { background:#19191b !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-location-card { background:#171d21 !important; color:#fff !important; }
+      html[data-aha-appearance="dark"] .aha-location-card>span,
+      html[data-aha-appearance="dark"] .aha-emergency-call small { color:#b8b8bd !important; }
+
+      /* Emergency is semantic red in every appearance. */
+      .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.danger,
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.danger {
+        color:#e5484d !important;
+      }
+      .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.danger.active,
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.danger.active {
+        background:#fff0f0 !important; color:#c92731 !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button.danger.active {
+        background:#3a171a !important; color:#ff7078 !important;
+      }
+
+      /* Equal rhythm on Home: same spacing used by Profile. */
+      .aha-v3-content { --aha-home-gap:14px; }
+      .aha-v3-content > .aha-v3-hero,
+      .aha-v3-content > .aha-v3-feature-row,
+      .aha-v3-content > .aha-v3-metrics-row,
+      .aha-v3-content > .aha-v3-today-card,
+      .aha-v3-content > .aha-v3-bottom-grid { margin-top:0 !important; margin-bottom:var(--aha-home-gap) !important; }
+      .aha-v3-content > .aha-v3-bottom-grid { margin-bottom:0 !important; }
+      .aha-v3-feature-row,
+      .aha-v3-metrics-row,
+      .aha-v3-bottom-grid { gap:var(--aha-home-gap) !important; }
+      .aha-v3-action-stack { gap:var(--aha-home-gap) !important; margin-top:var(--aha-home-gap) !important; }
+
       /* ---------- MOBILE ---------- */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility:visible !important; opacity:1 !important; }
       @media (max-width:760px) {
