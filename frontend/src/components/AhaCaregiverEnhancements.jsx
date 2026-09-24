@@ -49,7 +49,7 @@ function CaregiverCalendar() {
         <div><span>PLAN YOUR CARE</span><h2>ปฏิทินการดูแล</h2><p>ดูภาพรวมวันสำคัญและวางแผนการดูแลได้ง่ายขึ้น</p></div>
         <div className="aha-care-calendar-badge">📅 <b>{now.getDate()}</b><small>วันนี้</small></div>
       </div>
-      <div className="aha-care-calendar-month"><button type="button" aria-label="เดือนก่อน">‹</button><strong>{month}</strong><button type="button" aria-label="เดือนถัดไป">›</button></div>
+      <div className="aha-care-calendar-month"><strong>{month}</strong><span>วันนี้ · {now.getDate()}</span></div>
       <div className="aha-care-calendar-grid aha-care-week"><b>จ</b><b>อ</b><b>พ</b><b>พฤ</b><b>ศ</b><b>ส</b><b>อา</b></div>
       <div className="aha-care-calendar-grid">{days.map((day, i) => <span key={`${day}-${i}`} className={day === now.getDate() ? 'today' : ''}>{day || ''}</span>)}</div>
       <div className="aha-care-calendar-legend"><span><i className="dot-blue" />วันนี้</span><span><i className="dot-orange" />ติดตามยา</span><span>💙 ดูแลกันทุกวัน</span></div>
@@ -71,9 +71,8 @@ export default function AhaCaregiverEnhancements() {
       .aha-care-calendar-badge { width:58px; height:62px; flex:0 0 58px; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:16px; background:#eaf2ff; color:#2f6bff; }
       .aha-care-calendar-badge b { font-size:20px; line-height:1; }
       .aha-care-calendar-badge small { font-size:9px; color:#6f7e92; margin-top:3px; }
-      .aha-care-calendar-month { display:flex; justify-content:space-between; align-items:center; margin:18px 0 10px; padding:7px 8px; border-radius:14px; background:#f1f6ff; }
-      .aha-care-calendar-month button { width:34px; height:34px; border:0; border-radius:10px; background:#fff; color:#2f6bff; font-size:24px; cursor:pointer; }
-      .aha-care-calendar-month strong { font-size:15px; }
+      .aha-care-calendar-month { display:flex; justify-content:space-between; align-items:center; margin:18px 0 10px; padding:9px 12px; border-radius:14px; background:#f1f6ff; }
+      .aha-care-calendar-month strong { font-size:15px; }.aha-care-calendar-month span{font-size:10px;color:#718096}
       .aha-care-calendar-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
       .aha-care-calendar-grid span,.aha-care-week b { min-height:38px; display:grid; place-items:center; border-radius:11px; font-size:13px; }
       .aha-care-week b { min-height:30px; color:#8794a6; font-size:10px; }
@@ -83,6 +82,7 @@ export default function AhaCaregiverEnhancements() {
       .aha-care-calendar-legend { display:flex; flex-wrap:wrap; gap:12px; margin-top:14px; color:#6d7b8e; font-size:10px; }
       .aha-care-calendar-legend i { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; }
       .dot-blue { background:#2f6bff; }.dot-orange { background:#ffb84d; }
+      button[aria-label*="กลับ"] svg { transform:rotate(180deg) !important; }
       .aha-family-back svg,.aha-profile-icon-button svg,.aha-page-back svg,.aha-back-button svg,.aha-voice-back svg,.aha-emergency-back svg { transform:rotate(180deg) !important; }
       .aha-profile-page { background:#f3f7ff !important; color:#23324a !important; }
       .aha-profile-icon-button,.aha-profile-home-button { border-color:#d8e5fb !important; background:#fff !important; color:#2f6bff !important; }
