@@ -104,14 +104,15 @@ async function listRecipientIds(req, res, next) {
     const targetUserId = req.user?.role === 'system' ? req.params.userId : req.user.id;
     if (!targetUserId) return res.status(400).json({ success: false, message: 'userId is required' });
 
+    // Return only the OTHER accepted family members.
+    // The caller already knows the sender id; including it here caused SOS
+    // notifications to be delivered back to the person who pressed SOS.
     const result = await pool.query(`
       SELECT requester_id AS user_id FROM family_connections
       WHERE requested_id = $1 AND status = 'accepted'
       UNION
       SELECT requested_id AS user_id FROM family_connections
       WHERE requester_id = $1 AND status = 'accepted'
-      UNION
-      SELECT $1::uuid AS user_id
     `, [targetUserId]);
     res.json({ success: true, data: result.rows.map((row) => row.user_id) });
   } catch (error) { next(error); }
