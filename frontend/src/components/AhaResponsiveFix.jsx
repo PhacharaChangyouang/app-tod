@@ -83,7 +83,30 @@ export default function AhaResponsiveFix() {
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links { display:grid !important; grid-template-columns:repeat(5,minmax(0,1fr)) !important; width:100% !important; }
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button { display:flex !important; width:100% !important; min-width:0 !important; padding:6px 2px !important; }
         .aha-v3-sidebar[data-aha-navigation="true"] .aha-v3-side-links button span { min-width:0 !important; max-width:100% !important; overflow:hidden !important; text-overflow:ellipsis !important; white-space:nowrap !important; }
-        .aha-v3-page,.aha-page { padding-bottom:94px !important; }
+        /* Reserve real scroll space above the fixed mobile navigation.
+           dvh follows Android browser chrome; safe-area handles gesture/home bars. */
+        .aha-v3-page,.aha-page {
+          min-height:100dvh !important;
+          padding-bottom:calc(118px + env(safe-area-inset-bottom, 0px)) !important;
+          box-sizing:border-box !important;
+        }
+        .aha-page .aha-shell {
+          padding-bottom:calc(104px + env(safe-area-inset-bottom, 0px)) !important;
+          box-sizing:border-box !important;
+        }
+        .aha-page .modal-backdrop {
+          min-height:100dvh !important;
+          padding-bottom:calc(84px + env(safe-area-inset-bottom, 0px)) !important;
+          box-sizing:border-box !important;
+          overflow-y:auto !important;
+          overscroll-behavior:contain !important;
+        }
+        .aha-page .modal-card {
+          max-height:calc(100dvh - 104px - env(safe-area-inset-bottom, 0px)) !important;
+          overflow-y:auto !important;
+          -webkit-overflow-scrolling:touch !important;
+          scroll-padding-bottom:96px !important;
+        }
         .aha-v3-hero,.aha-v3-hero-card,.aha-v3-hero-banner { max-height:165px !important; min-height:125px !important; }
         .aha-v3-hero-photo img { height:100% !important; object-fit:cover !important; }
         .aha-v3-hero-copy h1 { font-size:21px !important; }
