@@ -244,18 +244,18 @@ export default function AhaResponsiveFix() {
       .aha-v3-bottom-grid { gap:var(--aha-home-gap) !important; }
       .aha-v3-action-stack { gap:var(--aha-home-gap) !important; margin-top:var(--aha-home-gap) !important; }
 
-      /* Home action cards: equal thirds with balanced inner spacing. */
-      .aha-v3-action-stack { display:grid !important; grid-template-columns:repeat(3,minmax(0,1fr)) !important; align-items:stretch !important; }
-      .aha-v3-action { width:100% !important; min-width:0 !important; height:auto !important; min-height:118px !important; box-sizing:border-box !important; grid-template-columns:50px minmax(0,1fr) 36px !important; gap:10px !important; padding:14px 16px !important; }
-      .aha-v3-action .aha-v3-arrow { width:34px !important; height:34px !important; margin:0 !important; justify-self:end !important; align-self:center !important; }
-      html[data-aha-appearance="dark"] .aha-v3-clock { background:#f4f6f8 !important; color:#111 !important; border:1px solid #fff !important; }
-      html[data-aha-appearance="dark"] .aha-v3-care-icon { background:#f4f6f8 !important; color:#111 !important; border-color:#fff !important; }
-      @media (max-width:760px) {
-        .aha-v3-action-stack { grid-template-columns:repeat(3,minmax(0,1fr)) !important; gap:10px !important; }
-        .aha-v3-action { min-height:150px !important; display:flex !important; flex-direction:column !important; align-items:center !important; justify-content:space-between !important; gap:8px !important; padding:14px 10px 12px !important; text-align:center !important; }
-        .aha-v3-action .aha-v3-action-icon { flex:0 0 auto !important; }
-        .aha-v3-action strong { width:100% !important; min-width:0 !important; font-size:clamp(13px,3.8vw,17px) !important; line-height:1.25 !important; overflow-wrap:anywhere !important; }
-        .aha-v3-action .aha-v3-arrow { flex:0 0 34px !important; align-self:center !important; margin:0 !important; }
+      /* Home action cards are defined once in globals.css; keep theme contrast here. */
+      html[data-aha-appearance="dark"] .aha-v3-next-inner .aha-v3-clock {
+        background:#ffffff !important; color:#111111 !important; border:1px solid #ffffff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-next-inner .aha-v3-clock svg {
+        color:#111111 !important; stroke:#111111 !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-care-icon {
+        background:#ffffff !important; color:#111111 !important; border-color:#ffffff !important;
+      }
+      html[data-aha-appearance="dark"] .aha-v3-care-icon svg {
+        color:#111111 !important; stroke:#111111 !important;
       }
 
       /* ---------- MOBILE ---------- */
