@@ -23,7 +23,7 @@ function AvatarSync() {
   return null;
 }
 
-function CaregiverCalendar() {
+export function CaregiverCalendar() {
   const [open,setOpen]=useState(true);
   const days = useMemo(() => {
     const now = new Date(); const first = new Date(now.getFullYear(), now.getMonth(), 1); const count = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate(); const offset=(first.getDay()+6)%7;
@@ -33,13 +33,17 @@ function CaregiverCalendar() {
   return <section className={`aha-care-calendar ${open?'is-open':'is-collapsed'}`} aria-label="ปฏิทินการดูแล"><div className="aha-care-calendar-head"><div><span>CARE CALENDAR</span><h2>ปฏิทินการดูแล</h2><p>วางแผนและติดตามการดูแลในแต่ละวัน</p></div><div className="aha-care-calendar-actions"><div className="aha-care-calendar-badge">📅 <b>{now.getDate()}</b><small>วันนี้</small></div><button type="button" className="aha-care-calendar-toggle" onClick={()=>setOpen(v=>!v)} aria-expanded={open}>{open?'ซ่อน':'แสดง'}</button></div></div>{open&&<div className="aha-care-calendar-body"><div className="aha-care-calendar-month"><strong>{month}</strong><span>วันนี้ · {now.getDate()}</span></div><div className="aha-care-calendar-grid aha-care-week"><b>จ</b><b>อ</b><b>พ</b><b>พฤ</b><b>ศ</b><b>ส</b><b>อา</b></div><div className="aha-care-calendar-grid">{days.map((day,i)=><span key={`${day}-${i}`} className={day===now.getDate()?'today':''}>{day||''}</span>)}</div><div className="aha-care-calendar-legend"><span><i className="dot-blue"/>วันนี้</span><span><i className="dot-orange"/>ติดตามยา</span><span>ดูแลกันทุกวัน</span></div></div>}</section>;
 }
 
-function DashboardShowcase() {
+export function DashboardShowcase() {
   return <div className="aha-care-showcase"><div className="aha-care-showcase-copy"><span>SMART CARE OVERVIEW</span><h2>ดูแลคนที่คุณรัก<br/><em>ได้ง่ายขึ้นทุกวัน</em></h2><p>รวมสถานะการทานยา ตารางวันนี้ และสิ่งที่ควรติดตามไว้ในมุมมองเดียว</p></div><div className="aha-care-showcase-cards"><div><b>✓</b><strong>ติดตามยา</strong><small>เห็นรายการที่ทานแล้วและรอยืนยัน</small></div><div><b>◷</b><strong>วันนี้</strong><small>ดูสิ่งสำคัญของผู้สูงอายุได้ทันที</small></div><div><b>♡</b><strong>ใส่ใจทุกวัน</strong><small>ติดตามจากระยะไกลอย่างสบายใจ</small></div></div></div>;
 }
 
+export function CaregiverEnhancementPanel(){
+  return <div className="aha-care-enhancements"><CaregiverCalendar/><DashboardShowcase/></div>;
+}
+
 export default function AhaCaregiverEnhancements(){
-  const pathname=usePathname();
-  return <><AvatarSync />{pathname==='/family'&&<div className="aha-care-enhancements"><CaregiverCalendar/><DashboardShowcase/></div>}<style jsx global>{`
+  usePathname();
+  return <><AvatarSync /><style jsx global>{`
     .aha-care-enhancements{width:min(1120px,calc(100% - 40px));margin:18px auto;display:flex;flex-direction:column;gap:14px}
     .aha-care-showcase{width:100%;margin:0;padding:24px 26px;border-radius:22px;background:linear-gradient(135deg,#286f62 0%,#378777 100%);color:#fff;position:relative;overflow:hidden;box-shadow:0 10px 28px rgba(34,92,80,.14)}
     .aha-care-showcase:after{content:'';position:absolute;width:220px;height:220px;border-radius:50%;right:-65px;top:-100px;background:rgba(255,255,255,.13);box-shadow:-80px 150px 0 20px rgba(221,190,112,.13)}
