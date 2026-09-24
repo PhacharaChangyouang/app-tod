@@ -47,6 +47,7 @@ export default function ProfilePage() {
   const [supportEmail, setSupportEmail] = useState('');
   const [supportIssue, setSupportIssue] = useState('');
   const [supportBusy, setSupportBusy] = useState(false);
+  const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -269,15 +270,15 @@ export default function ProfilePage() {
         </section>
 
         <section className="aha-profile-section aha-profile-support">
-          <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">SUPPORT</span><h2>ติดต่อผู้ดูแลระบบ</h2><p>แจ้งปัญหาการใช้งานผ่าน AHA โดยไม่ต้องเปิดแอปอีเมล</p></div></div>
-          <form className="aha-profile-support-form" onSubmit={submitSupport}>
+          <div className="aha-profile-support-head"><div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">SUPPORT</span><h2>ติดต่อผู้ดูแลระบบ</h2><p>แจ้งปัญหาการใช้งานผ่าน AHA โดยไม่ต้องเปิดแอปอีเมล</p></div></div><button className="aha-profile-support-toggle" type="button" onClick={() => setSupportOpen((value) => !value)} aria-expanded={supportOpen}>{supportOpen ? 'ซ่อน' : 'แสดง'}</button></div>
+          {supportOpen && <form className="aha-profile-support-form" onSubmit={submitSupport}>
             <div className="aha-profile-pin-grid">
               <label>ชื่อ<input value={supportName} onChange={(e) => setSupportName(e.target.value)} maxLength={100} autoComplete="name" placeholder="ชื่อผู้ติดต่อ" /></label>
               <label>อีเมลสำหรับตอบกลับ<input type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} maxLength={254} autoComplete="email" placeholder="name@example.com" /></label>
             </div>
             <label>ปัญหาที่ต้องการติดต่อ<textarea value={supportIssue} onChange={(e) => setSupportIssue(e.target.value)} maxLength={4000} rows={5} placeholder="อธิบายปัญหาที่พบ หรือสิ่งที่ต้องการให้ผู้ดูแลช่วยเหลือ" /></label>
             <button className="aha-profile-primary" type="submit" disabled={supportBusy}>{supportBusy ? 'กำลังส่ง…' : 'ส่งถึงผู้ดูแลระบบ'}</button>
-          </form>
+          </form>}
         </section>
 
         <section className="aha-profile-account"><div><span className="aha-profile-kicker">ACCOUNT</span><strong>บัญชี AHA</strong><span>ออกจากระบบเฉพาะอุปกรณ์นี้</span></div><button onClick={logout} type="button">ออกจากระบบ</button></section>
@@ -306,7 +307,7 @@ export default function ProfilePage() {
         .aha-theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:5px;border-radius:16px;background:var(--aha-surface-soft,#f1f2f4)}.aha-theme-option{min-width:0;min-height:52px;border:1px solid transparent;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px;color:var(--aha-text-secondary,#62666d);font-weight:800}.aha-theme-option .aha-theme-symbol{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:var(--aha-surface,#fff);color:var(--aha-text,#111)}.aha-theme-option b{color:var(--aha-text,#111)}.aha-theme-option.active{background:var(--aha-surface,#fff);border-color:var(--aha-border,#e2e3e6);color:var(--aha-text,#111);box-shadow:0 2px 8px rgba(0,0,0,.06)}
         .aha-profile-settings-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px}.aha-profile-sound-toggle{width:100%;min-height:60px;border:1px solid var(--aha-border,#e2e3e6);background:var(--aha-surface-soft,#f1f2f4);border-radius:15px;padding:10px 12px;display:flex;align-items:center;gap:10px;color:var(--aha-text,#111)}.aha-profile-sound-toggle>span{width:39px;height:39px;border-radius:11px;background:var(--aha-surface,#fff);display:grid;place-items:center}.aha-profile-sound-toggle strong{flex:1;text-align:left;color:var(--aha-text,#111)}.aha-profile-sound-toggle>i{width:48px;height:28px;border-radius:999px;background:#b9bcc2;padding:3px;display:flex;align-items:center}.aha-profile-sound-toggle>i b{width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .18s}.aha-profile-sound-toggle.active>i{background:#16856f}.aha-profile-sound-toggle.active>i b{transform:translateX(20px)}
         .aha-profile-otp{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.aha-profile-otp .aha-profile-primary{margin:0;white-space:nowrap}
-        .aha-profile-support-form{display:grid;gap:12px}.aha-profile-support-form textarea{width:100%;min-width:0;border:1px solid var(--aha-border,#e2e3e6);border-radius:13px;background:var(--aha-surface-soft,#f1f2f4);color:var(--aha-text,#111);padding:13px 14px;outline:none;font:inherit;line-height:1.55;resize:vertical}.aha-profile-support-form textarea:focus{border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.12)}.aha-profile-support-form .aha-profile-primary{justify-self:start}
+        .aha-profile-support-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.aha-profile-support-head .aha-profile-section-heading{margin-bottom:0}.aha-profile-support-toggle{min-width:64px;min-height:40px;border:1px solid var(--aha-border,#e2e3e6);border-radius:11px;background:var(--aha-surface-soft,#f1f2f4);color:var(--aha-text,#111);font-weight:900;cursor:pointer}.aha-profile-support-form{display:grid;gap:12px;margin-top:16px}.aha-profile-support-form textarea{width:100%;min-width:0;border:1px solid var(--aha-border,#e2e3e6);border-radius:13px;background:var(--aha-surface-soft,#f1f2f4);color:var(--aha-text,#111);padding:13px 14px;outline:none;font:inherit;line-height:1.55;resize:vertical}.aha-profile-support-form textarea:focus{border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.12)}.aha-profile-support-form .aha-profile-primary{justify-self:start}
         html[data-aha-appearance="dark"] .aha-profile-support-form textarea{background:var(--aha-surface-soft);border-color:var(--aha-border);color:var(--aha-text)}
         .aha-profile-account{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.aha-profile-account strong{display:block;color:var(--aha-text,#111);font-size:17px;margin-top:2px}.aha-profile-account>div>span:last-child{display:block;color:var(--aha-text-secondary,#62666d);font-size:12px;margin-top:3px}.aha-profile-account button{min-height:44px;border:1px solid #e9b6ba;background:#fff0f0;color:#a5202b;border-radius:12px;padding:0 16px;font-weight:900}
         .aha-profile-footer{text-align:center;color:var(--aha-text-secondary,#62666d);font-size:11px;padding:3px 0 10px}.aha-profile-loading{min-height:100dvh;display:grid;place-items:center;color:var(--aha-text-secondary,#62666d);background:var(--aha-bg,#f7f7f5)}
