@@ -104,11 +104,14 @@ export default function EmergencyPage() {
             <div className={`aha-sos-wrap ${holding ? 'holding' : ''}`}>
               <button
                 className="aha-sos-button"
-                onPointerDown={start}
-                onPointerUp={stop}
+                onPointerDown={(event) => { event.preventDefault(); event.currentTarget.setPointerCapture?.(event.pointerId); start(); }}
+                onPointerUp={(event) => { event.preventDefault(); stop(); }}
                 onPointerLeave={stop}
                 onPointerCancel={stop}
+                onContextMenu={(event) => event.preventDefault()}
+                onDragStart={(event) => event.preventDefault()}
                 aria-label="กดค้างเพื่อขอความช่วยเหลือ"
+                style={{ touchAction:'none', userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none' }}
               >
                 <AhaIcon name="warning" size={42} />
                 <strong>{sending ? 'กำลังส่ง' : holding ? 'ยืนยัน...' : 'SOS'}</strong>
@@ -139,7 +142,7 @@ export default function EmergencyPage() {
                   <AhaIcon name="phone" /> โทรทันที
                 </button>
               </div>
-              <small>ประเทศไทยใช้ 1669 สำหรับบริการการแพทย์ฉุกเฉิน</small>
+              <small>ปุ่ม SOS ด้านบนส่งแจ้งเหตุให้ผู้ดูแล แต่จะไม่โทรออกอัตโนมัติ หากต้องการโทร 1669 ให้กด “โทรทันที”</small>
             </div>
           </section>
         </main>
