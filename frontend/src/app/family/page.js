@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
+import { CaregiverEnhancementPanel } from '../../components/AhaCaregiverEnhancements';
 import { caregiverApi, familyApi } from '../../services/api';
 import { getSession } from '../../services/auth';
 import './family-dashboard.css';
@@ -181,6 +182,7 @@ export default function FamilyPage() {
           <button className="aha-family-back" onClick={() => router.push('/home')} aria-label="กลับหน้าหลัก"><AhaIcon name="arrow" size={22} /></button>
           <div><span className="aha-family-eyebrow">AHA FAMILY</span><h1>{isCaregiver ? 'ศูนย์ดูแลผู้สูงอายุ' : 'เชื่อมต่อกับผู้ดูแล'}</h1><p>{isCaregiver ? 'ติดตามยาและสถานะของผู้สูงอายุที่คุณดูแลจากที่เดียว' : 'ให้ผู้ดูแลที่ไว้ใจได้ช่วยติดตามการดูแลของคุณ'}</p></div>
         </header>
+        {isCaregiver && <CaregiverEnhancementPanel />}
         {(error || success) && <div className={`aha-family-alert ${error ? 'error' : 'success'}`}>{error || success}</div>}
 
         {isCaregiver && <section className="caregiver-focus">
