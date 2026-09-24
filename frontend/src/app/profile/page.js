@@ -5,13 +5,22 @@ import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
 import { authApi } from '../../services/api';
 import { clearSession, getSession, saveSession } from '../../services/auth';
+import { disableAhaPush, enableAhaPush, getAhaPushSubscription, registerAhaServiceWorker } from '../../services/push';
+import { notificationApi } from '../../services/api';
 
 const THEMES = [
-  { key: 'green', name: 'เขียว AHA', color: '#2f9b68' },
-  { key: 'blue', name: 'ฟ้าอ่อน', color: '#3b82c4' },
-  { key: 'teal', name: 'เขียวอมฟ้า', color: '#2a9d8f' },
-  { key: 'purple', name: 'ม่วงอ่อน', color: '#8064b5' },
+  { key: 'light', name: 'สว่าง', symbol: '☀' },
+  { key: 'dark', name: 'มืด', symbol: '☾' },
+  { key: 'system', name: 'ตามระบบ', symbol: '◐' },
 ];
+
+function applyAppearance(mode) {
+  if (typeof window === 'undefined') return;
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const resolved = mode === 'system' ? (prefersDark ? 'dark' : 'light') : mode;
+  document.documentElement.dataset.ahaAppearance = resolved;
+  document.documentElement.style.colorScheme = resolved;
+}
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -20,7 +29,7 @@ export default function ProfilePage() {
   const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [role, setRole] = useState('elderly');
-  const [theme, setTheme] = useState('green');
+  const [theme, setTheme] = useState('light');
   const [avatar, setAvatar] = useState('');
   const [currentPin, setCurrentPin] = useState('');
   const [newPin, setNewPin] = useState('');
@@ -31,7 +40,8 @@ export default function ProfilePage() {
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
-  const [alertSound, setAlertSound] = useState(true);
+  const [medicinePushEnabled, setMedicinePushEnabled] = useState(false);
+  const [notificationBusy, setNotificationBusy] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -42,10 +52,17 @@ export default function ProfilePage() {
     setAge(initial.age ?? '');
     setRole(initial.role || 'elderly');
     setPhone(initial.phone || '');
-    setTheme(localStorage.getItem('aha_theme') || 'green');
-    setAlertSound(localStorage.getItem('aha_alert_sound') !== 'false');
+    const savedAppearance = localStorage.getItem('aha_appearance') || 'light';
+    setTheme(savedAppearance);
+    applyAppearance(savedAppearance);
     setAvatar(localStorage.getItem(`aha_avatar_${initial.id}`) || '');
-    document.documentElement.dataset.ahaTheme = localStorage.getItem('aha_theme') || 'green';
+    registerAhaServiceWorker().then(async () => {
+      try {
+        const status = await notificationApi.pushStatus();
+        const subscription = await getAhaPushSubscription();
+        setMedicinePushEnabled(Boolean(status?.subscribed && subscription));
+      } catch (_) { setMedicinePushEnabled(false); }
+    }).catch(() => setMedicinePushEnabled(false));
 
     authApi.me().then((result) => {
       if (!result?.user) return;
@@ -60,9 +77,29 @@ export default function ProfilePage() {
 
   const selectTheme = (key) => {
     setTheme(key);
-    localStorage.setItem('aha_theme', key);
-    document.documentElement.dataset.ahaTheme = key;
-    flash(true, 'เปลี่ยนสีระบบแล้ว');
+    localStorage.setItem('aha_appearance', key);
+    applyAppearance(key);
+    window.dispatchEvent(new CustomEvent('aha-appearance-change', { detail: key }));
+    flash(true, key === 'dark' ? 'เปลี่ยนเป็นโหมดมืดแล้ว' : key === 'system' ? 'ใช้ธีมตามระบบแล้ว' : 'เปลี่ยนเป็นโหมดสว่างแล้ว');
+  };
+
+  const toggleMedicineNotifications = async () => {
+    setNotificationBusy(true); setError(''); setMessage('');
+    try {
+      if (medicinePushEnabled) {
+        await disableAhaPush();
+        setMedicinePushEnabled(false);
+        localStorage.setItem('aha_push_enabled', 'false');
+        setMessage('ปิดการแจ้งเตือนยาแล้ว');
+      } else {
+        await enableAhaPush();
+        setMedicinePushEnabled(true);
+        localStorage.setItem('aha_push_enabled', 'true');
+        setMessage('เปิดการแจ้งเตือนยาแล้ว');
+      }
+    } catch (err) {
+      setError(err?.message || 'ไม่สามารถเปลี่ยนการตั้งค่าการแจ้งเตือนยาได้');
+    } finally { setNotificationBusy(false); }
   };
 
   const chooseAvatar = () => fileRef.current?.click();
@@ -179,13 +216,13 @@ export default function ProfilePage() {
 
         <section className="aha-profile-section">
           <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">APPEARANCE</span><h2>สีของระบบ</h2><p>เลือกโทนสีที่อ่านง่ายและเหมาะกับคุณ</p></div></div>
-          <div className="aha-theme-grid">{THEMES.map((item) => <button key={item.key} type="button" className={`aha-theme-option ${theme === item.key ? 'active' : ''}`} onClick={() => selectTheme(item.key)}><span style={{ background: item.color }} />{item.name}{theme === item.key && <b>✓</b>}</button>)}</div>
+          <div className="aha-theme-grid">{THEMES.map((item) => <button key={item.key} type="button" className={`aha-theme-option ${theme === item.key ? 'active' : ''}`} onClick={() => selectTheme(item.key)}><span className="aha-theme-symbol">{item.symbol}</span>{item.name}{theme === item.key && <b>✓</b>}</button>)}</div>
         </section>
 
         <div className="aha-profile-settings-grid">
           <section className="aha-profile-section">
-            <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">NOTIFICATIONS</span><h2>เสียงแจ้งเตือน</h2><p>เสียงแจ้งเตือนภายใน AHA</p></div></div>
-            <button type="button" className={`aha-profile-sound-toggle ${alertSound ? 'active' : ''}`} aria-pressed={alertSound} onClick={() => { const next=!alertSound; setAlertSound(next); localStorage.setItem('aha_alert_sound', String(next)); setMessage(next ? 'เปิดเสียงแจ้งเตือนแล้ว' : 'ปิดเสียงแจ้งเตือนแล้ว'); setError(''); }}><span><AhaIcon name="bell" size={20} /></span><strong>{alertSound ? 'เปิดเสียงแจ้งเตือน' : 'ปิดเสียงแจ้งเตือน'}</strong><i aria-hidden="true"><b /></i></button>
+            <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">NOTIFICATIONS</span><h2>การแจ้งเตือนยา</h2><p>อนุญาตให้ AHA แจ้งเตือนเมื่อถึงเวลาทานยา</p></div></div>
+            <button type="button" disabled={notificationBusy} className={`aha-profile-sound-toggle ${medicinePushEnabled ? 'active' : ''}`} aria-pressed={medicinePushEnabled} onClick={toggleMedicineNotifications}><span><AhaIcon name="bell" size={20} /></span><strong>{medicinePushEnabled ? 'เปิดการแจ้งเตือนยา' : 'ปิดการแจ้งเตือนยา'}</strong><i aria-hidden="true"><b /></i></button>
           </section>
 
           <section className="aha-profile-section">
@@ -206,7 +243,7 @@ export default function ProfilePage() {
       </main>
 
       <style jsx>{`
-        .aha-profile-page{--blue:#2f6bff;--blue-deep:#172d79;--navy:#101c4b;--orange:#ffb84d;--cyan:#42d4cf;min-height:100dvh;background:#fbf8f2;color:#17213d;padding:0 0 calc(118px + env(safe-area-inset-bottom,0px));font-family:Arial,"Noto Sans Thai",sans-serif;overflow-x:hidden}
+        .aha-profile-page,.aha-profile-page *{box-sizing:border-box}.aha-profile-page{--blue:#2f6bff;--blue-deep:#172d79;--navy:#101c4b;--orange:#ffb84d;--cyan:#42d4cf;min-height:100dvh;background:#fbf8f2;color:#17213d;padding:0 0 calc(118px + env(safe-area-inset-bottom,0px));font-family:Arial,"Noto Sans Thai",sans-serif;overflow-x:hidden}
         .aha-profile-header{height:78px;width:min(1040px,calc(100% - 32px));margin:auto;display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:14px}
         .aha-profile-icon-button,.aha-profile-home-button{min-height:44px;border:1px solid #e2e5ec;background:#fff;color:#17213d;border-radius:15px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;box-shadow:0 7px 20px rgba(30,43,79,.06)}
         .aha-profile-icon-button{width:46px}.aha-profile-home-button{padding:0 15px}.aha-profile-title strong{display:block;font-size:23px}.aha-profile-title span{display:block;color:#7b8395;font-size:12px;margin-top:2px}
@@ -216,20 +253,32 @@ export default function ProfilePage() {
         .aha-profile-edit{position:absolute;right:22px;top:20px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.16);backdrop-filter:blur(8px);color:#fff;border-radius:99px;padding:9px 15px;font-weight:800;cursor:pointer}
         .aha-profile-avatar-wrap{flex:0 0 auto}.aha-profile-avatar{width:118px;height:118px;border-radius:50%;border:4px solid rgba(255,255,255,.88);background:linear-gradient(145deg,#56d8e1,#e6fbff);color:#17347b;display:grid;place-items:center;font-size:44px;font-weight:900;position:relative;padding:0;overflow:hidden;box-shadow:0 10px 28px rgba(4,16,59,.24)}
         .aha-profile-avatar img{width:100%;height:100%;object-fit:cover}.aha-profile-avatar i{position:absolute;right:5px;bottom:5px;width:22px;height:22px;border:4px solid #fff;border-radius:50%;background:#34c987}
-        .aha-profile-identity-copy{min-width:0;position:relative;z-index:2}.aha-profile-role{display:inline-flex;padding:5px 9px;border-radius:99px;background:rgba(255,184,77,.17);color:#ffd58e;border:1px solid rgba(255,202,116,.35);font-size:11px;font-weight:900;margin-bottom:8px}
-        .aha-profile-identity-copy h1{font-size:32px;line-height:1.12;margin:0 0 6px;overflow-wrap:anywhere}.aha-profile-identity-copy p{margin:0;color:#dce5ff;font-size:15px}.aha-profile-remove-avatar{margin-top:11px;border:0;background:transparent;color:#ffd5d5;padding:0;font-size:11px;text-decoration:underline}
+        .aha-profile-identity-copy{min-width:0;position:relative;z-index:2}.aha-profile-role{display:inline-flex;padding:5px 9px;border-radius:99px;background:rgba(255,184,77,.17);color:#fff;border:1px solid rgba(255,202,116,.35);font-size:11px;font-weight:900;margin-bottom:8px}
+        .aha-profile-identity-copy h1{color:#fff;font-size:32px;line-height:1.12;margin:0 0 6px;overflow-wrap:anywhere}.aha-profile-identity-copy p{margin:0;color:#dce5ff;font-size:15px}.aha-profile-remove-avatar{margin-top:11px;border:0;background:transparent;color:#fff;padding:0;font-size:11px;text-decoration:underline}
         .aha-profile-mark{position:absolute;right:28px;bottom:24px;display:flex;gap:4px;align-items:center}.aha-profile-mark span{display:block;width:3px;height:27px;border-radius:3px;background:rgba(255,255,255,.78)}.aha-profile-mark span:nth-child(2){height:18px}.aha-profile-mark span:nth-child(3){height:31px}.aha-profile-mark span:nth-child(4){height:22px}
         .aha-profile-alert{padding:13px 16px;border-radius:15px;font-weight:800;overflow-wrap:anywhere}.aha-profile-alert.success{background:#eafaf6;color:#157a68;border:1px solid #bfe8dd}.aha-profile-alert.error{background:#fff0f0;color:#ad2631;border:1px solid #f3c0c4}
         .aha-profile-section,.aha-profile-account{background:#fff;border:1px solid #e8e8eb;border-radius:24px;box-shadow:0 10px 30px rgba(28,39,72,.055)}
-        .aha-profile-section{padding:22px}.aha-profile-section-heading{margin-bottom:17px}.aha-profile-section-heading h2{margin:2px 0 0;font-size:21px;color:#17213d}.aha-profile-section-heading p{margin:5px 0 0;color:#7b8395;font-size:13px;line-height:1.55}.aha-profile-kicker{display:block;color:var(--blue);font-size:10px;font-weight:900;letter-spacing:.12em}
+        .aha-profile-section{padding:22px}.aha-profile-section-heading{margin-bottom:17px}.aha-profile-section-heading h2{margin:2px 0 0;font-size:21px;color:#17213d}.aha-profile-section-heading p{margin:5px 0 0;color:#7b8395;font-size:13px;line-height:1.55}.aha-profile-kicker{display:block;color:#000;font-size:10px;font-weight:900;letter-spacing:.12em}
         .aha-profile-fields,.aha-profile-pin-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.aha-profile-fields.single{grid-template-columns:1fr}.aha-profile-pin-grid{grid-template-columns:repeat(2,minmax(0,1fr));max-width:680px}
         .aha-profile-section label{display:grid;gap:7px;font-size:13px;font-weight:800;color:#303a57}.aha-profile-section input,.aha-profile-section select{width:100%;min-width:0;min-height:50px;border:1px solid #dcdfe7;border-radius:14px;background:#fcfcfd;color:#17213d;padding:0 14px;outline:none;font-size:16px;box-sizing:border-box}.aha-profile-section input:focus,.aha-profile-section select:focus{border-color:var(--blue);box-shadow:0 0 0 4px rgba(47,107,255,.09)}
         .aha-profile-primary,.aha-profile-secondary{margin-top:15px;min-height:49px;border-radius:14px;padding:0 18px;font-weight:900;cursor:pointer}.aha-profile-primary{border:0;background:var(--blue);color:#fff;box-shadow:0 8px 18px rgba(47,107,255,.17)}.aha-profile-secondary{background:#f3f6ff;color:#244fbf;border:1px solid #d4ddfb}.aha-profile-primary:disabled,.aha-profile-secondary:disabled{opacity:.55}
-        .aha-theme-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;padding:5px;border-radius:18px;background:#f2f3f6}.aha-theme-option{min-width:0;min-height:55px;border:1px solid transparent;background:transparent;border-radius:14px;display:flex;align-items:center;gap:8px;padding:0 11px;color:#4d566c;font-weight:800}.aha-theme-option span{width:19px;height:19px;border-radius:50%;flex:0 0 auto}.aha-theme-option b{margin-left:auto;color:#009b99}.aha-theme-option.active{background:#e6fbf8;border-color:#38bdb7;color:#126b70;box-shadow:0 4px 12px rgba(22,139,137,.09)}
+        .aha-theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;padding:5px;border-radius:18px;background:#f2f3f6}.aha-theme-option{min-width:0;min-height:55px;border:1px solid transparent;background:transparent;border-radius:14px;display:flex;align-items:center;gap:8px;padding:0 11px;color:#4d566c;font-weight:800}.aha-theme-option .aha-theme-symbol{width:26px;height:26px;border-radius:9px;flex:0 0 auto;display:grid;place-items:center;background:#fff;color:#000;font-size:16px}.aha-theme-option b{margin-left:auto;color:#009b99}.aha-theme-option.active{background:#e6fbf8;border-color:#38bdb7;color:#126b70;box-shadow:0 4px 12px rgba(22,139,137,.09)}
         .aha-profile-settings-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:16px}.aha-profile-sound-toggle{width:100%;min-height:60px;border:1px solid #e1e4e9;background:#f8f9fb;border-radius:16px;padding:10px 12px;display:flex;align-items:center;gap:10px;color:#536077}.aha-profile-sound-toggle>span{width:39px;height:39px;border-radius:12px;background:#eef1f5;display:grid;place-items:center}.aha-profile-sound-toggle strong{flex:1;text-align:left}.aha-profile-sound-toggle>i{width:47px;height:27px;border-radius:99px;background:#cbd0d8;padding:3px;display:flex;align-items:center}.aha-profile-sound-toggle>i b{width:21px;height:21px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.16);transition:transform .18s ease}.aha-profile-sound-toggle.active{border-color:#b8e3df;background:#effbf9;color:#176f6c}.aha-profile-sound-toggle.active>i{background:#24aaa5}.aha-profile-sound-toggle.active>i b{transform:translateX(20px)}
         .aha-profile-otp{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.aha-profile-otp .aha-profile-primary{margin:0;white-space:nowrap}
         .aha-profile-account{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.aha-profile-account strong{display:block;font-size:17px;margin-top:2px}.aha-profile-account>div>span:last-child{display:block;color:#858c9c;font-size:12px;margin-top:3px}.aha-profile-account button{min-height:44px;border:1px solid #f1c4c7;background:#fff1f1;color:#b32e38;border-radius:13px;padding:0 16px;font-weight:900}
         .aha-profile-footer{text-align:center;color:#9aa0ae;font-size:11px;padding:3px 0 10px}.aha-profile-loading{min-height:100dvh;display:grid;place-items:center;color:#6f7890;font-weight:800;background:#fbf8f2}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-page{background:#0f1013;color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-header,:global(html[data-aha-appearance="dark"]) .aha-profile-title strong{color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-title span{color:#c4c4c4}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-section,:global(html[data-aha-appearance="dark"]) .aha-profile-account{background:#181a1f;border-color:#34363d;color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-section-heading h2,:global(html[data-aha-appearance="dark"]) .aha-profile-section-heading p,:global(html[data-aha-appearance="dark"]) .aha-profile-section label,:global(html[data-aha-appearance="dark"]) .aha-profile-account strong,:global(html[data-aha-appearance="dark"]) .aha-profile-kicker{color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-section input,:global(html[data-aha-appearance="dark"]) .aha-profile-section select{background:#101216;border-color:#3a3d45;color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-theme-grid{background:#101216}
+        :global(html[data-aha-appearance="dark"]) .aha-theme-option{color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-theme-option.active{background:#fff;border-color:#fff;color:#000}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-icon-button,:global(html[data-aha-appearance="dark"]) .aha-profile-home-button{background:#181a1f;border-color:#34363d;color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-sound-toggle{background:#101216;border-color:#3a3d45;color:#fff}
+        :global(html[data-aha-appearance="dark"]) .aha-profile-footer{color:#aaa}
         @media(max-width:720px){.aha-profile-page{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))}.aha-profile-header{height:68px;width:calc(100% - 20px);grid-template-columns:42px 1fr 42px;gap:9px}.aha-profile-title strong{font-size:19px}.aha-profile-title span{font-size:11px}.aha-profile-home-button{width:42px;padding:0}.aha-profile-home-button span{display:none}.aha-profile-wrap{width:calc(100% - 20px);gap:12px}.aha-profile-identity{min-height:210px;padding:24px 18px 20px;align-items:flex-end;gap:14px;border-radius:25px}.aha-profile-edit{right:15px;top:15px;padding:8px 12px;font-size:12px}.aha-profile-avatar{width:88px;height:88px;font-size:34px;border-width:3px}.aha-profile-identity-copy{padding-bottom:4px}.aha-profile-identity-copy h1{font-size:24px}.aha-profile-identity-copy p{font-size:12px}.aha-profile-role{font-size:9px;margin-bottom:6px}.aha-profile-mark{right:17px;bottom:18px;opacity:.6}.aha-profile-section{padding:17px;border-radius:20px}.aha-profile-fields,.aha-profile-pin-grid{grid-template-columns:1fr}.aha-profile-settings-grid{grid-template-columns:1fr;gap:12px}.aha-theme-grid{grid-template-columns:1fr 1fr}.aha-theme-option{font-size:12px;padding:0 9px}.aha-profile-otp{grid-template-columns:1fr}.aha-profile-otp .aha-profile-primary{margin-top:0}.aha-profile-account{border-radius:20px}.aha-profile-orb.orb-two{left:-180px}.aha-profile-footer{padding-bottom:4px}}
         @media(max-width:390px){.aha-profile-wrap{width:calc(100% - 14px)}.aha-profile-header{width:calc(100% - 14px)}.aha-profile-identity{padding-left:14px;padding-right:14px}.aha-profile-avatar{width:78px;height:78px}.aha-profile-identity-copy h1{font-size:21px}.aha-theme-grid{grid-template-columns:1fr}.aha-profile-account{align-items:flex-start;flex-direction:column}.aha-profile-account button{width:100%}}
       `}</style>
