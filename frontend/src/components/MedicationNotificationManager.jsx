@@ -44,6 +44,31 @@ export default function MedicationNotificationManager() {
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState('default');
   const handledActions = useRef(new Set());
+  const bellDrag = useRef({ active:false, moved:false, pointerId:null, dx:0, dy:0 });
+  const [bellPosition,setBellPosition]=useState(null);
+
+  useEffect(() => {
+    try { const saved=JSON.parse(localStorage.getItem('aha_bell_position') || 'null'); if(saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) setBellPosition(saved); } catch (_) {}
+  }, []);
+
+  const startBellDrag = (event) => {
+    if (busy) return;
+    const rect=event.currentTarget.getBoundingClientRect();
+    bellDrag.current={active:true,moved:false,pointerId:event.pointerId,dx:event.clientX-rect.left,dy:event.clientY-rect.top};
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+  const moveBell = (event) => {
+    if(!bellDrag.current.active) return;
+    const x=Math.max(6,Math.min(window.innerWidth-58,event.clientX-bellDrag.current.dx));
+    const y=Math.max(6,Math.min(window.innerHeight-58,event.clientY-bellDrag.current.dy));
+    if(Math.abs(event.movementX||0)+Math.abs(event.movementY||0)>1) bellDrag.current.moved=true;
+    setBellPosition({x,y});
+  };
+  const endBellDrag = () => {
+    if(!bellDrag.current.active) return;
+    if(bellPosition) localStorage.setItem('aha_bell_position',JSON.stringify(bellPosition));
+    window.setTimeout(()=>{bellDrag.current.active=false;bellDrag.current.moved=false;},0);
+  };
 
   useEffect(() => {
     const syncAuth = () => {
@@ -169,6 +194,7 @@ export default function MedicationNotificationManager() {
   }, [authenticated, handleAction]);
 
   const togglePush = async () => {
+    if (bellDrag.current.moved) return;
     if (!authenticated) return;
     setBusy(true);
     setError('');
@@ -197,16 +223,21 @@ export default function MedicationNotificationManager() {
       <button
         type="button"
         onClick={togglePush}
+        onPointerDown={startBellDrag}
+        onPointerMove={moveBell}
+        onPointerUp={endBellDrag}
+        onPointerCancel={endBellDrag}
+        onContextMenu={(event)=>event.preventDefault()}
         disabled={busy}
         aria-label={pushEnabled ? 'ปิดการแจ้งเตือน AHA' : 'เปิดการแจ้งเตือน AHA'}
         aria-pressed={pushEnabled}
         title={pushEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน'}
         style={{
-          position: 'fixed', right: 14, top: 'max(76px, env(safe-area-inset-top) + 62px)', zIndex: 10050,
+          position: 'fixed', ...(bellPosition ? {left:bellPosition.x,top:bellPosition.y,right:'auto'} : {right:14,top:'max(76px, env(safe-area-inset-top) + 62px)'}), zIndex: 10050,
           width: 52, height: 52, borderRadius: '50%', border: '1px solid #d8eaf2',
           background: 'rgba(255,255,255,.96)', color: '#0f9b76', boxShadow: '0 8px 22px rgba(28,108,148,.16)',
           cursor: busy ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-          padding: 0, fontSize: 29, lineHeight: 1,
+          padding: 0, fontSize: 29, lineHeight: 1, touchAction:'none', userSelect:'none', WebkitUserSelect:'none', WebkitTouchCallout:'none',
         }}
       >
         <span className="aha-notification-emoji" aria-hidden="true">🔔</span>
