@@ -68,6 +68,30 @@ app.get('/health', async (req, res) => {
   }
 });
 
+
+async function notifyLinkedMedicationStatus(userId, reminder, action, minutes = null) {
+  const authUrl = process.env.AUTH_SERVICE_URL;
+  const notificationUrl = process.env.NOTIFICATION_SERVICE_URL;
+  const internalKey = process.env.INTERNAL_API_KEY;
+  if (!authUrl || !notificationUrl || !internalKey) return;
+  const recipientsResponse = await fetch(`${authUrl.replace(/\/$/, '')}/family/internal/${userId}/recipients`, { headers: { 'x-internal-api-key': internalKey } });
+  if (!recipientsResponse.ok) throw new Error(`Medication status recipient lookup failed: ${recipientsResponse.status}`);
+  const payload = await recipientsResponse.json();
+  const recipients = Array.isArray(payload.data) ? [...new Set(payload.data)].filter((id) => String(id) !== String(userId)) : [];
+  const title = action === 'taken' ? 'ผู้สูงอายุทานยาแล้ว' : 'ผู้สูงอายุเลื่อนเวลาเตือนยา';
+  const message = action === 'taken'
+    ? `ผู้สูงอายุยืนยันว่าทานยา ${reminder.medicine_name}${reminder.dosage ? ` (${reminder.dosage})` : ''} แล้ว`
+    : `ผู้สูงอายุเลื่อนการเตือนยา ${reminder.medicine_name} ออกไป ${minutes || 10} นาที`;
+  for (const recipientId of recipients) {
+    const response = await fetch(`${notificationUrl.replace(/\/$/, '')}/api/notifications`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-internal-api-key': internalKey },
+      body: JSON.stringify({ user_id: recipientId, type: 'caregiver_medicine_status', title, message, related_id: reminder.id, dedupe_key: `medicine-status:${userId}:${reminder.id}:${action}:${Date.now()}` }),
+    });
+    if (!response.ok) console.error('Medication status notification failed:', response.status, await response.text());
+  }
+}
+
 app.get('/api/reminders', authenticate, async (req, res) => {
   try {
     const result = await pool.query(`
@@ -132,6 +156,7 @@ app.post('/api/reminders/:id/taken', authenticate, async (req, res) => {
       [req.params.id, req.user.id]
     );
 
+    try { await notifyLinkedMedicationStatus(req.user.id, reminder.rows[0], 'taken'); } catch (notifyError) { console.error('Taken status notification failed:', notifyError); }
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error(error);
@@ -159,6 +184,7 @@ app.post('/api/reminders/:id/snooze', authenticate, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Reminder not found' });
     }
 
+    try { await notifyLinkedMedicationStatus(req.user.id, result.rows[0], 'snooze', minutes); } catch (notifyError) { console.error('Snooze status notification failed:', notifyError); }
     res.json({
       success: true,
       message: `Reminder snoozed for ${minutes} minutes`,
