@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { getAccessToken, getUser } from '../services/auth';
 import { notificationApi, reminderApi } from '../services/api';
 import {
@@ -36,6 +37,7 @@ function isMedicineNotification(item) {
 }
 
 export default function MedicationNotificationManager() {
+  const router = useRouter();
   const [authenticated, setAuthenticated] = useState(false);
   const [alert, setAlert] = useState(null);
   const [pushEnabled, setPushEnabled] = useState(false);
@@ -43,10 +45,18 @@ export default function MedicationNotificationManager() {
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [permission, setPermission] = useState('default');
-  const [showPushHint,setShowPushHint]=useState(false);
+  const [showPushHint,setShowPushHint]=useState(true);
+  const [showBell,setShowBell]=useState(true);
   const handledActions = useRef(new Set());
   const bellDrag = useRef({ active:false, moved:false, pointerId:null, dx:0, dy:0 });
   const [bellPosition,setBellPosition]=useState(null);
+
+  useEffect(() => {
+    if (!authenticated) return undefined;
+    setShowBell(true); setShowPushHint(true);
+    const timer = window.setTimeout(() => { setShowBell(false); setShowPushHint(false); }, 5000);
+    return () => window.clearTimeout(timer);
+  }, [authenticated]);
 
   useEffect(() => {
     try { const saved=JSON.parse(localStorage.getItem('aha_bell_position') || 'null'); if(saved && Number.isFinite(saved.x) && Number.isFinite(saved.y)) setBellPosition(saved); } catch (_) {}
@@ -194,47 +204,25 @@ export default function MedicationNotificationManager() {
     return undefined;
   }, [authenticated, handleAction]);
 
-  const togglePush = async () => {
+  const openNotificationSettings = () => {
     if (bellDrag.current.moved) return;
-    setShowPushHint(true);
-    window.setTimeout(()=>setShowPushHint(false),5000);
-    if (!authenticated) return;
-    setBusy(true);
-    setError('');
-    try {
-      if (pushEnabled) {
-        await disableAhaPush();
-        setPushEnabled(false);
-        setPermission('default');
-      } else {
-        await enableAhaPush();
-        setPushEnabled(true);
-        setPermission('granted');
-      }
-    } catch (err) {
-      if (typeof window !== 'undefined' && 'Notification' in window) setPermission(Notification.permission);
-      setError(err?.message || 'ไม่สามารถตั้งค่าการแจ้งเตือนได้');
-    } finally {
-      setBusy(false);
-    }
+    router.push('/profile');
   };
 
   if (!authenticated) return null;
 
   return (
     <>
-      <button
+      {showBell && <button
         type="button"
-        onClick={togglePush}
+        onClick={openNotificationSettings}
         onPointerDown={startBellDrag}
         onPointerMove={moveBell}
         onPointerUp={endBellDrag}
         onPointerCancel={endBellDrag}
         onContextMenu={(event)=>event.preventDefault()}
-        disabled={busy}
-        aria-label={pushEnabled ? 'ปิดการแจ้งเตือน AHA' : 'เปิดการแจ้งเตือน AHA'}
-        aria-pressed={pushEnabled}
-        title={pushEnabled ? 'ปิดการแจ้งเตือน' : 'เปิดการแจ้งเตือน'}
+        aria-label="ไปตั้งค่าการแจ้งเตือนยา"
+        title="ตั้งค่าการแจ้งเตือนยา"
         style={{
           position: 'fixed', ...(bellPosition ? {left:bellPosition.x,top:bellPosition.y,right:'auto'} : {right:14,top:'max(76px, env(safe-area-inset-top) + 62px)'}), zIndex: 10050,
           width: 52, height: 52, borderRadius: '50%', border: '1px solid #d8eaf2',
@@ -245,13 +233,13 @@ export default function MedicationNotificationManager() {
       >
         <span className="aha-notification-emoji" aria-hidden="true">🔔</span>
         <span className="aha-notification-status" aria-hidden="true" />
-      </button>
+      </button>}
 
-      {showPushHint && !pushEnabled && ready && (
+      {showBell && showPushHint && ready && (
         <div style={{ position: 'fixed', right: 14, top: 'max(132px, env(safe-area-inset-top) + 118px)', zIndex: 10000, width: 'min(330px, calc(100vw - 28px))', background: '#fff', borderRadius: 16, padding: '13px 15px', boxShadow: '0 10px 35px rgba(0,0,0,.16)', border: '1px solid #dbe5ee', color: '#0f172a', fontSize: 15 }}>
-          <strong>เปิดการแจ้งเตือนยา</strong>
+          <strong>อย่าลืมตั้งค่าการแจ้งเตือนยา</strong>
           <div style={{ marginTop: 4, color: '#475569', lineHeight: 1.45 }}>
-            {permission === 'denied' ? 'การแจ้งเตือนถูกบล็อก ให้เปิด Notification ในการตั้งค่า Browser แล้วลองอีกครั้ง' : 'กดปุ่ม 🔔 นี้เพื่ออนุญาตให้ AHA แจ้งเตือนเมื่อถึงเวลาทานยา'}
+            {permission === 'denied' ? 'การแจ้งเตือนถูกบล็อก สามารถจัดการได้จากหน้าโปรไฟล์และการตั้งค่า Browser' : 'แตะกระดิ่งเพื่อไปเปิดหรือปิดการแจ้งเตือนยาในหน้าโปรไฟล์ ข้อความนี้จะหายไปใน 5 วินาที'}
           </div>
         </div>
       )}
