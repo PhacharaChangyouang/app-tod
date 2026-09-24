@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from './AhaIcon';
 
@@ -12,8 +12,11 @@ export default function LoginForm({ onSubmit }) {
   const [identifier,setIdentifier]=useState(''); const [password,setPassword]=useState('');
   const [pin,setPin]=useState(''); const [otpPhone,setOtpPhone]=useState(''); const [otpCode,setOtpCode]=useState('');
   const [otpStep,setOtpStep]=useState('phone'); const [register,setRegister]=useState(initialRegister); const [error,setError]=useState(''); const [busy,setBusy]=useState(false);
+  useEffect(()=>{if(typeof window==='undefined')return;const params=new URLSearchParams(window.location.search);if(params.get('mode')==='register')setMode('register');},[]);
   const run=async(payload)=>{setError('');setBusy(true);try{await onSubmit({...payload,setError,setOtpStep});}finally{setBusy(false);}};
   const changeMode=(next)=>{setMode(next);setError('');if(next==='otp')setOtpStep('phone');};
+  const openRegister=()=>{setError('');setMode('register');if(typeof window!=='undefined')window.history.replaceState(null,'','/login?mode=register');};
+  const backToLogin=()=>{setError('');setMode('password');if(typeof window!=='undefined')window.history.replaceState(null,'','/login');};
   const updateRegister=(key,value)=>setRegister((v)=>({...v,[key]:value}));
   const validateRegistration=()=>{const r=register;
     if(!r.firstName.trim()||!r.lastName.trim())return'กรุณากรอกชื่อและนามสกุล';
@@ -46,13 +49,13 @@ export default function LoginForm({ onSubmit }) {
         <div className="aha-auth-heading"><div className="aha-auth-kicker">AHA</div><h2>{mode==='register'?'สร้างบัญชี AHA':'ยินดีต้อนรับกลับ'}</h2><p>{mode==='register'?'กรอกข้อมูลเพื่อเริ่มใช้งาน':'เข้าสู่ระบบเพื่อดูข้อมูลและการแจ้งเตือนของคุณ'}</p></div>
 
         {mode!=='register'&&<div className="aha-auth-tabs" role="tablist"><button type="button" className={mode==='password'?'active':''} onClick={()=>changeMode('password')}>บัญชี / รหัสผ่าน</button><button type="button" className={mode==='pin'?'active':''} onClick={()=>changeMode('pin')}>PIN 4 หลัก</button><button type="button" className={mode==='otp'?'active':''} onClick={()=>changeMode('otp')}>OTP</button></div>}
-        {mode==='register'&&<button type="button" className="aha-auth-back" onClick={()=>changeMode('password')}>← กลับไปเข้าสู่ระบบ</button>}
+        {mode==='register'&&<button type="button" className="aha-auth-back" onClick={backToLogin}>← กลับไปเข้าสู่ระบบ</button>}
 
         <form onSubmit={submit}>
           {mode==='password'&&<>
             <div className="aha-auth-field"><label>ชื่อผู้ใช้ / อีเมล</label><input value={identifier} onChange={e=>setIdentifier(e.target.value)} autoComplete="username" placeholder="ชื่อผู้ใช้ หรืออีเมล" required autoFocus/></div>
             <div className="aha-auth-field"><label>รหัสผ่าน</label><input type="password" value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" placeholder="รหัสผ่าน" required/></div>
-            <div className="aha-auth-row"><button type="button" className="aha-auth-link" onClick={()=>router.push('/forgot-password')}>ลืมรหัสผ่าน?</button><button type="button" className="aha-auth-link" onClick={()=>changeMode('register')}>ยังไม่มีบัญชี? <strong>สมัครสมาชิก</strong></button></div>
+            <div className="aha-auth-row"><button type="button" className="aha-auth-link" onClick={()=>router.push('/forgot-password')}>ลืมรหัสผ่าน?</button><button type="button" className="aha-auth-link" onClick={openRegister}>ยังไม่มีบัญชี? <strong>สมัครสมาชิก</strong></button></div>
           </>}
           {mode==='pin'&&<><p className="aha-auth-sub">เข้าสู่ระบบด้วย PIN 4 หลักที่ตั้งไว้</p><div className="aha-auth-field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={otpPhone} onChange={e=>setOtpPhone(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="0XXXXXXXXX" required autoFocus/></div><div className="aha-auth-field"><label>PIN 4 หลัก</label><input type="password" inputMode="numeric" maxLength={4} value={pin} onChange={e=>setPin(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••" required/></div></>}
           {mode==='otp'&&<><p className="aha-auth-sub">ระบบจะส่งรหัส OTP ไปยังเบอร์โทรศัพท์ของคุณ</p><div className="aha-auth-field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={otpPhone} onChange={e=>setOtpPhone(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="0XXXXXXXXX" required autoFocus/></div>{otpStep==='code'&&<div className="aha-auth-field"><label>รหัส OTP 6 หลัก</label><input inputMode="numeric" maxLength={6} value={otpCode} onChange={e=>setOtpCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="กรอกรหัส 6 หลัก" required/></div>}</>}
