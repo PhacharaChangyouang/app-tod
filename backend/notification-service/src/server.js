@@ -414,12 +414,17 @@ app.post('/api/notifications/emergency', authenticate, async (req, res) => {
           recipientIds = [...new Set(recipientsPayload.data)];
         }
       } else {
-        console.error('Emergency recipient lookup failed:', recipientsResponse.status, await recipientsResponse.text());
-        return res.status(502).json({ success: false, message: 'Unable to load emergency recipients' });
+        const lookupBody = await recipientsResponse.text();
+        console.error('Emergency recipient lookup failed:', recipientsResponse.status, lookupBody);
+        // Do not block SOS for the sender when the family lookup service is temporarily unavailable.
+        // The sender still receives an emergency record; linked recipients will resume once the
+        // Auth service integration is healthy.
+        console.error('Emergency degraded mode: creating sender notification only');
       }
     } catch (lookupError) {
       console.error('Emergency recipient lookup error:', lookupError);
-      return res.status(502).json({ success: false, message: 'Unable to load emergency recipients' });
+      // SOS is safety-critical: never turn a family-service outage into a failed emergency action.
+      console.error('Emergency degraded mode: creating sender notification only');
     }
 
     const locationText = latitude != null && longitude != null
