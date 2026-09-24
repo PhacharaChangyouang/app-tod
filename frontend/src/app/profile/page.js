@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const [pinSaving, setPinSaving] = useState(false);
   const [medicinePushEnabled, setMedicinePushEnabled] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
+  const [appearanceNotice, setAppearanceNotice] = useState('');
 
   useEffect(() => {
     const session = getSession();
@@ -80,7 +81,8 @@ export default function ProfilePage() {
     localStorage.setItem('aha_appearance', key);
     applyAppearance(key);
     window.dispatchEvent(new CustomEvent('aha-appearance-change', { detail: key }));
-    flash(true, key === 'dark' ? 'เปลี่ยนเป็นโหมดมืดแล้ว' : key === 'system' ? 'ใช้ธีมตามระบบแล้ว' : 'เปลี่ยนเป็นโหมดสว่างแล้ว');
+    setAppearanceNotice(key === 'dark' ? 'เปลี่ยนเป็นโหมดมืดแล้ว' : key === 'system' ? 'ใช้ธีมตามระบบแล้ว' : 'เปลี่ยนเป็นโหมดสว่างแล้ว');
+    window.setTimeout(() => setAppearanceNotice(''), 1800);
   };
 
   const toggleMedicineNotifications = async () => {
@@ -202,7 +204,7 @@ export default function ProfilePage() {
           <div className="aha-profile-mark" aria-hidden="true"><span /><span /><span /><span /></div>
         </section>
 
-        {(message || error) && <div className={`aha-profile-alert ${error ? 'error' : 'success'}`}>{error || message}</div>}
+        {(message || error || appearanceNotice) && <div className={`aha-profile-alert ${error ? 'error' : 'success'}`}>{error || message || appearanceNotice}</div>}
 
         <section className="aha-profile-section aha-profile-personal">
           <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">PROFILE</span><h2>ข้อมูลส่วนตัว</h2><p>ข้อมูลที่ใช้แสดงในระบบ AHA</p></div></div>
