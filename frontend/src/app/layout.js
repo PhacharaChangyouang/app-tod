@@ -1,4 +1,5 @@
 import './globals.css';
+import Script from 'next/script';
 import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
 import AhaVisualPolish from '../components/AhaVisualPolish';
@@ -27,6 +28,14 @@ export default function RootLayout({ children }) {
   return (
     <html lang="th">
       <body>
+        <Script id="aha-appearance-init" strategy="beforeInteractive">{`
+          try {
+            var mode = localStorage.getItem('aha_appearance') || 'light';
+            var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.dataset.ahaAppearance = dark ? 'dark' : 'light';
+            document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+          } catch (_) {}
+        `}</Script>
         {children}
         <AhaNavigation />
         <AhaVisualPolish />
