@@ -30,6 +30,7 @@ export default function HomePage() {
   const [notifications, setNotifications] = useState([]);
   const [caregiverSummary, setCaregiverSummary] = useState({ elderly: [], today: [], history: [] });
   const [voice, setVoice] = useState(false);
+  const [avatar, setAvatar] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
@@ -38,6 +39,10 @@ export default function HomePage() {
     if (!session?.accessToken) { router.replace('/login'); return undefined; }
     const currentUser = session.user || null;
     setUser(currentUser);
+    if (currentUser?.id) setAvatar(localStorage.getItem(`aha_avatar_${currentUser.id}`) || '');
+    const syncAvatar = () => { if (currentUser?.id) setAvatar(localStorage.getItem(`aha_avatar_${currentUser.id}`) || ''); };
+    window.addEventListener('focus', syncAvatar);
+    window.addEventListener('storage', syncAvatar);
     let mounted = true;
     const dataPromise = currentUser?.role === 'caregiver' ? caregiverApi.summary() : reminderApi.today();
     Promise.allSettled([dataPromise, notificationApi.unread()]).then(([dataResult, notificationResult]) => {
@@ -50,7 +55,7 @@ export default function HomePage() {
       if (dataResult.status === 'rejected' && notificationResult.status === 'rejected') setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
       setLoading(false);
     });
-    return () => { mounted = false; };
+    return () => { mounted = false; window.removeEventListener('focus', syncAvatar); window.removeEventListener('storage', syncAvatar); };
   }, [router]);
 
   const isCaregiver = user?.role === 'caregiver';
@@ -86,7 +91,7 @@ export default function HomePage() {
         <div className="aha-v3-top-message"><strong>{isCaregiver ? 'ดูแลคนที่คุณรัก' : 'ถามได้ทุกเรื่องสุขภาพ'}</strong><span>{isCaregiver ? 'ติดตามสถานะจาก AHA ได้ในที่เดียว' : 'AHA พร้อมดูแลคุณ'}</span></div>
         <div className="aha-v3-top-actions">
           <button onClick={() => router.push('/notifications')} aria-label="แจ้งเตือน" type="button"><AhaIcon name="bell" size={22} />{notifications.length > 0 && <b>{notifications.length > 9 ? '9+' : notifications.length}</b>}</button>
-          <button onClick={() => router.push('/profile')} aria-label="โปรไฟล์" type="button"><span className="aha-v3-user-avatar">{displayName.slice(0, 1)}</span></button>
+          <button onClick={() => router.push('/profile')} aria-label="โปรไฟล์" type="button"><span className="aha-v3-user-avatar">{avatar ? <img src={avatar} alt="" /> : displayName.slice(0, 1)}</span></button>
           <button onClick={() => router.push('/profile')} aria-label="ตั้งค่า" type="button"><AhaIcon name="activity" size={21} /></button>
         </div>
       </header>
