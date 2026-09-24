@@ -107,6 +107,7 @@ export const notificationApi = {
   pushStatus: () => request(NOTIFICATION_API_BASE, '/api/push/status', { auth: true }),
   pushSubscribe: (subscription) => request(NOTIFICATION_API_BASE, '/api/push/subscribe', { method: 'POST', body: subscription, auth: true }),
   pushUnsubscribe: (endpoint) => request(NOTIFICATION_API_BASE, '/api/push/subscribe', { method: 'DELETE', body: { endpoint }, auth: true }),
+  contactSupport: (payload) => request(NOTIFICATION_API_BASE, '/api/support/contact', { method: 'POST', body: payload, auth: true }),
 };
 
 export const familyApi = {
