@@ -244,6 +244,12 @@ export default function AhaResponsiveFix() {
       .aha-v3-bottom-grid { gap:var(--aha-home-gap) !important; }
       .aha-v3-action-stack { gap:var(--aha-home-gap) !important; margin-top:var(--aha-home-gap) !important; }
 
+      /* Keep the three Home action arrows comfortably inside their cards. */
+      .aha-v3-action .aha-v3-arrow { flex:0 0 auto; margin-right:6px; }
+      @media (max-width:760px) {
+        .aha-v3-action .aha-v3-arrow { margin-right:0 !important; margin-bottom:6px !important; }
+      }
+
       /* ---------- MOBILE ---------- */
       .aha-v3-sidebar[data-aha-navigation="true"] { visibility:visible !important; opacity:1 !important; }
       @media (max-width:760px) {
