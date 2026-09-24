@@ -43,6 +43,10 @@ export default function ProfilePage() {
   const [medicinePushEnabled, setMedicinePushEnabled] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [appearanceNotice, setAppearanceNotice] = useState('');
+  const [supportName, setSupportName] = useState('');
+  const [supportEmail, setSupportEmail] = useState('');
+  const [supportIssue, setSupportIssue] = useState('');
+  const [supportBusy, setSupportBusy] = useState(false);
 
   useEffect(() => {
     const session = getSession();
@@ -53,6 +57,8 @@ export default function ProfilePage() {
     setAge(initial.age ?? '');
     setRole(initial.role || 'elderly');
     setPhone(initial.phone || '');
+    setSupportName(initial.name || '');
+    setSupportEmail(initial.email || '');
     const savedAppearance = localStorage.getItem('aha_appearance') || 'light';
     setTheme(savedAppearance);
     applyAppearance(savedAppearance);
@@ -69,6 +75,8 @@ export default function ProfilePage() {
       if (!result?.user) return;
       const fresh = result.user;
       setUser(fresh); setName(fresh.name || ''); setAge(fresh.age ?? ''); setRole(fresh.role || 'elderly'); setPhone(fresh.phone || '');
+      setSupportName((value) => value || fresh.name || '');
+      setSupportEmail((value) => value || fresh.email || '');
       setAvatar(localStorage.getItem(`aha_avatar_${fresh.id}`) || '');
       saveSession({ ...getSession(), user: fresh });
     }).catch(() => {});
@@ -167,6 +175,26 @@ export default function ProfilePage() {
     finally { setPinSaving(false); }
   };
 
+  const submitSupport = async (event) => {
+    event.preventDefault();
+    setError(''); setMessage('');
+    const cleanName = supportName.trim();
+    const cleanEmail = supportEmail.trim();
+    const cleanIssue = supportIssue.trim();
+    if (!cleanName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail) || cleanIssue.length < 5) {
+      setError('กรุณากรอกชื่อ อีเมล และรายละเอียดปัญหาให้ครบถ้วน');
+      return;
+    }
+    setSupportBusy(true);
+    try {
+      await notificationApi.contactSupport({ name: cleanName, email: cleanEmail, issue: cleanIssue });
+      setSupportIssue('');
+      setMessage('ส่งข้อความถึงผู้ดูแลระบบแล้ว');
+    } catch (err) {
+      setError(err?.message || 'ส่งข้อความถึงผู้ดูแลระบบไม่สำเร็จ');
+    } finally { setSupportBusy(false); }
+  };
+
   const logout = async () => {
     try { await authApi.logout(getSession()?.refreshToken); } catch (_) {}
     clearSession(); router.replace('/login');
@@ -240,6 +268,18 @@ export default function ProfilePage() {
           <button className="aha-profile-secondary" onClick={changePin} disabled={pinSaving}>{pinSaving ? 'กำลังบันทึก…' : 'เปลี่ยน PIN 4 หลัก'}</button>
         </section>
 
+        <section className="aha-profile-section aha-profile-support">
+          <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">SUPPORT</span><h2>ติดต่อผู้ดูแลระบบ</h2><p>แจ้งปัญหาการใช้งานผ่าน AHA โดยไม่ต้องเปิดแอปอีเมล</p></div></div>
+          <form className="aha-profile-support-form" onSubmit={submitSupport}>
+            <div className="aha-profile-pin-grid">
+              <label>ชื่อ<input value={supportName} onChange={(e) => setSupportName(e.target.value)} maxLength={100} autoComplete="name" placeholder="ชื่อผู้ติดต่อ" /></label>
+              <label>อีเมลสำหรับตอบกลับ<input type="email" value={supportEmail} onChange={(e) => setSupportEmail(e.target.value)} maxLength={254} autoComplete="email" placeholder="name@example.com" /></label>
+            </div>
+            <label>ปัญหาที่ต้องการติดต่อ<textarea value={supportIssue} onChange={(e) => setSupportIssue(e.target.value)} maxLength={4000} rows={5} placeholder="อธิบายปัญหาที่พบ หรือสิ่งที่ต้องการให้ผู้ดูแลช่วยเหลือ" /></label>
+            <button className="aha-profile-primary" type="submit" disabled={supportBusy}>{supportBusy ? 'กำลังส่ง…' : 'ส่งถึงผู้ดูแลระบบ'}</button>
+          </form>
+        </section>
+
         <section className="aha-profile-account"><div><span className="aha-profile-kicker">ACCOUNT</span><strong>บัญชี AHA</strong><span>ออกจากระบบเฉพาะอุปกรณ์นี้</span></div><button onClick={logout} type="button">ออกจากระบบ</button></section>
         <footer className="aha-profile-footer">AHA · AI Health Assistant</footer>
       </main>
@@ -266,6 +306,8 @@ export default function ProfilePage() {
         .aha-theme-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;padding:5px;border-radius:16px;background:var(--aha-surface-soft,#f1f2f4)}.aha-theme-option{min-width:0;min-height:52px;border:1px solid transparent;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 10px;color:var(--aha-text-secondary,#62666d);font-weight:800}.aha-theme-option .aha-theme-symbol{width:25px;height:25px;border-radius:8px;display:grid;place-items:center;background:var(--aha-surface,#fff);color:var(--aha-text,#111)}.aha-theme-option b{color:var(--aha-text,#111)}.aha-theme-option.active{background:var(--aha-surface,#fff);border-color:var(--aha-border,#e2e3e6);color:var(--aha-text,#111);box-shadow:0 2px 8px rgba(0,0,0,.06)}
         .aha-profile-settings-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:14px}.aha-profile-sound-toggle{width:100%;min-height:60px;border:1px solid var(--aha-border,#e2e3e6);background:var(--aha-surface-soft,#f1f2f4);border-radius:15px;padding:10px 12px;display:flex;align-items:center;gap:10px;color:var(--aha-text,#111)}.aha-profile-sound-toggle>span{width:39px;height:39px;border-radius:11px;background:var(--aha-surface,#fff);display:grid;place-items:center}.aha-profile-sound-toggle strong{flex:1;text-align:left;color:var(--aha-text,#111)}.aha-profile-sound-toggle>i{width:48px;height:28px;border-radius:999px;background:#b9bcc2;padding:3px;display:flex;align-items:center}.aha-profile-sound-toggle>i b{width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .18s}.aha-profile-sound-toggle.active>i{background:#16856f}.aha-profile-sound-toggle.active>i b{transform:translateX(20px)}
         .aha-profile-otp{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.aha-profile-otp .aha-profile-primary{margin:0;white-space:nowrap}
+        .aha-profile-support-form{display:grid;gap:12px}.aha-profile-support-form textarea{width:100%;min-width:0;border:1px solid var(--aha-border,#e2e3e6);border-radius:13px;background:var(--aha-surface-soft,#f1f2f4);color:var(--aha-text,#111);padding:13px 14px;outline:none;font:inherit;line-height:1.55;resize:vertical}.aha-profile-support-form textarea:focus{border-color:#2f6bff;box-shadow:0 0 0 3px rgba(47,107,255,.12)}.aha-profile-support-form .aha-profile-primary{justify-self:start}
+        html[data-aha-appearance="dark"] .aha-profile-support-form textarea{background:var(--aha-surface-soft);border-color:var(--aha-border);color:var(--aha-text)}
         .aha-profile-account{padding:18px 20px;display:flex;align-items:center;justify-content:space-between;gap:14px}.aha-profile-account strong{display:block;color:var(--aha-text,#111);font-size:17px;margin-top:2px}.aha-profile-account>div>span:last-child{display:block;color:var(--aha-text-secondary,#62666d);font-size:12px;margin-top:3px}.aha-profile-account button{min-height:44px;border:1px solid #e9b6ba;background:#fff0f0;color:#a5202b;border-radius:12px;padding:0 16px;font-weight:900}
         .aha-profile-footer{text-align:center;color:var(--aha-text-secondary,#62666d);font-size:11px;padding:3px 0 10px}.aha-profile-loading{min-height:100dvh;display:grid;place-items:center;color:var(--aha-text-secondary,#62666d);background:var(--aha-bg,#f7f7f5)}
         @media(max-width:720px){.aha-profile-page{padding-bottom:calc(108px + env(safe-area-inset-bottom,0px))}.aha-profile-header{height:66px;width:calc(100% - 20px);grid-template-columns:42px 1fr 42px;gap:8px}.aha-profile-title strong{font-size:19px}.aha-profile-title span{font-size:11px}.aha-profile-home-button{width:42px;padding:0}.aha-profile-home-button span{display:none}.aha-profile-wrap{width:calc(100% - 20px);gap:11px}.aha-profile-identity{min-height:190px;padding:22px 16px 18px;align-items:flex-end;gap:13px;border-radius:23px}.aha-profile-edit{right:14px;top:14px;font-size:12px}.aha-profile-avatar{width:82px;height:82px;font-size:32px;border-width:3px}.aha-profile-identity-copy h1{font-size:23px}.aha-profile-identity-copy p{font-size:12px}.aha-profile-role{font-size:9px;margin-bottom:5px}.aha-profile-mark{right:16px;bottom:16px;opacity:.65}.aha-profile-section{padding:17px;border-radius:19px}.aha-profile-fields,.aha-profile-pin-grid{grid-template-columns:1fr}.aha-profile-settings-grid{grid-template-columns:1fr;gap:11px}.aha-theme-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.aha-theme-option{font-size:12px;padding:0 5px;gap:4px}.aha-profile-otp{grid-template-columns:1fr}.aha-profile-otp .aha-profile-primary{margin:0}.aha-profile-account{border-radius:19px}}
