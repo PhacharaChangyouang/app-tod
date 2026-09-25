@@ -28,8 +28,8 @@ export default function ResetPasswordPage() {
       setError('ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง');
       return;
     }
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(password)) {
-      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(password)) {
+      setError('รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
       return;
     }
     if (password !== confirm) {

@@ -23,8 +23,8 @@ function setAuthCookies(res, accessToken, refreshToken) {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
   };
-  res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
-  res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 30 * 24 * 60 * 60 * 1000 });
+  res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
+  res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
 }
 
 async function issueSession(res, user) {
@@ -36,9 +36,13 @@ async function issueSession(res, user) {
 
 async function registerWithPassword(req, res, next) {
   try {
+    if (process.env.NODE_ENV === 'production' && process.env.REGISTRATION_ENABLED !== 'true') {
+      return res.status(403).json({ success: false, message: 'ระบบยังไม่เปิดรับการสมัครบัญชีสาธารณะ' });
+    }
+
     const {
       phone, firstName, lastName, email, username,
-      password, confirmPassword, role, age, pin, termsAccepted,
+      password, confirmPassword, role, age, termsAccepted,
     } = req.body;
 
     if (!termsAccepted) {
@@ -49,12 +53,8 @@ async function registerWithPassword(req, res, next) {
       return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
     }
 
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(String(password || ''))) {
-      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
-    }
-
-    if (!/^\d{4}$/.test(String(pin || ''))) {
-      return res.status(400).json({ success: false, message: 'PIN ต้องเป็นตัวเลข 4 หลัก' });
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || ''))) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
     }
 
     const phoneUser = await userModel.findByPhone(phone);
@@ -70,14 +70,12 @@ async function registerWithPassword(req, res, next) {
 
     const name = `${String(firstName || '').trim()} ${String(lastName || '').trim()}`.trim();
     const passwordHash = await bcrypt.hash(String(password), SALT_ROUNDS);
-    const pinHash = await bcrypt.hash(String(pin), SALT_ROUNDS);
 
     const user = await userModel.createWithPassword({
       phone,
       name,
       age: age || null,
       role,
-      pinHash,
       username: String(username).trim(),
       email: email ? String(email).trim().toLowerCase() : null,
       passwordHash,

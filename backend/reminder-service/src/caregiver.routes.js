@@ -56,12 +56,15 @@ async function notifyElderly(req, elderlyId, reminderId, action, detail) {
 
 function validateReminderPayload(body, { partial = false } = {}) {
   const medicineName = String(body.medicine_name ?? '').trim();
+  const dosage = String(body.dosage ?? '').trim();
   const time = String(body.reminder_time ?? '').trim();
   const frequency = body.frequency ?? 'daily';
   const days = body.days_of_week ?? ['monday','tuesday','wednesday','thursday','friday','saturday','sunday'];
 
   if (!partial && (!medicineName || !time)) return 'medicine_name and reminder_time are required';
   if (partial && body.medicine_name !== undefined && !medicineName) return 'medicine_name cannot be empty';
+  if (medicineName.length > 120) return 'medicine_name must not exceed 120 characters';
+  if (dosage.length > 100) return 'dosage must not exceed 100 characters';
   if (body.reminder_time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return 'reminder_time must be HH:MM';
   if (!['daily', 'weekly'].includes(frequency)) return 'frequency must be daily or weekly';
   if (body.days_of_week !== undefined && (!Array.isArray(days) || !days.length)) return 'days_of_week must be a non-empty array';
@@ -133,7 +136,7 @@ router.post('/reminders', authenticate, async (req, res) => {
     const result = await pool.query(`
       INSERT INTO reminders (user_id, medicine_name, dosage, reminder_time, frequency, days_of_week, start_date, end_date, is_active)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *
-    `, [targetId, medicine_name.trim(), dosage || null, reminder_time, frequency, days_of_week, start_date || null, end_date || null, Boolean(is_active)]);
+    `, [targetId, String(medicine_name).trim(), String(dosage ?? '').trim() || null, reminder_time, frequency, days_of_week, start_date || null, end_date || null, Boolean(is_active)]);
 
     const reminder = result.rows[0];
     await notifyElderly(req, targetId, reminder.id, 'เพิ่ม', `${reminder.medicine_name} เวลา ${String(reminder.reminder_time).slice(0,5)}`);
@@ -170,7 +173,7 @@ router.put('/reminders/:id', authenticate, async (req, res) => {
           updated_at = now()
       WHERE id = $9
       RETURNING *
-    `, [body.medicine_name !== undefined ? String(body.medicine_name).trim() : null, body.dosage !== undefined ? String(body.dosage) : null, body.reminder_time || null, body.frequency || null, body.days_of_week || null, body.start_date !== undefined ? String(body.start_date) : null, body.end_date !== undefined ? String(body.end_date) : null, typeof body.is_active === 'boolean' ? body.is_active : null, req.params.id]);
+    `, [body.medicine_name !== undefined ? String(body.medicine_name).trim() : null, body.dosage !== undefined ? String(body.dosage ?? '').trim() : null, body.reminder_time || null, body.frequency || null, body.days_of_week || null, body.start_date !== undefined ? String(body.start_date) : null, body.end_date !== undefined ? String(body.end_date) : null, typeof body.is_active === 'boolean' ? body.is_active : null, req.params.id]);
 
     const updated = result.rows[0];
     await notifyElderly(req, updated.user_id, updated.id, 'แก้ไข', `${updated.medicine_name} เวลา ${String(updated.reminder_time).slice(0,5)}`);

@@ -39,7 +39,7 @@ async function resetPassword(req, res, next) {
     const { token, password, confirmPassword } = req.body;
     if (!token) return res.status(400).json({ success: false, message: 'ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง' });
     if (password !== confirmPassword) return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(String(password || ''))) return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || ''))) return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
 
     const tokenHash = hashResetToken(String(token));
     const { rows } = await pool.query(`SELECT * FROM password_reset_tokens WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now() LIMIT 1`, [tokenHash]);

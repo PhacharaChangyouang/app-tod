@@ -11,21 +11,13 @@ async function findByEmail(email) {
   const { rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
   return rows[0] || null;
 }
-async function create({ phone, name, age, role, pinHash }) {
-  const { rows } = await pool.query(`INSERT INTO users (phone, name, age, role, pin_hash, phone_verified) VALUES ($1, $2, $3, $4, $5, true) RETURNING *`, [phone, name || null, age || null, role, pinHash]);
+async function createWithPassword({ phone, name, age, role, username, email, passwordHash }) {
+  const { rows } = await pool.query(`INSERT INTO users (phone, name, age, role, username, email, password_hash, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, false) RETURNING *`, [phone, name || null, age || null, role, username, email || null, passwordHash]);
   return rows[0];
 }
-async function createWithPassword({ phone, name, age, role, pinHash, username, email, passwordHash }) {
-  const { rows } = await pool.query(`INSERT INTO users (phone, name, age, role, pin_hash, username, email, password_hash, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true) RETURNING *`, [phone, name || null, age || null, role, pinHash, username, email || null, passwordHash]);
-  return rows[0];
-}
-async function setPhoneVerified(userId) { await pool.query('UPDATE users SET phone_verified = true WHERE id = $1', [userId]); }
-async function updatePin(userId, pinHash) { const { rows } = await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2 RETURNING *', [pinHash, userId]); return rows[0] || null; }
 async function updatePassword(userId, passwordHash) { const { rows } = await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2 RETURNING *', [passwordHash, userId]); return rows[0] || null; }
-async function updateProfile(userId, { name, age, role }) {
-  const { rows } = await pool.query(`UPDATE users SET name = COALESCE($2, name), age = COALESCE($3, age), role = COALESCE($4, role) WHERE id = $1 RETURNING *`, [userId, name ?? null, age ?? null, role ?? null]);
+async function updateProfile(userId, { name, age }) {
+  const { rows } = await pool.query(`UPDATE users SET name = COALESCE($2, name), age = COALESCE($3, age) WHERE id = $1 RETURNING *`, [userId, name ?? null, age ?? null]);
   return rows[0] || null;
 }
-async function updatePhone(userId, phone) { const { rows } = await pool.query('UPDATE users SET phone = $2, phone_verified = true WHERE id = $1 RETURNING *', [userId, phone]); return rows[0] || null; }
-
-module.exports = { findByPhone, findByUsername, findById, findByCredentials, findByEmail, create, createWithPassword, setPhoneVerified, updatePin, updatePassword, updateProfile, updatePhone };
+module.exports = { findByPhone, findByUsername, findById, findByCredentials, findByEmail, createWithPassword, updatePassword, updateProfile };

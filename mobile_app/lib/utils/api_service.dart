@@ -27,56 +27,15 @@ class ApiService {
   }
 
   // ---------- AUTH ----------
-  static Future<Map<String, dynamic>> requestOtp(String phone) async {
-    final res = await http
-        .post(
-          Uri.parse('$_baseUrl/auth/request-otp'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'phone': phone}),
-        )
-        .timeout(const Duration(seconds: 8));
-    return _decode(res);
-  }
-
-  static Future<Map<String, dynamic>> verifyOtp(
-    String phone,
-    String code,
+  static Future<Map<String, dynamic>> loginWithPassword(
+    String identifier,
+    String password,
   ) async {
-    final res = await http.post(
-      Uri.parse('$_baseUrl/auth/verify-otp'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'phone': phone, 'code': code}),
-    );
-    return _decode(res);
-  }
-
-  static Future<Map<String, dynamic>> register({
-    required String phone,
-    required String name,
-    required int age,
-    required String role,
-    required String pin,
-  }) async {
-    final res = await http.post(
-      Uri.parse('$_baseUrl/auth/register'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'phone': phone,
-        'name': name,
-        'age': age,
-        'role': role,
-        'pin': pin,
-      }),
-    );
-    return _decode(res);
-  }
-
-  static Future<Map<String, dynamic>> login(String phone, String pin) async {
     final res = await http
         .post(
-          Uri.parse('$_baseUrl/auth/login'),
+          Uri.parse('$_baseUrl/auth/login-password'),
           headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'phone': phone, 'pin': pin}),
+          body: jsonEncode({'identifier': identifier, 'password': password}),
         )
         .timeout(const Duration(seconds: 8));
     return _decode(res);

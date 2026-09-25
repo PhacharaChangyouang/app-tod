@@ -9,25 +9,14 @@ export default function LoginPage() {
   const router = useRouter();
 
   const handleSubmit = async (payload) => {
-    const { mode, code, identifier, setError, setOtpStep, ...data } = payload;
+    const { mode, identifier, setError, ...data } = payload;
 
     try {
       let response;
 
       if (mode === 'loginPassword') {
         response = await authApi.loginWithPassword(identifier, data.password);
-      } else if (mode === 'loginPin') {
-        response = await authApi.login(data.phone, data.pin);
-      } else if (mode === 'requestOtp') {
-        response = await authApi.requestOtp(data.phone);
-        if (!response.success) throw new Error(response.message || 'ไม่สามารถขอ OTP ได้');
-        setOtpStep('code');
-        return;
-      } else if (mode === 'loginOtp') {
-        response = await authApi.loginOtp(data.phone, code);
       } else if (mode === 'registerPassword') {
-        // IMPORTANT: keep the complete registration payload.
-        // password, confirmPassword, phone and pin must all reach the API.
         response = await authApi.registerWithPassword({
           firstName: data.firstName,
           lastName: data.lastName,
@@ -38,7 +27,6 @@ export default function LoginPage() {
           confirmPassword: data.confirmPassword,
           role: data.role,
           age: data.age,
-          pin: data.pin,
           termsAccepted: data.termsAccepted,
         });
       } else {

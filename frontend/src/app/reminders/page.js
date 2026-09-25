@@ -103,6 +103,8 @@ export default function RemindersPage() {
     setForm({
       ...blank,
       ...item,
+      medicine_name: String(item.medicine_name ?? ''),
+      dosage: String(item.dosage ?? ''),
       reminder_time: String(item.reminder_time || '08:00').slice(0, 5),
       days_of_week:
         Array.isArray(item.days_of_week) && item.days_of_week.length
@@ -117,7 +119,10 @@ export default function RemindersPage() {
   const save = async (event) => {
     event.preventDefault();
 
-    if (!form.medicine_name.trim()) {
+    const medicineName = String(form.medicine_name ?? '').trim();
+    const dosage = String(form.dosage ?? '').trim();
+
+    if (!medicineName) {
       setError('กรุณาระบุชื่อยา');
       return;
     }
@@ -128,8 +133,8 @@ export default function RemindersPage() {
     try {
       const payload = {
         ...form,
-        medicine_name: form.medicine_name.trim(),
-        dosage: form.dosage.trim() || null,
+        medicine_name: medicineName,
+        dosage: dosage || null,
         start_date: form.start_date || null,
         end_date: form.end_date || null,
       };

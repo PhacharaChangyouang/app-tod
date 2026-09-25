@@ -60,11 +60,6 @@ async function request(baseUrl, path, { method = 'GET', body, auth = false, retr
 }
 
 export const authApi = {
-  requestOtp: (phone) => request(AUTH_API_BASE, '/auth/request-otp', { method: 'POST', body: { phone } }),
-  verifyOtp: (phone, code) => request(AUTH_API_BASE, '/auth/verify-otp', { method: 'POST', body: { phone, code } }),
-  loginOtp: (phone, code) => request(AUTH_API_BASE, '/auth/login-otp', { method: 'POST', body: { phone, code } }),
-  register: (payload) => request(AUTH_API_BASE, '/auth/register', { method: 'POST', body: payload }),
-  login: (phone, pin) => request(AUTH_API_BASE, '/auth/login', { method: 'POST', body: { phone, pin } }),
   registerWithPassword: (payload) => request(AUTH_API_BASE, '/auth/register-password', { method: 'POST', body: payload }),
   loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
   requestPasswordReset: (email) => request(AUTH_API_BASE, '/auth/forgot-password', { method: 'POST', body: { email } }),
@@ -73,8 +68,6 @@ export const authApi = {
   logout: (refreshToken) => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: { refreshToken } }),
   me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
   updateMe: (payload) => request(AUTH_API_BASE, '/auth/me', { method: 'PATCH', body: payload, auth: true }),
-  changePin: (currentPin, newPin) => request(AUTH_API_BASE, '/auth/me/change-pin', { method: 'POST', body: { currentPin, newPin }, auth: true }),
-  changePhone: (phone, code) => request(AUTH_API_BASE, '/auth/me/change-phone', { method: 'POST', body: { phone, code }, auth: true }),
 };
 
 export const reminderApi = {

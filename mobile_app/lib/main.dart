@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'screens/splash_screen.dart';
-import 'screens/otp_request_screen.dart';
-import 'screens/otp_verify_screen.dart';
-import 'screens/pin_setup_screen.dart';
-import 'screens/pin_login_screen.dart';
+import 'screens/password_login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/reminder_screen.dart';
 import 'screens/sos_screen.dart';
@@ -35,10 +32,7 @@ class AHAApp extends StatelessWidget {
       initialRoute: '/splash',
       routes: {
         '/splash': (_) => const SplashScreen(),
-        '/otp-request': (_) => const OtpRequestScreen(),
-        '/otp-verify': (_) => const OtpVerifyScreen(),
-        '/pin-setup': (_) => const PinSetupScreen(),
-        '/pin-login': (_) => const PinLoginScreen(),
+        '/login': (_) => const PasswordLoginScreen(),
         '/home': (_) => const HomeScreen(),
         '/caregiver-home': (_) => const CaregiverHomeScreen(),
         '/reminders': (_) => const ReminderScreen(),

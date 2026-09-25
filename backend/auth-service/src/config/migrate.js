@@ -18,7 +18,7 @@ async function migrate() {
         name VARCHAR(100),
         age INT,
         role VARCHAR(20) NOT NULL CHECK (role IN ('elderly', 'caregiver')),
-        pin_hash VARCHAR(255) NOT NULL,
+        pin_hash VARCHAR(255),
         phone_verified BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
@@ -27,6 +27,7 @@ async function migrate() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ALTER COLUMN pin_hash DROP NOT NULL`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL`);
 

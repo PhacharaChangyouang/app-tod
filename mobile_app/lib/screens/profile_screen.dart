@@ -59,7 +59,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (confirm == true) {
       await ApiService.logout();
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/otp-request', (_) => false);
+      Navigator.pushNamedAndRemoveUntil(context, '/login', (_) => false);
     }
   }
 

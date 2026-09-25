@@ -10,13 +10,16 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.2.0",
+    "next": "^15.5.24",
     "react": "^18.3.0",
-    "react-dom": "^18.3.0",
-    "next-pwa": "^5.6.0"
+    "react-dom": "^18.3.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0",
-    "eslint-config-next": "^14.2.0"
+    "eslint-config-next": "^15.5.24"
+  },
+  "overrides": {
+    "postcss": "8.5.23",
+    "nanoid": "3.3.18"
   }
 }

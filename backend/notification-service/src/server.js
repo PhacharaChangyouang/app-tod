@@ -3,12 +3,15 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const webpush = require('web-push');
 
 const pool = require('./config/db');
 const authenticate = require('./middlewares/authenticate');
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 const pushConfigured = Boolean(
   process.env.VAPID_PUBLIC_KEY &&
@@ -171,7 +174,24 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-api-key'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '32kb' }));
+
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => Boolean(process.env.INTERNAL_API_KEY && req.headers['x-internal-api-key'] === process.env.INTERNAL_API_KEY),
+  message: { success: false, message: 'เรียกใช้งานระบบแจ้งเตือนบ่อยเกินไป กรุณาลองใหม่ภายหลัง' },
+}));
+
+const sensitiveActionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message: 'ทำรายการนี้บ่อยเกินไป กรุณาลองใหม่ภายหลัง' },
+});
 
 app.get('/health', async (req, res) => {
   try {
@@ -285,7 +305,7 @@ function escapeSupportHtml(value) {
   }[char]));
 }
 
-app.post('/api/support/contact', authenticate, async (req, res) => {
+app.post('/api/support/contact', sensitiveActionLimiter, authenticate, async (req, res) => {
   const name = String(req.body?.name || '').trim().slice(0, 100);
   const email = String(req.body?.email || '').trim().toLowerCase().slice(0, 254);
   const issue = String(req.body?.issue || '').trim().slice(0, 4000);
@@ -399,8 +419,15 @@ app.post('/api/notifications', authenticate, async (req, res) => {
     scheduled_at,
   } = req.body;
 
-  if (!type || !title || !message) {
+  const safeType = String(type || '').trim();
+  const safeTitle = String(title || '').trim();
+  const safeMessage = String(message || '').trim();
+
+  if (!safeType || !safeTitle || !safeMessage) {
     return res.status(400).json({ success: false, message: 'type, title and message are required' });
+  }
+  if (safeType.length > 50 || safeTitle.length > 200 || safeMessage.length > 4000) {
+    return res.status(400).json({ success: false, message: 'notification content is too long' });
   }
 
   const targetUserId = req.user.role === 'system' ? user_id : req.user.id;
@@ -418,9 +445,9 @@ app.post('/api/notifications', authenticate, async (req, res) => {
       RETURNING *
     `, [
       targetUserId,
-      type,
-      title,
-      message,
+      safeType,
+      safeTitle,
+      safeMessage,
       related_id || null,
       dedupe_key || null,
       scheduled_at || null,
@@ -443,7 +470,7 @@ app.post('/api/notifications', authenticate, async (req, res) => {
   }
 });
 
-app.post('/api/notifications/emergency', authenticate, async (req, res) => {
+app.post('/api/notifications/emergency', sensitiveActionLimiter, authenticate, async (req, res) => {
   const {
     message = 'มีการขอความช่วยเหลือฉุกเฉินจากผู้ใช้ AHA',
     latitude,
@@ -596,12 +623,21 @@ app.use((error, req, res, next) => {
   if (error.message === 'Not allowed by CORS') {
     return res.status(403).json({ success: false, message: 'CORS origin not allowed' });
   }
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  const status = error.statusCode || error.status || 500;
+  res.status(status).json({ success: false, message: status === 500 ? 'Internal server error' : error.message });
 });
 
 const PORT = process.env.PORT || 3003;
 
+function assertProductionSecurity() {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (String(process.env.JWT_SECRET || '').length < 32 || String(process.env.INTERNAL_API_KEY || '').length < 32) {
+    throw new Error('JWT_SECRET and INTERNAL_API_KEY must each contain at least 32 characters in production');
+  }
+}
+
 if (require.main === module) {
+  assertProductionSecurity();
   ensureRuntimeSchema()
     .then(() => {
       app.listen(PORT, () => {

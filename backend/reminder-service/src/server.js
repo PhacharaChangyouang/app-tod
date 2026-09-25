@@ -3,12 +3,15 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const pool = require('./config/db');
 const authenticate = require('./middlewares/authenticate');
 const caregiverRoutes = require('./caregiver.routes');
 const { startScheduler } = require('./scheduler');
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
 async function ensureRuntimeSchema() {
   await pool.query(`
@@ -56,7 +59,16 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-api-key'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '32kb' }));
+
+app.use('/api', rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: (req) => Boolean(process.env.INTERNAL_API_KEY && req.headers['x-internal-api-key'] === process.env.INTERNAL_API_KEY),
+  message: { success: false, message: 'เรียกใช้งานระบบยาบ่อยเกินไป กรุณาลองใหม่ภายหลัง' },
+}));
 
 app.get('/health', async (req, res) => {
   try {
@@ -324,11 +336,21 @@ app.use((error, req, res, next) => {
   if (error.message === 'Not allowed by CORS') {
     return res.status(403).json({ success: false, message: 'CORS origin not allowed' });
   }
-  res.status(500).json({ success: false, message: 'Internal server error' });
+  const status = error.statusCode || error.status || 500;
+  res.status(status).json({ success: false, message: status === 500 ? 'Internal server error' : error.message });
 });
 
 const PORT = process.env.PORT || 3002;
+
+function assertProductionSecurity() {
+  if (process.env.NODE_ENV !== 'production') return;
+  if (String(process.env.JWT_SECRET || '').length < 32 || String(process.env.INTERNAL_API_KEY || '').length < 32) {
+    throw new Error('JWT_SECRET and INTERNAL_API_KEY must each contain at least 32 characters in production');
+  }
+}
+
 if (require.main === module) {
+  assertProductionSecurity();
   ensureRuntimeSchema()
     .then(() => {
       app.listen(PORT, () => {
