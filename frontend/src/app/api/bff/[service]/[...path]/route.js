@@ -177,7 +177,10 @@ async function handler(request, context) {
     delete payload.accessToken;
     delete payload.refreshToken;
   }
-  return safeResponse(payload, upstream.status, rotatedSession, isLogout || upstream.status === 401);
+  // Do not clear cookies on a generic 401: a concurrent request may have
+  // already rotated the session and its Set-Cookie response may arrive first.
+  // Logout is explicit and remains the only unconditional cookie-clearing path here.
+  return safeResponse(payload, upstream.status, rotatedSession, isLogout);
 }
 
 async function guardedHandler(request, context) {
