@@ -71,12 +71,18 @@ async function refresh(req, res, next) {
       refreshToken = cookies.refreshToken;
     }
     const payload = tokenService.verifyRefreshToken(refreshToken);
-    if (!payload || !(await tokenService.isRefreshTokenValid(refreshToken))) return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+    if (!payload) return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+
+    // Consume before issuing a replacement. Atomic UPDATE ensures a refresh token
+    // cannot be accepted by two concurrent requests or by separate app instances.
+    const consumed = await tokenService.consumeRefreshToken(refreshToken);
+    if (!consumed || String(consumed.user_id) !== String(payload.id)) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired refresh token' });
+    }
 
     const user = await userModel.findById(payload.id);
     if (!user) return res.status(401).json({ success: false, message: 'User not found' });
 
-    await tokenService.revokeRefreshToken(refreshToken);
     const session = await issueSession(res, user);
     res.json({ success: true, ...session, user: publicUser(user) });
   } catch (err) {
