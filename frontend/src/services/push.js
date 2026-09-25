@@ -87,8 +87,11 @@ export async function enableAhaPush() {
 export async function disableAhaPush() {
   const subscription = await getAhaPushSubscription();
   if (subscription) {
-    await notificationApi.pushUnsubscribe(subscription.endpoint);
-    await subscription.unsubscribe();
+    try {
+      await notificationApi.pushUnsubscribe(subscription.endpoint);
+    } finally {
+      await subscription.unsubscribe();
+    }
   }
 
   localStorage.setItem('aha_push_enabled', 'false');

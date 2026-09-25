@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { getAccessToken, getUser } from '../services/auth';
-import { notificationApi, reminderApi } from '../services/api';
+import Image from 'next/image';
+import { getUser, saveSession } from '../services/auth';
+import { authApi, notificationApi, reminderApi } from '../services/api';
 import {
   disableAhaPush,
   enableAhaPush,
@@ -82,13 +83,22 @@ export default function MedicationNotificationManager() {
   };
 
   useEffect(() => {
+    let active = true;
     const syncAuth = () => {
-      setAuthenticated(Boolean(getAccessToken() && getUser()));
+      if (!active) return;
+      setAuthenticated(Boolean(getUser()));
       if (typeof window !== 'undefined' && 'Notification' in window) setPermission(Notification.permission);
     };
-    syncAuth();
-    const timer = window.setInterval(syncAuth, 1000);
-    return () => window.clearInterval(timer);
+    const restoreAuth = async () => {
+      try {
+        const result = await authApi.me();
+        if (active && result?.user) saveSession({ user: result.user });
+      } catch (_) {}
+      syncAuth();
+    };
+    restoreAuth();
+    window.addEventListener('aha-auth-change', syncAuth);
+    return () => { active = false; window.removeEventListener('aha-auth-change', syncAuth); };
   }, []);
 
   const showAlert = useCallback((rawNotification) => {
@@ -100,7 +110,7 @@ export default function MedicationNotificationManager() {
   }, []);
 
   const syncPushState = useCallback(async () => {
-    if (!getAccessToken()) {
+    if (!getUser()) {
       setPushEnabled(false);
       setReady(true);
       return;
@@ -121,7 +131,7 @@ export default function MedicationNotificationManager() {
   }, []);
 
   const pollUnread = useCallback(async () => {
-    if (!getAccessToken()) return;
+    if (!getUser()) return;
     try {
       const result = await notificationApi.unread();
       const notifications = Array.isArray(result?.data) ? result.data : [];
@@ -253,7 +263,7 @@ export default function MedicationNotificationManager() {
       {alert && (
         <div role="dialog" aria-modal="true" aria-labelledby="aha-medicine-alert-title" style={{ position: 'fixed', inset: 0, zIndex: 10003, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15,23,42,.62)', backdropFilter: 'blur(5px)' }}>
           <div style={{ width: 'min(520px, 100%)', background: '#fff', borderRadius: 26, padding: '26px 22px 22px', boxShadow: '0 24px 70px rgba(0,0,0,.3)', textAlign: 'center', border: `4px solid ${alert.title?.includes('เลยเวลา') ? '#f59e0b' : '#0ea981'}` }}>
-            <img src="/icons/aha-icon.svg" alt="AHA" width="70" height="70" style={{ display: 'block', margin: '0 auto 12px', borderRadius: 18 }} />
+            <Image src="/icons/aha-icon.svg" alt="AHA" width={70} height={70} style={{ display: 'block', margin: '0 auto 12px', borderRadius: 18 }} />
             <div style={{ fontSize: 18, color: alert.title?.includes('เลยเวลา') ? '#b45309' : '#0b7d63', fontWeight: 800, marginBottom: 7 }}>{alert.title || 'AHA แจ้งเตือน'}</div>
             <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: 'clamp(28px, 6vw, 36px)', lineHeight: 1.2, color: '#0f172a', fontWeight: 900 }}>{alert.title?.includes('เลยเวลา') ? 'เลยเวลาทานยาแล้ว' : 'ถึงเวลาทานยาแล้ว'}</h2>
             <p style={{ margin: '14px 0 24px', fontSize: 'clamp(20px, 4.5vw, 24px)', lineHeight: 1.55, color: '#334155', fontWeight: 700 }}>{alert.message}</p>

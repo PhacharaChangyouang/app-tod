@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AhaIcon from '../../components/AhaIcon';
 import { authApi } from '../../services/api';
-import { clearSession, getSession, saveSession } from '../../services/auth';
+import { clearSession, saveSession } from '../../services/auth';
 import { disableAhaPush, enableAhaPush, getAhaPushSubscription, registerAhaServiceWorker } from '../../services/push';
 import { notificationApi } from '../../services/api';
 
@@ -45,37 +46,26 @@ export default function ProfilePage() {
   const [supportOpen, setSupportOpen] = useState(false);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session?.accessToken) { router.replace('/login'); return; }
-    const initial = session.user || {};
-    setUser(initial);
-    setName(initial.name || '');
-    setAge(initial.age ?? '');
-    setRole(initial.role || 'elderly');
-    setPhone(initial.phone || '');
-    setSupportName(initial.name || '');
-    setSupportEmail(initial.email || '');
     const savedAppearance = localStorage.getItem('aha_appearance') || 'light';
     setTheme(savedAppearance);
     applyAppearance(savedAppearance);
-    setAvatar(localStorage.getItem(`aha_avatar_${initial.id}`) || '');
-    registerAhaServiceWorker().then(async () => {
-      try {
-        const status = await notificationApi.pushStatus();
-        const subscription = await getAhaPushSubscription();
-        setMedicinePushEnabled(Boolean(status?.subscribed && subscription));
-      } catch (_) { setMedicinePushEnabled(false); }
-    }).catch(() => setMedicinePushEnabled(false));
-
     authApi.me().then((result) => {
-      if (!result?.user) return;
+      if (!result?.user) throw new Error('Unauthorized');
       const fresh = result.user;
       setUser(fresh); setName(fresh.name || ''); setAge(fresh.age ?? ''); setRole(fresh.role || 'elderly'); setPhone(fresh.phone || '');
       setSupportName((value) => value || fresh.name || '');
       setSupportEmail((value) => value || fresh.email || '');
       setAvatar(localStorage.getItem(`aha_avatar_${fresh.id}`) || '');
-      saveSession({ ...getSession(), user: fresh });
-    }).catch(() => {});
+      saveSession({ user: fresh });
+      return registerAhaServiceWorker().then(async () => {
+        const status = await notificationApi.pushStatus();
+        const subscription = await getAhaPushSubscription();
+        setMedicinePushEnabled(Boolean(status?.subscribed && subscription));
+      });
+    }).catch((err) => {
+      setMedicinePushEnabled(false);
+      if (err?.status === 401 || err?.message === 'Unauthorized') router.replace('/login');
+    });
   }, [router]);
 
   const flash = (ok, text) => { setError(ok ? '' : text); setMessage(ok ? text : ''); };
@@ -137,7 +127,7 @@ export default function ProfilePage() {
     try {
       const result = await authApi.updateMe({ name: name.trim(), age: age === '' ? null : Number(age) });
       const fresh = result.user;
-      saveSession({ ...getSession(), user: fresh, accessToken: result.accessToken, refreshToken: result.refreshToken || getSession()?.refreshToken });
+      saveSession({ user: fresh });
       setUser(fresh); setMessage('บันทึกข้อมูลโปรไฟล์แล้ว');
     } catch (err) { setError(err.message || 'บันทึกข้อมูลไม่สำเร็จ'); }
     finally { setSaving(false); }
@@ -164,7 +154,8 @@ export default function ProfilePage() {
   };
 
   const logout = async () => {
-    try { await authApi.logout(getSession()?.refreshToken); } catch (_) {}
+    try { await disableAhaPush(); } catch (_) {}
+    try { await authApi.logout(); } catch (_) {}
     clearSession(); router.replace('/login');
   };
 
@@ -186,7 +177,7 @@ export default function ProfilePage() {
           <button className="aha-profile-edit" onClick={chooseAvatar} type="button">แก้ไขรูป</button>
           <div className="aha-profile-avatar-wrap">
             <button className="aha-profile-avatar" onClick={chooseAvatar} type="button" aria-label="เปลี่ยนรูปโปรไฟล์">
-              {avatar ? <img src={avatar} alt="รูปโปรไฟล์" /> : <span>{initial}</span>}
+              {avatar ? <Image src={avatar} alt="รูปโปรไฟล์" fill sizes="120px" unoptimized /> : <span>{initial}</span>}
               <i aria-hidden="true" />
             </button>
             <input ref={fileRef} type="file" accept="image/*" onChange={onAvatarChange} hidden />

@@ -1,5 +1,6 @@
 import './globals.css';
 import Script from 'next/script';
+import { headers } from 'next/headers';
 import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
 import AhaVisualPolish from '../components/AhaVisualPolish';
@@ -24,11 +25,12 @@ export const viewport = {
   width: 'device-width',
 };
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const nonce = (await headers()).get('x-nonce') || undefined;
   return (
     <html lang="th">
       <body>
-        <Script id="aha-appearance-init" strategy="beforeInteractive">{`
+        <Script id="aha-appearance-init" nonce={nonce} strategy="beforeInteractive">{`
           try {
             var mode = localStorage.getItem('aha_appearance') || 'light';
             var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);

@@ -37,6 +37,13 @@ services:
     networks:
       - aha-network
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   auth-db:
     image: postgres:16-alpine
@@ -47,7 +54,7 @@ services:
       POSTGRES_DB: auth_db
       POSTGRES_USER: postgres
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - auth-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -79,6 +86,13 @@ services:
     networks:
       - aha-network
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   reminder-db:
     image: postgres:16-alpine
@@ -89,7 +103,7 @@ services:
       POSTGRES_DB: reminder_db
       POSTGRES_USER: postgres
     ports:
-      - "5434:5432"
+      - "127.0.0.1:5434:5432"
     volumes:
       - reminder-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -120,6 +134,13 @@ services:
     networks:
       - aha-network
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
 
   notification-db:
     image: postgres:16-alpine
@@ -130,7 +151,7 @@ services:
       POSTGRES_DB: notification_db
       POSTGRES_USER: postgres
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
     volumes:
       - notification-db-data:/var/lib/postgresql/data
     healthcheck:

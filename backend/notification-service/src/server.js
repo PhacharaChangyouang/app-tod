@@ -10,6 +10,7 @@ const pool = require('./config/db');
 const authenticate = require('./middlewares/authenticate');
 
 const app = express();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
@@ -135,6 +136,22 @@ async function sendPushToUser(userId, payload) {
   return { sent, skipped: false };
 }
 
+function isAllowedPushEndpoint(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username || url.password || url.port) return false;
+    const host = url.hostname.toLowerCase();
+    return host === 'fcm.googleapis.com'
+      || host === 'updates.push.services.mozilla.com'
+      || host === 'push.services.mozilla.com'
+      || host === 'web.push.apple.com'
+      || host === 'notify.windows.com'
+      || host.endsWith('.notify.windows.com');
+  } catch (_) {
+    return false;
+  }
+}
+
 async function pushNotificationRow(row) {
   if (!row) return;
 
@@ -171,10 +188,13 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json({ limit: '32kb' }));
+app.param('id', (req, res, next, value) => UUID_PATTERN.test(value)
+  ? next()
+  : res.status(400).json({ success: false, message: 'Invalid id' }));
 
 app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -247,6 +267,11 @@ app.post('/api/push/subscribe', authenticate, async (req, res) => {
       success: false,
       message: 'A valid PushSubscription is required',
     });
+  }
+  if (typeof endpoint !== 'string' || !isAllowedPushEndpoint(endpoint) || endpoint.length > 2048 ||
+      typeof keys.p256dh !== 'string' || keys.p256dh.length > 512 ||
+      typeof keys.auth !== 'string' || keys.auth.length > 256) {
+    return res.status(400).json({ success: false, message: 'PushSubscription fields are invalid' });
   }
 
   try {
@@ -430,7 +455,10 @@ app.post('/api/notifications', authenticate, async (req, res) => {
     return res.status(400).json({ success: false, message: 'notification content is too long' });
   }
 
-  const targetUserId = req.user.role === 'system' ? user_id : req.user.id;
+  if (req.user.role !== 'system') {
+    return res.status(403).json({ success: false, message: 'Notification creation is restricted to internal services' });
+  }
+  const targetUserId = user_id;
 
   if (!targetUserId) {
     return res.status(400).json({ success: false, message: 'user_id is required for system notification' });
@@ -478,6 +506,21 @@ app.post('/api/notifications/emergency', sensitiveActionLimiter, authenticate, a
     accuracy,
   } = req.body;
 
+  const safeMessage = String(message || '').trim();
+  const hasLocation = latitude != null || longitude != null;
+  const lat = Number(latitude);
+  const lng = Number(longitude);
+  const locationAccuracy = accuracy == null ? null : Number(accuracy);
+  if (!safeMessage || safeMessage.length > 500) {
+    return res.status(400).json({ success: false, message: 'Emergency message must contain 1–500 characters' });
+  }
+  if (hasLocation && (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180)) {
+    return res.status(400).json({ success: false, message: 'Invalid emergency location' });
+  }
+  if (locationAccuracy != null && (!Number.isFinite(locationAccuracy) || locationAccuracy < 0 || locationAccuracy > 100000)) {
+    return res.status(400).json({ success: false, message: 'Invalid location accuracy' });
+  }
+
   const authUrl = process.env.AUTH_SERVICE_URL;
   const internalKey = process.env.INTERNAL_API_KEY;
 
@@ -524,8 +567,8 @@ app.post('/api/notifications/emergency', sensitiveActionLimiter, authenticate, a
       });
     }
 
-    const locationText = latitude != null && longitude != null
-      ? ` ตำแหน่ง: https://www.google.com/maps?q=${latitude},${longitude}${accuracy ? ` (คลาดเคลื่อนประมาณ ${Math.round(accuracy)} ม.)` : ''}`
+    const locationText = hasLocation
+      ? ` ตำแหน่ง: https://www.google.com/maps?q=${lat.toFixed(6)},${lng.toFixed(6)}${locationAccuracy ? ` (คลาดเคลื่อนประมาณ ${Math.round(locationAccuracy)} ม.)` : ''}`
       : ' ไม่พบตำแหน่ง GPS';
 
     const created = [];
@@ -540,7 +583,7 @@ app.post('/api/notifications/emergency', sensitiveActionLimiter, authenticate, a
       `, [
         userId,
         'แจ้งเหตุฉุกเฉินจากผู้ใช้ที่เชื่อมต่อ',
-        `${message}${locationText}`,
+        `${safeMessage}${locationText}`,
         `emergency:${req.user.id}:${userId}:${Date.now()}`,
       ]);
 
@@ -631,8 +674,10 @@ const PORT = process.env.PORT || 3003;
 
 function assertProductionSecurity() {
   if (process.env.NODE_ENV !== 'production') return;
-  if (String(process.env.JWT_SECRET || '').length < 32 || String(process.env.INTERNAL_API_KEY || '').length < 32) {
-    throw new Error('JWT_SECRET and INTERNAL_API_KEY must each contain at least 32 characters in production');
+  const values = [String(process.env.JWT_SECRET || ''), String(process.env.INTERNAL_API_KEY || '')];
+  const weak = (value) => value.length < 48 || /replace|change|example|development|password|secret/i.test(value) || new Set(value).size < 12;
+  if (values.some(weak) || values[0] === values[1]) {
+    throw new Error('Production JWT_SECRET and INTERNAL_API_KEY must be different random values of at least 48 characters');
   }
 }
 

@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
 import { CaregiverEnhancementPanel } from '../../components/AhaCaregiverEnhancements';
-import { caregiverApi, familyApi } from '../../services/api';
-import { getSession } from '../../services/auth';
+import { authApi, caregiverApi, familyApi } from '../../services/api';
+import { saveSession } from '../../services/auth';
 import './family-dashboard.css';
 
 const EMPTY_FORM = {
@@ -92,28 +92,32 @@ export default function FamilyPage() {
   const [success, setSuccess] = useState('');
   const isCaregiver = user?.role === 'caregiver';
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setError('');
     try {
       const [connectionResponse, elderlyResponse] = await Promise.all([familyApi.connections(), familyApi.linkedElderly()]);
       setConnections(listOf(connectionResponse));
       const elderly = listOf(elderlyResponse);
       setLinkedElderly(elderly);
-      if (elderly.length && !selectedElderly) setSelectedElderly(elderly[0].user_id);
+      setSelectedElderly((current) => current || elderly[0]?.user_id || '');
       if (isCaregiver) {
         const summary = await caregiverApi.summary();
         setDashboard(summary?.data || { elderly: [], today: [], history: [] });
       }
     } catch (err) { setError(err.message || 'ยังโหลดข้อมูลครอบครัวไม่ได้'); }
     finally { setLoading(false); }
-  };
+  }, [isCaregiver]);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session?.accessToken) { router.replace('/login'); return; }
-    setUser(session.user || null);
+    let active = true;
+    authApi.me().then((result) => {
+      if (!active || !result?.user) return;
+      saveSession({ user: result.user });
+      setUser(result.user);
+    }).catch(() => { if (active) router.replace('/login'); });
+    return () => { active = false; };
   }, [router]);
-  useEffect(() => { if (user) load(); }, [user]);
+  useEffect(() => { if (user) load(); }, [user, load]);
 
   const incoming = useMemo(() => connections.filter((item) => item.status === 'pending' && item.direction === 'incoming'), [connections]);
   const outgoing = useMemo(() => connections.filter((item) => item.status === 'pending' && item.direction === 'outgoing'), [connections]);

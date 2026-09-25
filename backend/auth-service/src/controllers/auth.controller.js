@@ -18,6 +18,8 @@ function setAuthCookies(res, accessToken, refreshToken) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
+    path: '/',
+    priority: 'high',
   };
   res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
   res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -51,8 +53,7 @@ async function updateMe(req, res, next) {
     });
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    const { accessToken, refreshToken } = await issueSession(res, user);
-    res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
+    res.json({ success: true, user: publicUser(user) });
   } catch (err) {
     next(err);
   }
@@ -95,8 +96,9 @@ async function logout(req, res, next) {
       refreshToken = cookies.refreshToken;
     }
     if (refreshToken) await tokenService.revokeRefreshToken(refreshToken);
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+    const clearOptions = { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'strict', path: '/' };
+    res.clearCookie('accessToken', clearOptions);
+    res.clearCookie('refreshToken', clearOptions);
     res.json({ success: true, message: 'Logged out' });
   } catch (err) {
     next(err);

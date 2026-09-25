@@ -8,8 +8,10 @@ const pool = require('./config/db');
 const authenticate = require('./middlewares/authenticate');
 const caregiverRoutes = require('./caregiver.routes');
 const { startScheduler } = require('./scheduler');
+const migrate = require('./config/migrate');
 
 const app = express();
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
@@ -39,6 +41,27 @@ async function ensureRuntimeSchema() {
   `);
 }
 
+function validateReminder(body, { partial = false } = {}) {
+  const name = String(body.medicine_name ?? '').trim();
+  const dosage = String(body.dosage ?? '').trim();
+  const time = String(body.reminder_time ?? '').trim();
+  const frequency = body.frequency ?? (partial ? undefined : 'daily');
+  const days = body.days_of_week ?? (partial ? undefined : ['monday','tuesday','wednesday','thursday','friday','saturday','sunday']);
+  const allowedDays = new Set(['monday','tuesday','wednesday','thursday','friday','saturday','sunday']);
+  if (!partial && (!name || !time)) return 'medicine_name and reminder_time are required';
+  if (body.medicine_name !== undefined && (!name || name.length > 120)) return 'medicine_name must contain 1–120 characters';
+  if (body.dosage !== undefined && dosage.length > 100) return 'dosage must not exceed 100 characters';
+  if (body.reminder_time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return 'reminder_time must be HH:MM';
+  if (frequency !== undefined && !['daily', 'weekly'].includes(frequency)) return 'frequency must be daily or weekly';
+  if (days !== undefined && (!Array.isArray(days) || days.length < 1 || days.length > 7 || days.some((day) => !allowedDays.has(day)))) return 'days_of_week is invalid';
+  for (const key of ['start_date', 'end_date']) {
+    if (body[key] !== undefined && body[key] !== null && body[key] !== '' && !/^\d{4}-\d{2}-\d{2}$/.test(String(body[key]))) return `${key} must be YYYY-MM-DD`;
+  }
+  if (body.start_date && body.end_date && String(body.end_date) < String(body.start_date)) return 'end_date must not be before start_date';
+  if (body.is_active !== undefined && typeof body.is_active !== 'boolean') return 'is_active must be boolean';
+  return null;
+}
+
 app.use(helmet());
 
 const allowedOrigins = [
@@ -56,10 +79,13 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-internal-api-key'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.use(express.json({ limit: '32kb' }));
+app.param('id', (req, res, next, value) => UUID_PATTERN.test(value)
+  ? next()
+  : res.status(400).json({ success: false, message: 'Invalid id' }));
 
 app.use('/api', rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -229,15 +255,8 @@ app.post('/api/reminders', authenticate, async (req, res) => {
     start_date, end_date, is_active = true,
   } = req.body;
 
-  if (!String(medicine_name || '').trim() || !reminder_time) {
-    return res.status(400).json({ success: false, message: 'medicine_name and reminder_time are required' });
-  }
-  if (!['daily', 'weekly'].includes(frequency)) {
-    return res.status(400).json({ success: false, message: 'frequency must be daily or weekly' });
-  }
-  if (!Array.isArray(days_of_week) || !days_of_week.length) {
-    return res.status(400).json({ success: false, message: 'days_of_week must be a non-empty array' });
-  }
+  const validation = validateReminder(req.body);
+  if (validation) return res.status(400).json({ success: false, message: validation });
 
   try {
     const result = await pool.query(`
@@ -246,7 +265,7 @@ app.post('/api/reminders', authenticate, async (req, res) => {
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
       RETURNING *
     `, [
-      req.user.id, String(medicine_name).trim(), dosage || null, reminder_time, frequency,
+      req.user.id, String(medicine_name).trim(), String(dosage ?? '').trim() || null, reminder_time, frequency,
       days_of_week, start_date || null, end_date || null, Boolean(is_active),
     ]);
     res.status(201).json({ success: true, data: result.rows[0] });
@@ -262,28 +281,29 @@ app.put('/api/reminders/:id', authenticate, async (req, res) => {
     days_of_week, start_date, end_date, is_active,
   } = req.body;
 
-  if (frequency && !['daily', 'weekly'].includes(frequency)) {
-    return res.status(400).json({ success: false, message: 'frequency must be daily or weekly' });
-  }
+  const validation = validateReminder(req.body, { partial: true });
+  if (validation) return res.status(400).json({ success: false, message: validation });
 
   try {
     const result = await pool.query(`
       UPDATE reminders
       SET medicine_name = COALESCE($1, medicine_name),
-          dosage = COALESCE($2, dosage),
+          dosage = CASE WHEN $2::text IS NULL THEN dosage ELSE NULLIF($2::text, '') END,
           reminder_time = COALESCE($3, reminder_time),
           frequency = COALESCE($4, frequency),
           days_of_week = COALESCE($5, days_of_week),
-          start_date = COALESCE($6, start_date),
-          end_date = COALESCE($7, end_date),
+          start_date = CASE WHEN $6::text IS NULL THEN start_date ELSE NULLIF($6::text, '')::date END,
+          end_date = CASE WHEN $7::text IS NULL THEN end_date ELSE NULLIF($7::text, '')::date END,
           is_active = COALESCE($8, is_active),
           updated_at = now()
       WHERE id = $9 AND user_id = $10
       RETURNING *
     `, [
-      medicine_name?.trim() || null, dosage === '' ? null : dosage ?? null,
+      medicine_name !== undefined ? String(medicine_name).trim() : null,
+      dosage !== undefined ? String(dosage ?? '').trim() : null,
       reminder_time || null, frequency || null, days_of_week || null,
-      start_date || null, end_date || null,
+      start_date !== undefined ? String(start_date ?? '') : null,
+      end_date !== undefined ? String(end_date ?? '') : null,
       typeof is_active === 'boolean' ? is_active : null,
       req.params.id, req.user.id,
     ]);
@@ -344,14 +364,17 @@ const PORT = process.env.PORT || 3002;
 
 function assertProductionSecurity() {
   if (process.env.NODE_ENV !== 'production') return;
-  if (String(process.env.JWT_SECRET || '').length < 32 || String(process.env.INTERNAL_API_KEY || '').length < 32) {
-    throw new Error('JWT_SECRET and INTERNAL_API_KEY must each contain at least 32 characters in production');
+  const values = [String(process.env.JWT_SECRET || ''), String(process.env.INTERNAL_API_KEY || '')];
+  const weak = (value) => value.length < 48 || /replace|change|example|development|password|secret/i.test(value) || new Set(value).size < 12;
+  if (values.some(weak) || values[0] === values[1]) {
+    throw new Error('Production JWT_SECRET and INTERNAL_API_KEY must be different random values of at least 48 characters');
   }
 }
 
 if (require.main === module) {
   assertProductionSecurity();
-  ensureRuntimeSchema()
+  migrate({ closePool: false })
+    .then(() => ensureRuntimeSchema())
     .then(() => {
       app.listen(PORT, () => {
         console.log(`Reminder service running on port ${PORT}`);

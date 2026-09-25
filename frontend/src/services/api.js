@@ -1,40 +1,6 @@
-import {
-  getAccessToken,
-  getRefreshToken,
-  updateAccessToken,
-  clearSession,
-} from './auth';
-
-const AUTH_API_BASE = process.env.NEXT_PUBLIC_AUTH_API_URL || 'http://localhost:3001';
-const REMINDER_API_BASE = process.env.NEXT_PUBLIC_REMINDER_API_URL || 'http://localhost:3002';
-const NOTIFICATION_API_BASE = process.env.NEXT_PUBLIC_NOTIFICATION_API_URL || 'http://localhost:3003';
-
-let refreshPromise = null;
-
-async function refreshAccessToken() {
-  const refreshToken = getRefreshToken();
-  if (!refreshToken) { clearSession(); return false; }
-  if (!refreshPromise) {
-    refreshPromise = (async () => {
-      try {
-        const res = await fetch(`${AUTH_API_BASE}/auth/refresh`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          credentials: 'include', cache: 'no-store', body: JSON.stringify({ refreshToken }),
-        });
-        const text = await res.text();
-        let data = {};
-        try { data = text ? JSON.parse(text) : {}; } catch { data = {}; }
-        if (!res.ok || !data.accessToken) { clearSession(); return false; }
-        updateAccessToken(data.accessToken, data.refreshToken || refreshToken, data.user || null);
-        return true;
-      } catch (error) {
-        console.error('Failed to refresh access token', error);
-        clearSession(); return false;
-      } finally { refreshPromise = null; }
-    })();
-  }
-  return refreshPromise;
-}
+const AUTH_API_BASE = '/api/bff/auth';
+const REMINDER_API_BASE = '/api/bff/reminder';
+const NOTIFICATION_API_BASE = '/api/bff/notification';
 
 function getApiErrorMessage(data, status) {
   if (data?.message) return data.message;
@@ -42,19 +8,15 @@ function getApiErrorMessage(data, status) {
   return `Request failed (${status})`;
 }
 
-async function request(baseUrl, path, { method = 'GET', body, auth = false, retry = true } = {}) {
-  const token = auth ? getAccessToken() : null;
+async function request(baseUrl, path, { method = 'GET', body } = {}) {
   const res = await fetch(`${baseUrl}${path}`, {
     method,
-    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(method !== 'GET' ? { 'X-AHA-Request': '1' } : {}) },
     credentials: 'include', cache: 'no-store', ...(body ? { body: JSON.stringify(body) } : {}),
   });
   const text = await res.text();
   let data = {};
   try { data = text ? JSON.parse(text) : {}; } catch { data = { success: false, message: text || 'Invalid server response' }; }
-  if (res.status === 401 && auth && retry) {
-    if (await refreshAccessToken()) return request(baseUrl, path, { method, body, auth: true, retry: false });
-  }
   if (!res.ok) { const err = new Error(getApiErrorMessage(data, res.status)); err.status = res.status; err.data = data; throw err; }
   return data;
 }
@@ -64,8 +26,7 @@ export const authApi = {
   loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
   requestPasswordReset: (email) => request(AUTH_API_BASE, '/auth/forgot-password', { method: 'POST', body: { email } }),
   resetPassword: (token, password, confirmPassword) => request(AUTH_API_BASE, '/auth/reset-password', { method: 'POST', body: { token, password, confirmPassword } }),
-  refresh: (refreshToken) => request(AUTH_API_BASE, '/auth/refresh', { method: 'POST', body: { refreshToken } }),
-  logout: (refreshToken) => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: { refreshToken } }),
+  logout: () => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: {} }),
   me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
   updateMe: (payload) => request(AUTH_API_BASE, '/auth/me', { method: 'PATCH', body: payload, auth: true }),
 };

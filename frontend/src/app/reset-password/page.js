@@ -19,6 +19,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setToken(params.get('token') || '');
+    window.history.replaceState({}, '', '/reset-password');
   }, []);
 
   const submit = async (event) => {
@@ -28,8 +29,8 @@ export default function ResetPasswordPage() {
       setError('ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง');
       return;
     }
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(password)) {
-      setError('รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(password) || new TextEncoder().encode(password).length > 72) {
+      setError('รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
       return;
     }
     if (password !== confirm) {

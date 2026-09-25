@@ -1,174 +1,140 @@
-# AHA Security Review and Password-Only Authentication Migration
+# AHA Pre-Production Security Review
 
-**Review date:** 25 September 2026 (Asia/Bangkok)  
+**วันที่ตรวจ:** 25 กันยายน 2026 (Asia/Bangkok)
+
 **Repository:** `PhacharaChangyouang/app-tod`  
-**Review branch:** `security/pre-release-hardening-2026-09-25`  
-**Scope:** Web frontend, Flutter client, Auth, Reminder, Notification, database migrations, Docker configuration, dependency manifests, and non-destructive checks against the deployed services.
 
-## 1. Executive summary
+**Branch:** `security/pre-release-hardening-2026-09-25`
 
-This revision removes OTP and legacy four-digit PIN authentication from every active application surface. AHA now exposes password registration, password login, password reset, token refresh, and logout only. OTP configuration, in-memory OTP storage, OTP/PIN controllers, API routes, web controls, and Flutter OTP/PIN screens have been removed.
+**ขอบเขต:** Next.js web, Flutter client, Auth/Reminder/Notification services, PostgreSQL migrations, Nginx gateway, Docker configuration และ dependency manifests
 
-The review also identified and closed a profile authorization issue that allowed a signed-in user to submit a different account role. Account roles are now immutable through the profile API. Password requirements and token lifetimes were tightened because the application is temporarily operating without a second authentication factor.
+## 1. Executive decision
 
-**Release decision:** suitable for local development and a controlled staging test with synthetic data. It is **not approved for unrestricted public production or real sensitive health data** until the residual risks in section 8 are resolved and the staging checklist in section 10 passes.
+รอบนี้ปิดช่องโหว่ระดับสูงที่ตรวจพบใน source code แล้ว รวมถึง token ใน `localStorage`, การไม่มี CSP, notification spoofing, Web Push SSRF, JWT validation ที่ไม่กำหนด issuer/audience, distributed password-login throttling, password-reset race, API Gateway route ผิด และข้อมูล PIN เดิมใน schema
 
-This report records evidence from source review and automated, build, dependency, and non-destructive API checks. It is not a guarantee that no vulnerability exists and is not a substitute for an independent penetration test.
+**ผลตัดสิน ณ revision นี้:**
 
-## 2. Authentication decision
+- Code พร้อม deploy ไป **isolated staging** เพื่อทำ migration และ end-to-end acceptance test
+- ยัง **ไม่อนุมัติให้รับข้อมูลสุขภาพจริงแบบ public production** จนกว่ารายการ deployment/operations ในหัวข้อ 8 จะผ่านบน environment จริง
+- ไม่สามารถรับรองว่า “ไม่มีช่องโหว่ 100%” ได้ การตรวจนี้เป็น secure code review และ automated regression testing ไม่ใช่ใบรับรอง penetration test จากบุคคลที่สาม
 
-### Enabled
+## 2. การแก้ปัญหาหลัก
 
-- `POST /auth/register-password`
-- `POST /auth/login-password`
-- `POST /auth/forgot-password`
-- `POST /auth/reset-password`
-- `POST /auth/refresh`
-- `POST /auth/logout`
-- Authenticated profile and family APIs
+### Caregiver แก้เวลาไม่ได้เมื่อ `dosage=null`
 
-### Removed
+Safari เคยแสดง `null is not an object (evaluating 'u.dosage.trim')` เพราะ frontend เรียก `.trim()` กับ `null` ก่อนส่ง API ปัจจุบัน frontend และ Caregiver API normalize ด้วย `String(value ?? '').trim()` และมี regression test รองรับ `dosage=null`
 
-- `POST /auth/request-otp`
-- `POST /auth/verify-otp`
-- `POST /auth/login-otp`
-- Legacy `POST /auth/register`
-- Legacy PIN login `POST /auth/login`
-- `POST /auth/me/change-pin`
-- OTP-based `POST /auth/me/change-phone`
-- OTP/PIN web controls and client methods
-- OTP request, OTP verification, PIN setup, and PIN login Flutter screens
-- `OTP_MOCK_MODE`, `OTP_MOCK_CODE`, and OTP expiry configuration
-- In-memory OTP storage and OTP logging code
+### OTP/PIN removal
 
-Requests to the removed routes now receive HTTP `404` and cannot reach authentication logic.
+- ลบ OTP request/verify/login และ PIN login/setup/change ทั้ง Web, Mobile และ Auth API
+- legacy routes ทั้ง 7 เส้นทางตอบ `404`
+- ลบ OTP configuration และ service code
+- migration ลบ `pin_hash` ออกจากฐานข้อมูลถาวร เพื่อลบ credential เก่าที่ไม่ใช้งาน
+- บัญชีเก่าที่ไม่มี `password_hash` จะไม่สามารถ login และต้องผ่านกระบวนการยืนยันตัวตนโดยผู้ดูแลระบบ ห้ามเปิด PIN กลับมา
 
-## 3. Security changes in this revision
+## 3. Security controls ที่เพิ่มในรอบสุดท้าย
 
-| Control | Change | Security effect |
+| พื้นที่ | การเปลี่ยนแปลง | ผลด้านความปลอดภัย |
 |---|---|---|
-| Authentication surface | Removed OTP and legacy PIN routes and code | Eliminates fixed/mock OTP exposure and the 10,000-value PIN credential space |
-| Password policy | New and reset passwords require 12–72 characters with letters and numbers | Raises the cost of online and offline guessing |
-| Access token lifetime | Reduced default and local Compose value from 7 days to 15 minutes | Limits exposure after access-token theft |
-| Refresh token lifetime | Reduced from 30 days to 7 days | Reduces long-lived session exposure |
-| Refresh token storage | Continues to store only SHA-256 token hashes in PostgreSQL | Raw refresh tokens are not retained server-side |
-| Password reset | 32-byte random token, SHA-256 at rest, 15-minute expiry, single use, revokes all sessions | Limits reset-token replay and invalidates existing sessions after reset |
-| Role authorization | Profile updates no longer accept or update `role` | Prevents self-service role escalation |
-| Phone changes | OTP phone-change route removed; phone is read-only in the current UI | Avoids an unverified account-recovery path |
-| Public registration | Production registration is closed unless `REGISTRATION_ENABLED=true` is explicitly set | Limits unverified public account creation during controlled rollout |
-| Existing PIN column | Migration makes `pin_hash` nullable; no route reads or writes it | Supports safe rollout without destructive schema removal |
-| Mobile authentication | Flutter entry route now uses username/email and password | Removes mobile dependency on OTP/PIN endpoints |
+| Web session | เพิ่ม same-origin Next.js BFF; token อยู่ใน `HttpOnly`, `Secure`, `SameSite=Strict`, `__Host-` cookies | JavaScript อ่าน access/refresh token ไม่ได้ และลบ token เก่าจาก browser storage อัตโนมัติ |
+| CSRF | mutation ผ่าน BFF ต้องมี same-origin `Origin`/`Sec-Fetch-Site` และ `X-AHA-Request` | ปฏิเสธ cross-site mutation ด้วย `403` |
+| XSS | บังคับ CSP แบบ nonce + `strict-dynamic`; ไม่มี production `unsafe-eval`/`unsafe-inline` ใน `script-src` | ลดโอกาสรัน injected script; runtime test ยืนยันทุก script tag มี nonce |
+| Session rotation | access 15 นาที, refresh 7 วัน, refresh token มี `jti`, hash ใน DB และ rotate เมื่อใช้งาน | ลด replay และ session collision |
+| JWT | บังคับ `HS256`, issuer `aha-auth-service`, audience แยก access/refresh และจำกัด token size | ปฏิเสธ token ที่ signed ถูกแต่ claim/policy ไม่ครบ |
+| Password | bcrypt cost 12, 12–72 UTF-8 bytes, dummy-hash compare เมื่อไม่พบบัญชี | ลด offline guessing และ timing-based username enumeration |
+| Login abuse | process limiter + PostgreSQL per-account/per-network limiter + hashed audit actor | ป้องกัน brute force ข้ามหลาย process ได้ใน auth service |
+| Password reset | token 32 bytes, hash at rest, 15 นาที, atomic single-use, generic response, session revocation | ปิด reset replay/race และลด account enumeration |
+| Authorization | profile เปลี่ยน role ไม่ได้; internal family routes ต้องเป็น system; caregiver mutation ตรวจ accepted relationship | ป้องกัน role escalation และ IDOR ที่ตรวจพบ |
+| Notification | ผู้ใช้ทั่วไปสร้าง system notification ไม่ได้; SOS ตรวจผู้รับ/พิกัด/ความยาว | ป้องกัน notification spoofing และ input abuse |
+| Web Push | allowlist เฉพาะ provider endpoint ที่รู้จัก | ป้องกัน SSRF ไป internal/private endpoints |
+| Input validation | UUID, เวลา, วัน, วันที่, dosage, medicine name, push fields และ emergency location | ลด malformed-query errors และ payload abuse |
+| API Gateway | แก้ path forwarding, เพิ่ม route caregiver/push/support, strip internal key จาก public traffic | ปิดเส้นทางผิดและป้องกัน external service-key injection |
+| Database | TLS certificate verification เป็นค่าเริ่มต้นใน production; pool/query timeout | ลด MITM และ resource exhaustion |
+| Containers | non-root, read-only filesystem, drop capabilities, no-new-privileges; DB ports bind localhost | ลด container escape impact และ public DB exposure |
+| Mobile | HTTPS required ใน release, refresh rotation อัตโนมัติ, cleartext disabled, backup disabled | ป้องกัน token transport ผ่าน HTTP และแก้ session หมดอายุหลัง 15 นาที |
+| Supply chain | production และ full npm audit เป็นศูนย์ | ไม่พบ advisory ที่ npm รายงาน ณ วันที่ตรวจ |
 
-## 4. Previously completed hardening retained
+## 4. Browser session architecture
 
-- Caregiver reminder operations verify an accepted elderly/caregiver relationship before mutation.
-- `dosage=null` is normalized safely so reminder-time edits no longer crash in Safari.
-- Auth, Reminder, Notification, SOS, and support endpoints have rate limits.
-- JSON request bodies are limited to `32kb`.
-- SQL uses parameterized queries in reviewed paths.
-- Untrusted browser origins are rejected with HTTP `403` by the revised services.
-- Express/Next.js identity headers are disabled and baseline browser security headers are set.
-- Production startup rejects short secrets and identical access/refresh secrets.
-- Docker Compose no longer contains hardcoded database or internal-service credentials.
-- Current production dependency audits report zero known vulnerabilities.
+Web browser เรียกเฉพาะ `/api/bff/...` บน origin เดียวกัน BFF เป็นผู้ถือ access/refresh cookies และส่ง Bearer token ไปยัง backend แบบ server-to-server ส่วน Flutter ใช้ Bearer token ใน `flutter_secure_storage` และ refresh แบบ single-flight
 
-## 5. Findings and disposition
+BFF มี route/method allowlist จึงไม่ทำหน้าที่เป็น open proxy และจะไม่ส่ง `accessToken` หรือ `refreshToken` กลับใน JSON response
 
-| ID | Severity | Finding | Disposition |
-|---|---|---|---|
-| AUTH-01 | Critical | Fixed/mock OTP could act as a shared credential if enabled incorrectly | Closed — OTP implementation and configuration removed |
-| AUTH-02 | High | Four-digit PIN login provided a weak alternate authentication route | Closed — PIN login and PIN management routes removed |
-| AUTH-03 | High | Profile payload could change the account role | Closed — role removed from profile mutation and covered by regression test |
-| AUTH-04 | High | Access tokens were valid for up to seven days | Closed — reduced to 15 minutes by default and in Compose |
-| AUTH-05 | Medium | Password minimum was eight characters in a password-only system | Closed — raised to 12 characters for registration and reset |
-| AUTH-06 | Medium | OTP-based phone change remained reachable after login | Closed — endpoint and UI removed |
-| AUTH-07 | High | Public self-registration had no verified email ownership step | Mitigated — production registration is closed by default; verified invitation/onboarding remains required |
-| DATA-01 | High | Caregiver could potentially target another elderly user's reminder without relationship enforcement | Closed in the preceding hardening revision and covered by tests |
-| APP-01 | High | `dosage=null` caused a client-side exception and blocked reminder edits | Closed and covered by regression test |
-| SESSION-01 | High | Web tokens remain accessible to JavaScript through `localStorage` | Open — public production blocker; see section 8 |
-| WEB-01 | Medium | Enforced Content Security Policy is not yet enabled | Open — requires removal/noncing of inline styles and scripts |
-| RATE-01 | Medium | Rate limiting is process-local and can be bypassed across replicas/IP rotation | Open — use a shared Redis-backed limiter and account-aware controls |
-| OPS-01 | High | Central audit logging, alerts, tested backup/restore, and incident response are incomplete | Open — public production blocker |
+## 5. Automated verification evidence
 
-## 6. Verification evidence
-
-| Verification | Result |
+| การตรวจ | ผล |
 |---|---|
-| Auth automated tests | Passed `9/9` across three suites |
-| Removed OTP/PIN endpoint regression | Passed — all seven legacy endpoints return `404` |
-| Password-login rate limit regression | Passed — repeated failures reach `429` |
-| Role-mutation regression | Passed — submitted `role=caregiver` is ignored and stored role remains unchanged |
-| Production registration guard | Passed — registration is `403` unless explicitly enabled |
-| Reminder/Caregiver security tests | Passed `5/5` |
-| Null dosage regression | Passed |
-| Next.js lint | Passed with existing non-blocking hook and `<img>` warnings |
-| Next.js production build | Passed; 14 static pages generated |
-| `npm audit --omit=dev` — frontend | 0 known vulnerabilities |
-| `npm audit --omit=dev` — auth-service | 0 known vulnerabilities |
-| `npm audit --omit=dev` — reminder-service | 0 known vulnerabilities |
-| `npm audit --omit=dev` — notification-service | 0 known vulnerabilities |
-| Git diff whitespace validation | Passed |
-| GitGuardian PR scan | Passed — no secrets present in the pull request |
-| Flutter static analysis | Not executed in this environment because Flutter SDK is unavailable |
-| Full Docker Compose integration | Not executed in this environment because Docker is unavailable |
+| Auth tests | ผ่าน 13/13 — 4 suites |
+| Reminder/Caregiver tests | ผ่าน 7/7 |
+| Notification tests | ผ่าน 5/5 |
+| รวม backend security regression | ผ่าน 25/25 |
+| Legacy OTP/PIN routes | 7 routes ตอบ `404` |
+| Role mutation / caregiver IDOR | ปฏิเสธตามสิทธิ์ |
+| JWT ไม่มี issuer/audience | `401` |
+| Notification spoofing | `403` |
+| Web Push endpoint ไป `127.0.0.1` | `400` ก่อน query/ส่ง request |
+| Invalid UUID/time/location | `400` ก่อน mutation |
+| Null dosage caregiver flow | ผ่าน |
+| Next.js lint | ผ่าน ไม่มี error |
+| Next.js production build | ผ่าน 14 dynamic routes/pages + BFF + middleware |
+| CSP runtime inspection | nonce ใน CSP ตรงกับ HTML และ script ไม่มี nonce = 0 |
+| BFF CSRF/allowlist/token stripping | ตรวจ runtime ผ่าน |
+| BFF ไม่มี production upstream config | fail closed ด้วย `503`; ไม่ fallback ไป localhost |
+| BFF ติดต่อ upstream ไม่ได้ | ตอบ JSON `502` โดยไม่เปิดเผย token/URL |
+| `npm audit --omit=dev` ทั้ง 4 packages | 0 vulnerabilities |
+| full `npm audit` ทั้ง 4 packages | 0 vulnerabilities |
+| Git diff whitespace check | ผ่าน |
+| source scan | ไม่พบ active OTP/PIN route, active browser token persistence หรือ credential จริง |
 
-The earlier live, non-destructive probes confirmed that health endpoints answered successfully, unauthenticated protected API requests returned `401`, and an SQL-injection-style login attempt was rejected. The deployed site does not contain this revision until the PR is merged and deployed.
+## 6. สิ่งที่ตรวจพบระหว่างทดสอบและแก้ก่อนส่งมอบ
 
-## 7. Compatibility and migration impact
+1. CSP รุ่นแรกทำให้ Next.js static HTML ไม่มี nonce และจะบล็อก JavaScript ทั้งหน้า — แก้ Root Layout เป็น dynamic, ส่ง nonce จาก middleware และตรวจ HTML runtime ซ้ำจน script ทุกตัวมี nonce
+2. API Gateway เดิม strip `/auth/` prefix โดยไม่ตั้งใจ — แก้ `proxy_pass` ให้ backend ได้ path ที่ถูกต้อง
+3. ผู้ใช้ทั่วไปเรียก `POST /api/notifications` เพื่อสร้างข้อความเลียนแบบ system event ได้ — จำกัด endpoint เป็น internal-service only
+4. Web Push endpoint รับ HTTPS URL ใดก็ได้ — เพิ่ม provider allowlist เพื่อปิด SSRF
+5. Mobile access token อายุ 15 นาทีแต่ไม่มี refresh flow — เพิ่ม automatic single-flight refresh และแก้ gateway family/SOS paths
+6. password reset ใช้ SELECT ก่อน mark-used ทำให้มี race — เปลี่ยนเป็น atomic `UPDATE ... RETURNING` พร้อม `FOR UPDATE SKIP LOCKED`
+7. production database TLS เดิมไม่ verify certificate ในบาง service — เปลี่ยนเป็น verify by default และรองรับ `DB_CA_CERT`
 
-- Existing accounts that have a valid `password_hash` continue to use username/email and password.
-- Accounts created only through the old OTP/PIN flow may not have a password or email. They are intentionally denied by password login and require an administrator-approved recovery or migration process before access is restored.
-- Do not re-enable the old PIN endpoint as a migration shortcut.
-- The migration retains existing `pin_hash` values but makes the column nullable. No active code reads the column. Destructive removal can occur later after backup and rollback planning.
-- Phone changes are temporarily administrative because no verified replacement method is implemented.
-- Flutter registration is not exposed in this revision. New accounts should be created through the reviewed web password-registration flow during controlled testing.
+## 7. Migration and compatibility impact
 
-## 8. Residual risks and required controls
+- Migration จะ `DROP COLUMN IF EXISTS pin_hash`; ต้อง backup ฐานข้อมูลก่อน deploy และ rollback application รุ่นเก่าที่ต้องใช้ PIN จะทำไม่ได้
+- Auth service รัน idempotent schema migration ก่อนเปิด port รวมตาราง login throttling และ audit events
+- บัญชี password เดิมใช้ต่อได้
+- บัญชี OTP/PIN-only ต้อง provision password ด้วยกระบวนการ admin ที่ยืนยันตัวตนแล้ว
+- production self-registration ปิดโดยค่าเริ่มต้น เว้นแต่ตั้ง `REGISTRATION_ENABLED=true`
+- Web deployment ต้องกำหนด server-only `AUTH_API_URL`, `REMINDER_API_URL`, `NOTIFICATION_API_URL`; ห้ามใช้ `NEXT_PUBLIC_*` สำหรับ upstream เหล่านี้
 
-### Public-production blockers
+## 8. Production gates ที่ยังต้องยืนยันบน environment จริง
 
-1. Move web sessions away from JavaScript-readable `localStorage` to an architecture using `HttpOnly`, `Secure`, `SameSite` cookies, explicit CSRF protection, and a same-origin backend-for-frontend or gateway design.
-2. Add an enforced Content Security Policy after removing or noncing inline scripts/styles.
-3. Use a shared rate-limit store and add per-account throttling, suspicious-login detection, and alerting.
-4. Implement verified, invitation-based onboarding or email verification before enabling production self-registration.
-5. Implement centralized, tamper-resistant audit events for authentication failures, password resets, role/permission denials, caregiver medication changes, SOS, and administrative recovery. Never log passwords, tokens, or health payloads unnecessarily.
-6. Complete encrypted backup/restore drills, retention/deletion policy, monitoring, escalation contacts, and an incident-response runbook.
-7. Commission an independent penetration test before real sensitive health data is accepted.
+รายการต่อไปนี้ไม่สามารถพิสูจน์จาก source code หรือ sandbox นี้ และเป็น **release gate** ไม่ใช่ข้อเสนอเสริม:
 
-### Password-only limitation
+1. Deploy revision นี้ใน staging แล้วผ่าน E2E ด้วยบัญชี elderly/caregiver จริงสองบัญชี: login, connect, add/edit/delete medicine, null dosage, taken, snooze, push, logout และ SOS
+2. Rotate `JWT_SECRET`, `JWT_REFRESH_SECRET`, `INTERNAL_API_KEY`, database passwords, Resend และ VAPID keys; ทุก secret ต้องสุ่มอย่างน้อย 48 ตัวและไม่ซ้ำ
+3. ยืนยัน Railway/Vercel/private network, TLS certificate chain, `DB_CA_CERT`, public DNS และไม่มี backend/database port ที่ไม่จำเป็นเปิดสาธารณะ
+4. เปิด managed WAF/edge rate limiting หาก scale มากกว่าหนึ่ง gateway และตั้ง alert สำหรับ login block, `401/403/429`, SOS failure, DB failure และ error spike
+5. ทำ encrypted backup และ restore drill สำเร็จ พร้อม retention/deletion policy, incident owner และ breach-response runbook
+6. ตรวจ privacy/PDPA: consent, purpose, data minimization, support-message retention, log access และกระบวนการลบข้อมูล
+7. รัน Flutter analyzer/build บน CI ที่มี Flutter SDK และทดสอบ Android/iOS จริง; sandbox นี้ไม่มี Flutter SDK
+8. รัน full Docker/staging integration; sandbox นี้ไม่มี Docker daemon
+9. ทำ independent authenticated penetration test ก่อนรับข้อมูลสุขภาพจริงจากสาธารณะ
+10. หากต้องเปิดสมัครสาธารณะ ให้เพิ่ม verified invitation/email onboarding ก่อนเปิด `REGISTRATION_ENABLED=true`
 
-Removing OTP eliminates the insecure mock flow, but password-only authentication is still single-factor authentication. For a later stronger factor, prefer phishing-resistant WebAuthn/passkeys or hardware-backed authenticators rather than restoring the removed mock OTP implementation.
+## 9. Deployment checklist
 
-## 9. Data protection notes
+- [ ] Backup ก่อน migration และยอมรับการลบ `pin_hash`
+- [ ] Deploy frontend และ backend ทั้ง 3 service จาก commit เดียวกัน
+- [ ] ตั้ง `NODE_ENV=production`, HTTPS `FRONTEND_URL` และ server-only upstream URLs
+- [ ] ตั้ง secret ใหม่ตามข้อ 8 และตรวจ startup fail-fast ผ่าน
+- [ ] ตรวจ OTP/PIN routes ผ่าน public gateway เป็น `404`
+- [ ] ตรวจ login response ของ web ไม่มี token ใน body/localStorage และ cookie เป็น `HttpOnly; Secure; SameSite=Strict`
+- [ ] ตรวจ CSP ไม่มี violation ที่ทำให้ login/dashboard/push ใช้งานไม่ได้
+- [ ] ทดสอบ login ผิดจนได้ `429` และตรวจ audit event โดยไม่มี password/token/health payload
+- [ ] ทดสอบ caregiver ที่ไม่เชื่อมต่อไม่สามารถอ่าน/แก้/ลบ reminder
+- [ ] ทดสอบ logout แล้วอุปกรณ์ไม่รับ push ของบัญชีเดิม
+- [ ] ทดสอบ backup restore, monitoring และ on-call notification
+- [ ] ให้ security reviewer อิสระลงนามก่อน production go-live
 
-- Use synthetic data in development and staging.
-- Enforce TLS for every user and service connection outside a developer machine.
-- Rotate `JWT_SECRET`, `JWT_REFRESH_SECRET`, `INTERNAL_API_KEY`, database passwords, and any historical credentials before deployment.
-- Use separate least-privilege database identities for each service in production.
-- Do not expose PostgreSQL ports to a public network; published Compose ports are for local development only.
-- Confirm that logs, support messages, notifications, and backups do not leak medication or identity data beyond their intended recipients.
+## 10. Final assessment
 
-## 10. Staging release checklist
-
-- [ ] Deploy this exact revision to an isolated staging environment.
-- [ ] Run database migrations and confirm `pin_hash` is nullable.
-- [ ] Confirm every removed OTP/PIN route returns `404` through the public gateway.
-- [ ] Confirm only password registration/login/reset/refresh/logout are reachable.
-- [ ] Keep `REGISTRATION_ENABLED=false` or unset until controlled onboarding is approved.
-- [ ] Verify access tokens expire after approximately 15 minutes and refresh tokens after 7 days.
-- [ ] Verify a password reset revokes all existing refresh sessions.
-- [ ] Verify a profile request containing `role` cannot change the stored role.
-- [ ] Verify login failures return a generic message and repeated failures receive `429`.
-- [ ] Test an existing password account and a legacy OTP/PIN-only account separately.
-- [ ] Complete elderly/caregiver E2E tests for connection approval, reminder CRUD, null dosage edit, taken, snooze, notifications, and SOS.
-- [ ] Rotate all production secrets and verify no secret appears in build logs or Git history scans.
-- [ ] Confirm CORS rejection, security headers, TLS, logging redaction, alerts, and backup restoration.
-- [ ] Keep the PR unmerged if any blocker above fails.
-
-## 11. Rollback guidance
-
-Application rollback is safe because the migration does not drop the legacy `pin_hash` column. Roll back application services and database migration together only after confirming schema compatibility. Do not roll back by re-enabling fixed OTP or PIN authentication. If password-only authentication blocks a legitimate legacy user, use a controlled administrator identity-verification and password-provisioning procedure.
-
-## 12. Final assessment
-
-The attack surface is materially smaller than before this revision: fixed/mock OTP, OTP memory state, OTP logging, PIN login, OTP phone changes, and profile role mutation are removed. Automated tests and builds pass for the components available in this environment. Nevertheless, the remaining JavaScript-readable web tokens, missing enforced CSP, process-local rate limits, and incomplete operational controls mean the system should remain in controlled staging with synthetic data. Public production approval requires closure of the blockers in section 8 and independent validation.
+จากหลักฐานใน repository ช่องโหว่ที่ตรวจพบใน application code รอบนี้ถูกปิดและ regression tests ผ่านทั้งหมด อย่างไรก็ตามสถานะ “ปลอดภัยพอสำหรับข้อมูลสุขภาพจริง” ต้องอาศัยหลักฐานจาก staging/production infrastructure, mobile build, backup/restore, monitoring และ penetration test ด้วย จึงต้องคงสถานะ **staging-ready, production approval pending external gates** จนกว่าหัวข้อ 8 และ 9 จะผ่านครบ

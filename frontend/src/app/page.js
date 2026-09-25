@@ -2,26 +2,20 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { getSession } from '../services/auth';
+import { saveSession } from '../services/auth';
+import { authApi } from '../services/api';
 
 export default function Page() {
   const router = useRouter();
 
   useEffect(() => {
-    const session = getSession();
-    if (!session || !session.accessToken) {
-      router.replace('/login');
-      return;
-    }
-
-    const role = session.user?.role;
-    if (role === 'elderly') {
+    let active = true;
+    authApi.me().then((result) => {
+      if (!active || !result?.user) return;
+      saveSession({ user: result.user });
       router.replace('/home');
-    } else if (role === 'caregiver') {
-      router.replace('/home');
-    } else {
-      router.replace('/login');
-    }
+    }).catch(() => { if (active) router.replace('/login'); });
+    return () => { active = false; };
   }, [router]);
 
   return <div>กำลังตรวจสอบ session…</div>;

@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
-import { getSession } from '../../services/auth';
-import { reminderApi } from '../../services/api';
+import { saveSession } from '../../services/auth';
+import { authApi, reminderApi } from '../../services/api';
 
 const days = [
   ['monday', 'จ'],
@@ -45,7 +45,7 @@ export default function RemindersPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     try {
       const response = await reminderApi.list();
@@ -59,15 +59,17 @@ export default function RemindersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
-    if (!getSession()?.accessToken) {
-      router.replace('/login');
-      return;
-    }
-    load();
-  }, [router]);
+    let active = true;
+    authApi.me().then((result) => {
+      if (!active || !result?.user) return;
+      saveSession({ user: result.user });
+      return load();
+    }).catch(() => { if (active) router.replace('/login'); });
+    return () => { active = false; };
+  }, [router, load]);
 
   const sorted = useMemo(
     () =>

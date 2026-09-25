@@ -21,7 +21,7 @@ export default function LoginForm({ onSubmit }) {
     if(!/^0\d{9}$/.test(r.phone))return'เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักและขึ้นต้นด้วย 0';
     if(!/^\S+@\S+\.\S+$/.test(r.email.trim()))return'กรุณากรอกอีเมลให้ถูกต้อง';
     if(!/^[A-Za-z0-9]{4,30}$/.test(r.username))return'ชื่อผู้ใช้ต้องมี 4–30 ตัว และใช้ภาษาอังกฤษหรือตัวเลขเท่านั้น';
-    if(!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(r.password))return'รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข';
+    if(!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(r.password)||new TextEncoder().encode(r.password).length>72)return'รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข';
     if(r.password!==r.confirmPassword)return'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน';
     if(!['elderly','caregiver'].includes(r.role))return'กรุณาเลือกประเภทบัญชี';
     if(r.role==='elderly'&&(!r.age||Number(r.age)<1||Number(r.age)>120))return'กรุณากรอกอายุ 1–120 ปี';

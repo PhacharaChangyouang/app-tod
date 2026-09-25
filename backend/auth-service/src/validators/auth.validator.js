@@ -12,9 +12,11 @@ const validatePasswordRegister = [
   body('email').exists().withMessage('กรุณากรอกอีเมล').bail().trim()
     .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง'),
   body('password').exists().withMessage('กรุณากรอกรหัสผ่าน').bail()
-    .isLength({ min: 12, max: 72 }).withMessage('รหัสผ่านต้องมี 12–72 ตัวอักษร'),
+    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
+    .withMessage('รหัสผ่านต้องมีขนาด 12–72 ไบต์'),
   body('confirmPassword').exists().withMessage('กรุณายืนยันรหัสผ่าน').bail()
-    .isLength({ min: 12, max: 72 }).withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง'),
+    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
+    .withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง'),
   body('role').exists().withMessage('กรุณาเลือกประเภทบัญชี').bail().trim()
     .isIn(['elderly', 'caregiver']).withMessage('ประเภทบัญชีไม่ถูกต้อง'),
   body('age').optional({ checkFalsy: true })
@@ -27,7 +29,7 @@ const validatePasswordLogin = [
   body('identifier').exists().withMessage('กรุณากรอกชื่อผู้ใช้หรืออีเมล').bail().trim()
     .isLength({ min: 1, max: 255 }),
   body('password').exists().withMessage('กรุณากรอกรหัสผ่าน').bail()
-    .isLength({ min: 1, max: 72 }),
+    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 1 && Buffer.byteLength(String(value), 'utf8') <= 72),
 ];
 
 // Refresh token may be sent in the request body OR stored in the httpOnly cookie.

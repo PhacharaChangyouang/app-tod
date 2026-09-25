@@ -38,8 +38,6 @@ export default function LoginPage() {
       }
 
       saveSession({
-        accessToken: response.accessToken,
-        refreshToken: response.refreshToken,
         user: response.user,
       });
       router.push('/home');

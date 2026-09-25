@@ -2,7 +2,7 @@ require('dotenv').config();
 
 const pool = require('./db');
 
-async function migrate() {
+async function migrate({ closePool = true } = {}) {
   try {
     await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
 
@@ -48,11 +48,17 @@ async function migrate() {
 
     console.log('Reminder migration completed');
   } catch (error) {
-    console.error('Reminder migration failed:', error);
-    process.exit(1);
+    throw error;
   } finally {
-    await pool.end();
+    if (closePool) await pool.end();
   }
 }
 
-migrate();
+if (require.main === module) {
+  migrate().catch((error) => {
+    console.error('Reminder migration failed:', error);
+    process.exit(1);
+  });
+}
+
+module.exports = migrate;

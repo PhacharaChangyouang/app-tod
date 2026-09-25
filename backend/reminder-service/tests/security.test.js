@@ -12,7 +12,9 @@ const pool = require('../src/config/db');
 const app = require('../src/server');
 
 function token(role = 'caregiver', id = '11111111-1111-4111-8111-111111111111') {
-  return jwt.sign({ id, phone: '0800000000', role }, process.env.JWT_SECRET, { expiresIn: '5m' });
+  return jwt.sign({ id, phone: '0800000000', role }, process.env.JWT_SECRET, {
+    algorithm: 'HS256', issuer: 'aha-auth-service', audience: 'aha-api', expiresIn: '5m',
+  });
 }
 
 describe('reminder security boundaries', () => {
@@ -88,5 +90,26 @@ describe('reminder security boundaries', () => {
 
     expect(res.statusCode).toBe(201);
     expect(pool.query.mock.calls[0][1][2]).toBeNull();
+  });
+
+  it('rejects malformed reminder ids before database access', async () => {
+    const res = await request(app)
+      .get('/api/reminders/not-a-uuid')
+      .set('Authorization', `Bearer ${token('elderly')}`);
+    expect(res.statusCode).toBe(400);
+    expect(pool.query).not.toHaveBeenCalled();
+  });
+
+  it('rejects signed tokens without the required issuer and audience', async () => {
+    const weak = jwt.sign(
+      { id: '11111111-1111-4111-8111-111111111111', role: 'elderly' },
+      process.env.JWT_SECRET,
+      { expiresIn: '5m' }
+    );
+    const res = await request(app)
+      .get('/api/reminders')
+      .set('Authorization', `Bearer ${weak}`);
+    expect(res.statusCode).toBe(401);
+    expect(pool.query).not.toHaveBeenCalled();
   });
 });

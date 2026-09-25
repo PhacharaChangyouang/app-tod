@@ -2,8 +2,10 @@ const bcrypt = require('bcryptjs');
 const pool = require('../config/db');
 const userModel = require('../models/user.model');
 const tokenService = require('../services/token.service');
+const loginSecurity = require('../services/login-security.service');
 
-const SALT_ROUNDS = 10;
+const SALT_ROUNDS = 12;
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync('AHA-dummy-password-not-an-account-2026', SALT_ROUNDS);
 
 function publicUser(user) {
   return {
@@ -22,6 +24,8 @@ function setAuthCookies(res, accessToken, refreshToken) {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
+    path: '/',
+    priority: 'high',
   };
   res.cookie('accessToken', accessToken, { ...cookieOptions, maxAge: 15 * 60 * 1000 });
   res.cookie('refreshToken', refreshToken, { ...cookieOptions, maxAge: 7 * 24 * 60 * 60 * 1000 });
@@ -53,8 +57,8 @@ async function registerWithPassword(req, res, next) {
       return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
     }
 
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || ''))) {
-      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || '')) || Buffer.byteLength(String(password), 'utf8') > 72) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
     }
 
     const phoneUser = await userModel.findByPhone(phone);
@@ -92,15 +96,30 @@ async function registerWithPassword(req, res, next) {
 async function loginWithPassword(req, res, next) {
   try {
     const { identifier, password } = req.body;
-    const user = await userModel.findByCredentials(String(identifier || '').trim());
+    const normalizedIdentifier = String(identifier || '').trim().toLowerCase();
+    if (await loginSecurity.isBlocked(req, normalizedIdentifier)) {
+      await loginSecurity.audit('password_login_blocked', { success: false, req, identifier: normalizedIdentifier });
+      return res.status(429).json({ success: false, message: 'ลองเข้าระบบบ่อยเกินไป กรุณารอ 15 นาทีแล้วลองใหม่' });
+    }
+
+    const user = await userModel.findByCredentials(normalizedIdentifier);
     if (!user || !user.password_hash) {
+      await bcrypt.compare(String(password || ''), DUMMY_PASSWORD_HASH);
+      await loginSecurity.recordFailure(req, normalizedIdentifier);
+      await loginSecurity.audit('password_login_failed', { success: false, req, identifier: normalizedIdentifier });
       return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง' });
     }
 
     const valid = await bcrypt.compare(String(password || ''), user.password_hash);
-    if (!valid) return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง' });
+    if (!valid) {
+      await loginSecurity.recordFailure(req, normalizedIdentifier);
+      await loginSecurity.audit('password_login_failed', { userId: user.id, success: false, req, identifier: normalizedIdentifier });
+      return res.status(401).json({ success: false, message: 'ชื่อผู้ใช้/อีเมล หรือรหัสผ่านไม่ถูกต้อง' });
+    }
 
+    await loginSecurity.clearForAccount(normalizedIdentifier);
     const { accessToken, refreshToken } = await issueSession(res, user);
+    await loginSecurity.audit('password_login_succeeded', { userId: user.id, success: true, req, identifier: normalizedIdentifier });
     res.json({ success: true, user: publicUser(user), accessToken, refreshToken });
   } catch (err) {
     next(err);

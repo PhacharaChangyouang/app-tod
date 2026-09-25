@@ -1,3 +1,7 @@
+process.env.JWT_SECRET = 'test-access-secret-that-is-long-enough-123456789';
+process.env.INTERNAL_API_KEY = 'test-internal-key-that-is-long-enough-123456789';
+
+const jwt = require('jsonwebtoken');
 const request = require('supertest');
 const app = require('../src/app');
 
@@ -19,6 +23,18 @@ describe('security boundaries', () => {
   it('rejects protected endpoints without a token', async () => {
     const res = await request(app).get('/auth/me');
     expect(res.statusCode).toBe(401);
+  });
+
+  it('does not allow a user token to call internal family routes', async () => {
+    const token = jwt.sign(
+      { id: '11111111-1111-4111-8111-111111111111', role: 'caregiver' },
+      process.env.JWT_SECRET,
+      { algorithm: 'HS256', issuer: 'aha-auth-service', audience: 'aha-api', expiresIn: '5m' }
+    );
+    const res = await request(app)
+      .get('/family/internal/22222222-2222-4222-8222-222222222222/recipients')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.statusCode).toBe(403);
   });
 
   it('rejects untrusted browser origins', async () => {

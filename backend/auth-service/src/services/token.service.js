@@ -25,6 +25,9 @@ function generateAccessToken(user) {
     },
     process.env.JWT_SECRET,
     {
+      algorithm: 'HS256',
+      issuer: 'aha-auth-service',
+      audience: 'aha-api',
       expiresIn: process.env.JWT_EXPIRES_IN || '15m',
     }
   );
@@ -36,9 +39,13 @@ async function generateRefreshToken(user) {
       id: user.id,
       phone: user.phone,
       role: user.role,
+      jti: crypto.randomUUID(),
     },
     process.env.JWT_REFRESH_SECRET,
     {
+      algorithm: 'HS256',
+      issuer: 'aha-auth-service',
+      audience: 'aha-refresh',
       expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
     }
   );
@@ -55,20 +62,26 @@ async function generateRefreshToken(user) {
   return token;
 }
 
-function verifyToken(token, secret) {
+function verifyToken(token, secret, audience) {
   try {
-    return jwt.verify(token, secret);
+    if (typeof token !== 'string' || token.length > 4096) return null;
+    return jwt.verify(token, secret, {
+      algorithms: ['HS256'],
+      issuer: 'aha-auth-service',
+      audience,
+      clockTolerance: 5,
+    });
   } catch (err) {
     return null;
   }
 }
 
 function verifyAccessToken(token) {
-  return verifyToken(token, process.env.JWT_SECRET);
+  return verifyToken(token, process.env.JWT_SECRET, 'aha-api');
 }
 
 function verifyRefreshToken(token) {
-  return verifyToken(token, process.env.JWT_REFRESH_SECRET);
+  return verifyToken(token, process.env.JWT_REFRESH_SECRET, 'aha-refresh');
 }
 
 // ยังไม่หมดอายุ และยังไม่ถูก revoke (logout/ใช้ไปแล้ว)

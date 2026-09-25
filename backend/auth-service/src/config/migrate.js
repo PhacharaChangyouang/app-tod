@@ -7,7 +7,7 @@ require('dotenv').config();
 const pool = require('./db');
 const logger = require('../utils/logger');
 
-async function migrate() {
+async function migrate({ closePool = true } = {}) {
   try {
     await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
 
@@ -18,7 +18,6 @@ async function migrate() {
         name VARCHAR(100),
         age INT,
         role VARCHAR(20) NOT NULL CHECK (role IN ('elderly', 'caregiver')),
-        pin_hash VARCHAR(255),
         phone_verified BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
@@ -27,7 +26,7 @@ async function migrate() {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
-    await pool.query(`ALTER TABLE users ALTER COLUMN pin_hash DROP NOT NULL`);
+    await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS pin_hash`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL`);
 
@@ -68,14 +67,44 @@ async function migrate() {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_user_id ON password_reset_tokens(user_id)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expiry ON password_reset_tokens(expires_at)`);
 
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS login_attempts (
+        key_hash VARCHAR(64) PRIMARY KEY,
+        attempts INT NOT NULL DEFAULT 0,
+        first_attempt_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        blocked_until TIMESTAMPTZ
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_login_attempts_blocked_until ON login_attempts(blocked_until)`);
+
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS auth_audit_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_type VARCHAR(64) NOT NULL,
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        success BOOLEAN NOT NULL,
+        actor_hash VARCHAR(64) NOT NULL,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_audit_user_created ON auth_audit_events(user_id, created_at DESC)`);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_audit_event_created ON auth_audit_events(event_type, created_at DESC)`);
+
     logger.info('Migration completed successfully');
   } catch (err) {
     logger.error('Migration failed', { error: err.message, stack: err.stack });
-    console.error('Migration failed', err);
-    process.exit(1);
+    throw err;
   } finally {
-    await pool.end();
+    if (closePool) await pool.end();
   }
 }
 
-migrate();
+if (require.main === module) {
+  migrate().catch((error) => {
+    console.error('Migration failed', error);
+    process.exit(1);
+  });
+}
+
+module.exports = migrate;

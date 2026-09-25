@@ -2,10 +2,7 @@ jest.mock('../src/models/user.model', () => ({
   updateProfile: jest.fn(),
 }));
 
-jest.mock('../src/services/token.service', () => ({
-  generateAccessToken: jest.fn(() => 'access-token'),
-  generateRefreshToken: jest.fn(async () => 'refresh-token'),
-}));
+jest.mock('../src/services/token.service', () => ({}));
 
 const userModel = require('../src/models/user.model');
 const authController = require('../src/controllers/auth.controller');

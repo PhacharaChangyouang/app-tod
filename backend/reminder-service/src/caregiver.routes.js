@@ -4,6 +4,10 @@ const authenticate = require('./middlewares/authenticate');
 
 const router = express.Router();
 const TZ = 'Asia/Bangkok';
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+router.param('id', (req, res, next, value) => UUID_PATTERN.test(value)
+  ? next()
+  : res.status(400).json({ success: false, message: 'Invalid id' }));
 
 async function linkedElderly(req) {
   if (req.user.role !== 'caregiver') return [];
@@ -68,6 +72,12 @@ function validateReminderPayload(body, { partial = false } = {}) {
   if (body.reminder_time !== undefined && !/^([01]\d|2[0-3]):[0-5]\d$/.test(time)) return 'reminder_time must be HH:MM';
   if (!['daily', 'weekly'].includes(frequency)) return 'frequency must be daily or weekly';
   if (body.days_of_week !== undefined && (!Array.isArray(days) || !days.length)) return 'days_of_week must be a non-empty array';
+  const allowedDays = new Set(['monday','tuesday','wednesday','thursday','friday','saturday','sunday']);
+  if (Array.isArray(days) && (days.length > 7 || days.some((day) => !allowedDays.has(day)))) return 'days_of_week contains an invalid day';
+  if (body.start_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(body.start_date))) return 'start_date must be YYYY-MM-DD';
+  if (body.end_date && !/^\d{4}-\d{2}-\d{2}$/.test(String(body.end_date))) return 'end_date must be YYYY-MM-DD';
+  if (body.start_date && body.end_date && String(body.end_date) < String(body.start_date)) return 'end_date must not be before start_date';
+  if (body.is_active !== undefined && typeof body.is_active !== 'boolean') return 'is_active must be boolean';
   return null;
 }
 

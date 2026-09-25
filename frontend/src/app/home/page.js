@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import AhaIcon from '../../components/AhaIcon';
-import { getSession } from '../../services/auth';
-import { caregiverApi, reminderApi, notificationApi } from '../../services/api';
+import { saveSession } from '../../services/auth';
+import { authApi, caregiverApi, reminderApi, notificationApi } from '../../services/api';
 
 function listOf(response, key) {
   if (Array.isArray(response)) return response;
@@ -35,26 +36,27 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session?.accessToken) { router.replace('/login'); return undefined; }
-    const currentUser = session.user || null;
-    setUser(currentUser);
-    if (currentUser?.id) setAvatar(localStorage.getItem(`aha_avatar_${currentUser.id}`) || '');
+    let currentUser = null;
+    let mounted = true;
     const syncAvatar = () => { if (currentUser?.id) setAvatar(localStorage.getItem(`aha_avatar_${currentUser.id}`) || ''); };
     window.addEventListener('focus', syncAvatar);
     window.addEventListener('storage', syncAvatar);
-    let mounted = true;
-    const dataPromise = currentUser?.role === 'caregiver' ? caregiverApi.summary() : reminderApi.today();
-    Promise.allSettled([dataPromise, notificationApi.unread()]).then(([dataResult, notificationResult]) => {
+    authApi.me().then(async (result) => {
+      currentUser = result?.user || null;
+      if (!mounted || !currentUser) return;
+      saveSession({ user: currentUser });
+      setUser(currentUser);
+      syncAvatar();
+      const dataPromise = currentUser.role === 'caregiver' ? caregiverApi.summary() : reminderApi.today();
+      const [dataResult, notificationResult] = await Promise.allSettled([dataPromise, notificationApi.unread()]);
       if (!mounted) return;
       if (dataResult.status === 'fulfilled') {
-        if (currentUser?.role === 'caregiver') setCaregiverSummary(dataResult.value?.data || { elderly: [], today: [], history: [] });
+        if (currentUser.role === 'caregiver') setCaregiverSummary(dataResult.value?.data || { elderly: [], today: [], history: [] });
         else setReminders(listOf(dataResult.value, 'reminders'));
       }
       if (notificationResult.status === 'fulfilled') setNotifications(listOf(notificationResult.value, 'notifications'));
       if (dataResult.status === 'rejected' && notificationResult.status === 'rejected') setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
-      setLoading(false);
-    });
+    }).catch(() => { if (mounted) router.replace('/login'); }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; window.removeEventListener('focus', syncAvatar); window.removeEventListener('storage', syncAvatar); };
   }, [router]);
 
@@ -91,13 +93,13 @@ export default function HomePage() {
         <div className="aha-v3-top-message"><strong>{isCaregiver ? 'ดูแลคนที่คุณรัก' : 'ถามได้ทุกเรื่องสุขภาพ'}</strong><span>{isCaregiver ? 'ติดตามสถานะจาก AHA ได้ในที่เดียว' : 'AHA พร้อมดูแลคุณ'}</span></div>
         <div className="aha-v3-top-actions">
           <button onClick={() => router.push('/notifications')} aria-label="แจ้งเตือน" type="button"><AhaIcon name="bell" size={22} />{notifications.length > 0 && <b>{notifications.length > 9 ? '9+' : notifications.length}</b>}</button>
-          <button onClick={() => router.push('/profile')} aria-label="โปรไฟล์" type="button"><span className="aha-v3-user-avatar">{avatar ? <img src={avatar} alt="" /> : displayName.slice(0, 1)}</span></button>
+          <button onClick={() => router.push('/profile')} aria-label="โปรไฟล์" type="button"><span className="aha-v3-user-avatar">{avatar ? <Image src={avatar} alt="" fill sizes="42px" unoptimized /> : displayName.slice(0, 1)}</span></button>
           <button onClick={() => router.push('/profile')} aria-label="ตั้งค่า" type="button"><AhaIcon name="activity" size={21} /></button>
         </div>
       </header>
 
       <main className="aha-v3-content">{error && <div className="error">{error}</div>}
-        <section className="aha-v3-hero"><div className="aha-v3-hero-copy"><h1>{`สวัสดี ${displayName}`}</h1><p>{isCaregiver ? 'วันนี้คุณกำลังดูแลใครอยู่บ้าง?' : 'ดูแลตัวเองไปด้วยกันในทุกวัน'}</p><span className="aha-v3-hero-line" /></div><div className="aha-v3-hero-photo"><img src="/elderly-hero.jpg" alt="ผู้สูงอายุ" onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = '/elderly-hero.svg'; }} /><div className="aha-v3-hero-note">{isCaregiver ? <><span>ดูแลคนที่รัก</span><span>ติดตามยา</span><b>ได้ทุกวัน</b></> : <><span>ดูแลตัวเอง</span><span>ไปด้วยกัน</span><b>ในทุกวัน</b></>}</div></div></section>
+        <section className="aha-v3-hero"><div className="aha-v3-hero-copy"><h1>{`สวัสดี ${displayName}`}</h1><p>{isCaregiver ? 'วันนี้คุณกำลังดูแลใครอยู่บ้าง?' : 'ดูแลตัวเองไปด้วยกันในทุกวัน'}</p><span className="aha-v3-hero-line" /></div><div className="aha-v3-hero-photo"><Image src="/elderly-hero.jpg" alt="ผู้สูงอายุ" fill priority sizes="(max-width: 760px) 100vw, 48vw" /><div className="aha-v3-hero-note">{isCaregiver ? <><span>ดูแลคนที่รัก</span><span>ติดตามยา</span><b>ได้ทุกวัน</b></> : <><span>ดูแลตัวเอง</span><span>ไปด้วยกัน</span><b>ในทุกวัน</b></>}</div></div></section>
 
         {isCaregiver ? <>
           <section className="aha-v3-feature-row"><article className="aha-v3-card aha-v3-next"><div className="aha-v3-card-title">ผู้สูงอายุที่ดูแล <button onClick={() => router.push('/family')} type="button">จัดการ <AhaIcon name="arrow" size={15} /></button></div><div className="aha-v3-next-inner"><span className="aha-v3-clock"><AhaIcon name="users" size={42} /></span><div><strong>{caregiverPeople.length}</strong><span>คนที่เชื่อมต่อแล้ว</span><small>เลือกดูตารางยาและสถานะการทานยา</small></div></div><button className="aha-v3-primary-button" onClick={() => router.push('/family')} type="button"><AhaIcon name="users" size={18} /> ดูแดชบอร์ดผู้ดูแล</button></article><div className="aha-v3-action-stack" style={{display:'grid',gridTemplateColumns:'repeat(3,minmax(0,1fr))',gap:'14px',marginTop:'8px'}}><button className="aha-v3-action blue" onClick={() => router.push('/family')} type="button"><span className="aha-v3-action-icon"><AhaIcon name="users" size={33} /></span><strong>ติดตามผู้สูงอายุ</strong><span className="aha-v3-arrow">›</span></button><button className="aha-v3-action blue" onClick={startVoice} type="button"><span className="aha-v3-action-icon"><AhaIcon name="mic" size={33} /></span><strong>{voice ? 'กำลังฟัง…' : 'พูดกับ AHA'}</strong><span className="aha-v3-arrow">›</span></button><button className="aha-v3-action red" onClick={() => router.push('/emergency')} type="button"><span className="aha-v3-action-icon"><AhaIcon name="phone" size={33} /></span><strong>ฉุกเฉิน SOS</strong><span className="aha-v3-arrow">›</span></button></div></section>
