@@ -155,3 +155,43 @@ BFF มี route/method allowlist จึงไม่ทำหน้าที่�
 ## 10. Final assessment
 
 จากหลักฐานใน repository ช่องโหว่ที่ตรวจพบใน application code รอบนี้ถูกปิดและ regression tests ผ่านทั้งหมด อย่างไรก็ตามสถานะ “ปลอดภัยพอสำหรับข้อมูลสุขภาพจริง” ต้องอาศัยหลักฐานจาก staging/production infrastructure, mobile build, backup/restore, monitoring และ penetration test ด้วย จึงต้องคงสถานะ **staging-ready, production approval pending external gates** จนกว่าหัวข้อ 8 และ 9 จะผ่านครบ
+
+## 11. Production incident and verification addendum — 26 September 2026
+
+### Incident: password and PIN login returned `503`
+
+**Impact:** ผู้ใช้เดิมเข้าสู่ระบบผ่านเว็บไม่ได้ทั้งแบบบัญชี/รหัสผ่านและเบอร์โทรศัพท์/PIN ข้อมูลบัญชีและ `pin_hash` ไม่ได้ถูกลบหรือแก้ไข
+
+**Root cause:** Next.js BFF ทำงานแบบ fail closed ใน production แต่ Railway frontend ยังไม่มี server-only variables `AUTH_API_URL`, `REMINDER_API_URL` และ `NOTIFICATION_API_URL` จึงตอบ `503 Service unavailable` ก่อนส่งคำขอถึง Auth service
+
+**Remediation:**
+
+- เพิ่ม server-only upstream URLs ทั้งสามค่าให้ frontend โดยคง `NEXT_PUBLIC_*` ออกจากเส้นทาง BFF
+- เปิด `NODE_ENV=production` และตั้ง `PIN_PEPPER` แบบสุ่มคงที่ให้ Auth service
+- rotate `JWT_SECRET`, `JWT_REFRESH_SECRET` และ `INTERNAL_API_KEY` เป็นค่าสุ่ม 512-bit; ซิงก์ JWT/internal key ให้ backend services ที่เกี่ยวข้อง
+- ตั้ง `DB_SSL_REJECT_UNAUTHORIZED=false` บน Railway services ที่เชื่อม PostgreSQL ด้วย TLS chain แบบ self-signed โดยยังคงเปิด TLS; ไม่ได้ตั้ง `DB_SSL=false`
+- เปิด production guard ให้ Reminder และ Notification และ deploy configuration ที่สอดคล้องกัน
+
+การ rotate JWT ทำให้ session เก่าหมดอายุและผู้ใช้ต้องเข้าสู่ระบบใหม่หนึ่งครั้ง แต่ไม่กระทบบัญชี รหัสผ่าน PIN หรือข้อมูลยา
+
+### Production verification evidence
+
+| การตรวจบน production | ผล |
+|---|---|
+| Railway project health | `7/7 services online` |
+| Auth `/health` | `200` |
+| Reminder `/health` | `200` |
+| Notification `/health` | `200`; push configured |
+| Password login ผ่าน same-origin BFF ด้วยบัญชีจำลองที่ไม่มีอยู่ | `401` และ generic error; ไม่ใช่ `503` |
+| PIN login ผ่าน same-origin BFF ด้วยเบอร์จำลองที่ไม่มีอยู่ | `401` และ generic error; ไม่เปิดเผยว่ามีบัญชีหรือไม่ |
+| PIN account throttle | ตอบ `429` หลังถึงเกณฑ์ 5 ครั้งใน 15 นาที |
+| CSRF guard | คำขอ mutation ที่ไม่มี same-origin headers ถูกปฏิเสธ `403` |
+| Security headers | CSP nonce/strict-dynamic, HSTS, `nosniff`, `DENY`, Permissions-Policy และ Referrer-Policy อยู่ครบ |
+| Backend regression | Auth 24/24, Reminder 7/7, Notification 5/5 — รวม 36/36 |
+| Frontend | lint ผ่าน และ production build สำเร็จ |
+| Production dependency audit | `npm audit --omit=dev` ทั้ง 4 packages: 0 vulnerabilities |
+| Source scan | ไม่พบ tracked default credential, active OTP route, XSS sink หรือ browser token persistence |
+
+### Release decision after recovery
+
+ระบบเว็บและ backend กลับมาให้บริการตามปกติสำหรับ controlled pilot และปัญหา login `503` ได้รับการแก้ไขแล้ว หลักฐานนี้ยืนยัน availability และ controls ที่ทดสอบได้ แต่ไม่ใช่คำรับรองว่าไม่มีช่องโหว่ทุกประเภท บัญชีจริงยังควรทดสอบ login ทั้งสองวิธีและ caregiver edit-reminder flow โดยเจ้าของระบบ และ external gates เรื่อง backup/restore, monitoring, PDPA, mobile device verification และ independent authenticated penetration test ยังต้องดำเนินการก่อนเปิดรับข้อมูลสุขภาพจริงในวงกว้าง

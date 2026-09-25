@@ -1,5 +1,7 @@
 # AHA - AI Health Assistant
 
+> **Production recovery update — 26 September 2026:** แก้เหตุ login แบบรหัสผ่านและ PIN ตอบ `503` แล้ว สาเหตุคือ Railway frontend ขาด server-only BFF upstream URLs ไม่ใช่บัญชีหรือ `pin_hash` สูญหาย หลังแก้ configuration, rotate production secrets และเปิด production guards ระบบ Railway แสดง `7/7 services online`; health checks ทั้งสาม backend ตอบ `200`, login probes ผ่าน BFF ตอบ generic `401` ตามคาด และ PIN throttle ตอบ `429` เมื่อถึงเกณฑ์ รายละเอียดและข้อจำกัดอยู่ในหัวข้อ 11 ของ [SECURITY_REVIEW_2026-09-25.md](SECURITY_REVIEW_2026-09-25.md)
+
 > **Security/readiness update — 25 September 2026:** the codebase has passed the
 > non-destructive checks documented in [Security and pre-release test report](#security-and-pre-release-test-report--25-september-2026).
 > Application-code hardening is complete for this revision. It is ready for an
