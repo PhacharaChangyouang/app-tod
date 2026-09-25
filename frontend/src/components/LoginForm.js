@@ -4,17 +4,19 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from './AhaIcon';
 
-const initialRegister = { firstName:'',lastName:'',phone:'',email:'',username:'',password:'',confirmPassword:'',role:'elderly',age:'',termsAccepted:false };
+const initialRegister = { firstName:'',lastName:'',phone:'',email:'',username:'',password:'',confirmPassword:'',pin:'',confirmPin:'',role:'elderly',age:'',termsAccepted:false };
 
 export default function LoginForm({ onSubmit }) {
   const router = useRouter();
   const [mode,setMode]=useState('password');
   const [identifier,setIdentifier]=useState(''); const [password,setPassword]=useState(''); const [showPassword,setShowPassword]=useState(false); const [showRegisterPassword,setShowRegisterPassword]=useState(false); const [showConfirmPassword,setShowConfirmPassword]=useState(false);
+  const [pinPhone,setPinPhone]=useState(''); const [loginPin,setLoginPin]=useState('');
   const [register,setRegister]=useState(initialRegister); const [error,setError]=useState(''); const [busy,setBusy]=useState(false);
   useEffect(()=>{if(typeof window==='undefined')return;const params=new URLSearchParams(window.location.search);if(params.get('mode')==='register')setMode('register');},[]);
   const run=async(payload)=>{setError('');setBusy(true);try{await onSubmit({...payload,setError});}finally{setBusy(false);}};
-  const openRegister=()=>{setError('');setMode('register');if(typeof window!=='undefined')window.history.replaceState(null,'','/login?mode=register');};
-  const backToLogin=()=>{setError('');setMode('password');if(typeof window!=='undefined')window.history.replaceState(null,'','/login');};
+  const changeMode=(next)=>{setMode(next);setError('');};
+  const openRegister=()=>{setError('');setMode('register');};
+  const backToLogin=()=>{setError('');setMode('password');};
   const updateRegister=(key,value)=>setRegister((v)=>({...v,[key]:value}));
   const validateRegistration=()=>{const r=register;
     if(!r.firstName.trim()||!r.lastName.trim())return'กรุณากรอกชื่อและนามสกุล';
@@ -23,12 +25,15 @@ export default function LoginForm({ onSubmit }) {
     if(!/^[A-Za-z0-9]{4,30}$/.test(r.username))return'ชื่อผู้ใช้ต้องมี 4–30 ตัว และใช้ภาษาอังกฤษหรือตัวเลขเท่านั้น';
     if(!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(r.password)||new TextEncoder().encode(r.password).length>72)return'รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข';
     if(r.password!==r.confirmPassword)return'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน';
+    if(!/^\d{4}$/.test(r.pin))return'PIN ต้องเป็นตัวเลข 4 หลัก';
+    if(r.pin!==r.confirmPin)return'PIN และการยืนยัน PIN ไม่ตรงกัน';
     if(!['elderly','caregiver'].includes(r.role))return'กรุณาเลือกประเภทบัญชี';
     if(r.role==='elderly'&&(!r.age||Number(r.age)<1||Number(r.age)>120))return'กรุณากรอกอายุ 1–120 ปี';
     if(!r.termsAccepted)return'กรุณายอมรับเงื่อนไขการใช้งานและนโยบายข้อมูลส่วนบุคคล'; return'';
   };
   const submit=(e)=>{e.preventDefault();
     if(mode==='password')return run({mode:'loginPassword',identifier,password});
+    if(mode==='pin')return run({mode:'loginPin',phone:pinPhone,pin:loginPin});
     const validationError=validateRegistration();if(validationError){setError(validationError);return;}return run({mode:'registerPassword',...register});
   };
 
@@ -43,6 +48,7 @@ export default function LoginForm({ onSubmit }) {
       <section className="aha-auth-form-panel">
         <div className="aha-auth-heading"><div className="aha-auth-kicker">AHA</div><h2>{mode==='register'?'สร้างบัญชี AHA':'ยินดีต้อนรับกลับ'}</h2><p>{mode==='register'?'กรอกข้อมูลเพื่อเริ่มใช้งาน':'เข้าสู่ระบบเพื่อดูข้อมูลและการแจ้งเตือนของคุณ'}</p></div>
 
+        {mode!=='register'&&<div className="aha-auth-tabs" role="tablist"><button type="button" className={mode==='password'?'active':''} onClick={()=>changeMode('password')}>บัญชี / รหัสผ่าน</button><button type="button" className={mode==='pin'?'active':''} onClick={()=>changeMode('pin')}>เบอร์โทร / PIN</button></div>}
         {mode==='register'&&<button type="button" className="aha-auth-back" onClick={backToLogin}>← กลับไปเข้าสู่ระบบ</button>}
 
         <form onSubmit={submit}>
@@ -51,18 +57,20 @@ export default function LoginForm({ onSubmit }) {
             <div className="aha-auth-field"><label>รหัสผ่าน</label><div className="aha-auth-password-wrap"><input type={showPassword?'text':'password'} value={password} onChange={e=>setPassword(e.target.value)} autoComplete="current-password" placeholder="รหัสผ่าน" required/><button type="button" className="aha-auth-password-toggle" onClick={()=>setShowPassword(v=>!v)} aria-label={showPassword?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน'} aria-pressed={showPassword}>{showPassword?'ซ่อน':'แสดง'}</button></div></div>
             <div className="aha-auth-row"><button type="button" className="aha-auth-link" onClick={()=>router.push('/forgot-password')}>ลืมรหัสผ่าน?</button><button type="button" className="aha-auth-link" onClick={openRegister}>ยังไม่มีบัญชี? <strong>สมัครสมาชิก</strong></button></div>
           </>}
+          {mode==='pin'&&<><p className="aha-auth-sub">เข้าสู่ระบบด้วยเบอร์โทรศัพท์ที่สมัครและ PIN 4 หลัก</p><div className="aha-auth-field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" autoComplete="tel" value={pinPhone} onChange={e=>setPinPhone(e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="0XXXXXXXXX" pattern="0[0-9]{9}" required autoFocus/></div><div className="aha-auth-field"><label>PIN 4 หลัก</label><input type="password" inputMode="numeric" autoComplete="current-password" maxLength={4} value={loginPin} onChange={e=>setLoginPin(e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••" pattern="[0-9]{4}" required/></div></>}
           {mode==='register'&&<>
             <div className="aha-auth-field-row"><div className="aha-auth-field"><label>ชื่อ</label><input value={register.firstName} onChange={e=>updateRegister('firstName',e.target.value)} required/></div><div className="aha-auth-field"><label>นามสกุล</label><input value={register.lastName} onChange={e=>updateRegister('lastName',e.target.value)} required/></div></div>
             <div className="aha-auth-field"><label>เบอร์โทรศัพท์</label><input type="tel" inputMode="numeric" value={register.phone} onChange={e=>updateRegister('phone',e.target.value.replace(/\D/g,'').slice(0,10))} placeholder="0XXXXXXXXX" required/></div>
             <div className="aha-auth-field"><label>อีเมล</label><input type="email" value={register.email} onChange={e=>updateRegister('email',e.target.value)} placeholder="name@example.com" required/></div>
             <div className="aha-auth-field"><label>ชื่อผู้ใช้</label><input value={register.username} onChange={e=>updateRegister('username',e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,30))} placeholder="เช่น ahauser01" required/><small>ใช้ภาษาอังกฤษและตัวเลขเท่านั้น</small></div>
             <div className="aha-auth-field-row"><div className="aha-auth-field"><label>รหัสผ่าน</label><div className="aha-auth-password-wrap"><input type={showRegisterPassword?'text':'password'} value={register.password} onChange={e=>updateRegister('password',e.target.value)} placeholder="อย่างน้อย 12 ตัว" required/><button type="button" className="aha-auth-password-toggle" onClick={()=>setShowRegisterPassword(v=>!v)} aria-label={showRegisterPassword?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน'} aria-pressed={showRegisterPassword}>{showRegisterPassword?'ซ่อน':'แสดง'}</button></div></div><div className="aha-auth-field"><label>ยืนยันรหัสผ่าน</label><div className="aha-auth-password-wrap"><input type={showConfirmPassword?'text':'password'} value={register.confirmPassword} onChange={e=>updateRegister('confirmPassword',e.target.value)} required/><button type="button" className="aha-auth-password-toggle" onClick={()=>setShowConfirmPassword(v=>!v)} aria-label={showConfirmPassword?'ซ่อนรหัสผ่าน':'แสดงรหัสผ่าน'} aria-pressed={showConfirmPassword}>{showConfirmPassword?'ซ่อน':'แสดง'}</button></div></div></div>
+            <div className="aha-auth-field-row"><div className="aha-auth-field"><label>ตั้ง PIN 4 หลัก</label><input type="password" inputMode="numeric" autoComplete="new-password" maxLength={4} pattern="[0-9]{4}" value={register.pin} onChange={e=>updateRegister('pin',e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••" required/><small>ใช้สำหรับเข้าสู่ระบบด้วยเบอร์โทรศัพท์</small></div><div className="aha-auth-field"><label>ยืนยัน PIN 4 หลัก</label><input type="password" inputMode="numeric" autoComplete="new-password" maxLength={4} pattern="[0-9]{4}" value={register.confirmPin} onChange={e=>updateRegister('confirmPin',e.target.value.replace(/\D/g,'').slice(0,4))} placeholder="••••" required/></div></div>
             <div className="aha-auth-field"><label>ประเภทบัญชี</label><div className="aha-auth-role-grid"><button type="button" className={register.role==='elderly'?'active':''} onClick={()=>updateRegister('role','elderly')}><AhaIcon name="heart" size={19}/><span><strong>ผู้สูงอายุ</strong><small>ติดตามยาและสุขภาพ</small></span></button><button type="button" className={register.role==='caregiver'?'active':''} onClick={()=>updateRegister('role','caregiver')}><AhaIcon name="users" size={19}/><span><strong>ผู้ดูแล</strong><small>ดูแลผู้สูงอายุ</small></span></button></div></div>
             {register.role==='elderly'&&<div className="aha-auth-field"><label>อายุ</label><input type="number" min="1" max="120" value={register.age} onChange={e=>updateRegister('age',e.target.value)} required/></div>}
             <label className="aha-auth-terms"><input type="checkbox" checked={register.termsAccepted} onChange={e=>updateRegister('termsAccepted',e.target.checked)} required/><span>ฉันยอมรับเงื่อนไขการใช้งานและรับทราบการเก็บและใช้ข้อมูลที่จำเป็นต่อการให้บริการของ AHA</span></label>
           </>}
           {error&&<div className="aha-auth-error" role="alert"><strong>ไม่สามารถดำเนินการได้</strong><span>{error}</span></div>}
-          <button className="aha-auth-submit" disabled={busy}>{busy?'กำลังดำเนินการ…':mode==='password'?'เข้าสู่ระบบ':'สมัครสมาชิก'}</button>
+          <button className="aha-auth-submit" disabled={busy}>{busy?'กำลังดำเนินการ…':mode==='password'?'เข้าสู่ระบบ':mode==='pin'?'เข้าสู่ระบบด้วย PIN':'สมัครสมาชิก'}</button>
         </form>
       </section>
     </section>

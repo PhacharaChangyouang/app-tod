@@ -12,12 +12,13 @@ function assertProductionSecurity() {
   const accessSecret = process.env.JWT_SECRET || '';
   const refreshSecret = process.env.JWT_REFRESH_SECRET || '';
   const internalKey = process.env.INTERNAL_API_KEY || '';
+  const pinPepper = process.env.PIN_PEPPER || '';
   const weak = (value) => value.length < 48 || /replace|change|example|development|password|secret/i.test(value) || new Set(value).size < 12;
-  if (weak(accessSecret) || weak(refreshSecret) || weak(internalKey)) {
+  if (weak(accessSecret) || weak(refreshSecret) || weak(internalKey) || weak(pinPepper)) {
     throw new Error('Production secrets must be random, non-placeholder values with at least 48 characters');
   }
-  if (new Set([accessSecret, refreshSecret, internalKey]).size !== 3) {
-    throw new Error('JWT_SECRET, JWT_REFRESH_SECRET and INTERNAL_API_KEY must all be different');
+  if (new Set([accessSecret, refreshSecret, internalKey, pinPepper]).size !== 4) {
+    throw new Error('JWT_SECRET, JWT_REFRESH_SECRET, INTERNAL_API_KEY and PIN_PEPPER must all be different');
   }
   if (!String(process.env.FRONTEND_URL || '').startsWith('https://')) {
     throw new Error('FRONTEND_URL must use HTTPS in production');

@@ -52,7 +52,7 @@ export default function RemindersPage() {
       setItems(listOf(response));
     } catch (err) {
       if (err.status === 401) {
-        router.replace('/login');
+        router.replace('/');
         return;
       }
       setError(err.message || 'โหลดรายการไม่สำเร็จ');
@@ -67,7 +67,7 @@ export default function RemindersPage() {
       if (!active || !result?.user) return;
       saveSession({ user: result.user });
       return load();
-    }).catch(() => { if (active) router.replace('/login'); });
+    }).catch(() => { if (active) router.replace('/'); });
     return () => { active = false; };
   }, [router, load]);
 

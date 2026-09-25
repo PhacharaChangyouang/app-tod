@@ -3,6 +3,7 @@ const pool = require('../config/db');
 const userModel = require('../models/user.model');
 const tokenService = require('../services/token.service');
 const loginSecurity = require('../services/login-security.service');
+const pinService = require('../services/pin.service');
 
 const SALT_ROUNDS = 12;
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('AHA-dummy-password-not-an-account-2026', SALT_ROUNDS);
@@ -46,7 +47,7 @@ async function registerWithPassword(req, res, next) {
 
     const {
       phone, firstName, lastName, email, username,
-      password, confirmPassword, role, age, termsAccepted,
+      password, confirmPassword, pin, confirmPin, role, age, termsAccepted,
     } = req.body;
 
     if (!termsAccepted) {
@@ -55,6 +56,14 @@ async function registerWithPassword(req, res, next) {
 
     if (password !== confirmPassword) {
       return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
+    }
+
+    if (pin !== confirmPin) {
+      return res.status(400).json({ success: false, message: 'PIN และการยืนยัน PIN ไม่ตรงกัน' });
+    }
+
+    if (!/^\d{4}$/.test(String(pin || ''))) {
+      return res.status(400).json({ success: false, message: 'PIN ต้องเป็นตัวเลข 4 หลัก' });
     }
 
     if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || '')) || Buffer.byteLength(String(password), 'utf8') > 72) {
@@ -74,6 +83,7 @@ async function registerWithPassword(req, res, next) {
 
     const name = `${String(firstName || '').trim()} ${String(lastName || '').trim()}`.trim();
     const passwordHash = await bcrypt.hash(String(password), SALT_ROUNDS);
+    const pinHash = await pinService.hashPin(String(pin));
 
     const user = await userModel.createWithPassword({
       phone,
@@ -83,6 +93,7 @@ async function registerWithPassword(req, res, next) {
       username: String(username).trim(),
       email: email ? String(email).trim().toLowerCase() : null,
       passwordHash,
+      pinHash,
     });
 
     const { accessToken, refreshToken } = await issueSession(res, user);

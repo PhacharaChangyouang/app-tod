@@ -5,4 +5,4 @@
 - Push notification (Firebase Cloud Messaging)
 - SMS backup (นัดสำคัญ + ฉุกเฉิน เท่านั้น ตาม Sensitive Data Rule — ห้ามส่งข้อมูลสุขภาพตรงๆ ผ่าน SMS)
 
-OTP/PIN authentication ถูกถอดออกจาก auth-service แล้ว Notification service ไม่รับผิดชอบการส่งรหัสยืนยันตัวตน
+OTP authentication ถูกถอดออกจาก auth-service แล้ว ส่วน phone+PIN authentication ยังอยู่ใน auth-service โดย Notification service ไม่รับผิดชอบการส่งรหัสยืนยันตัวตน

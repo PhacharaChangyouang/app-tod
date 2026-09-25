@@ -36,6 +36,10 @@ export default function ProfilePage() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [currentPin, setCurrentPin] = useState('');
+  const [newPin, setNewPin] = useState('');
+  const [confirmNewPin, setConfirmNewPin] = useState('');
+  const [pinSaving, setPinSaving] = useState(false);
   const [medicinePushEnabled, setMedicinePushEnabled] = useState(false);
   const [notificationBusy, setNotificationBusy] = useState(false);
   const [appearanceNotice, setAppearanceNotice] = useState('');
@@ -64,7 +68,7 @@ export default function ProfilePage() {
       });
     }).catch((err) => {
       setMedicinePushEnabled(false);
-      if (err?.status === 401 || err?.message === 'Unauthorized') router.replace('/login');
+      if (err?.status === 401 || err?.message === 'Unauthorized') router.replace('/');
     });
   }, [router]);
 
@@ -133,6 +137,23 @@ export default function ProfilePage() {
     finally { setSaving(false); }
   };
 
+  const changePin = async () => {
+    setError(''); setMessage('');
+    if (!/^\d{4}$/.test(currentPin) || !/^\d{4}$/.test(newPin) || !/^\d{4}$/.test(confirmNewPin)) {
+      setError('PIN ทุกช่องต้องเป็นตัวเลข 4 หลัก'); return;
+    }
+    if (newPin !== confirmNewPin) { setError('PIN ใหม่และการยืนยัน PIN ไม่ตรงกัน'); return; }
+    if (currentPin === newPin) { setError('PIN ใหม่ต้องไม่ซ้ำกับ PIN ปัจจุบัน'); return; }
+    setPinSaving(true);
+    try {
+      await authApi.changePin(currentPin, newPin, confirmNewPin);
+      try { await authApi.logout(); } catch (_) {}
+      clearSession();
+      router.replace('/');
+    } catch (err) { setError(err.message || 'เปลี่ยน PIN ไม่สำเร็จ'); }
+    finally { setPinSaving(false); }
+  };
+
   const submitSupport = async (event) => {
     event.preventDefault();
     setError(''); setMessage('');
@@ -156,7 +177,7 @@ export default function ProfilePage() {
   const logout = async () => {
     try { await disableAhaPush(); } catch (_) {}
     try { await authApi.logout(); } catch (_) {}
-    clearSession(); router.replace('/login');
+    clearSession(); router.replace('/');
   };
 
   if (!user) return <div className="aha-profile-page"><div className="aha-profile-loading">กำลังโหลดโปรไฟล์…</div></div>;
@@ -219,6 +240,12 @@ export default function ProfilePage() {
             <div className="aha-profile-fields single"><label>เบอร์โทรศัพท์<input value={phone} readOnly aria-readonly="true" /></label></div>
           </section>
         </div>
+
+        <section className="aha-profile-section aha-profile-security">
+          <div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">SECURITY</span><h2>เปลี่ยน PIN 4 หลัก</h2><p>หลังเปลี่ยน PIN ระบบจะให้ออกจากระบบทุกอุปกรณ์เพื่อความปลอดภัย</p></div></div>
+          <div className="aha-profile-pin-grid"><label>PIN ปัจจุบัน<input type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="current-password" value={currentPin} onChange={(e) => setCurrentPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" /></label><label>PIN ใหม่<input type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="new-password" value={newPin} onChange={(e) => setNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" /></label><label>ยืนยัน PIN ใหม่<input type="password" inputMode="numeric" maxLength={4} pattern="[0-9]{4}" autoComplete="new-password" value={confirmNewPin} onChange={(e) => setConfirmNewPin(e.target.value.replace(/\D/g, '').slice(0, 4))} placeholder="••••" /></label></div>
+          <button className="aha-profile-secondary" type="button" onClick={changePin} disabled={pinSaving}>{pinSaving ? 'กำลังบันทึก…' : 'เปลี่ยน PIN และออกจากระบบ'}</button>
+        </section>
 
         <section className="aha-profile-section aha-profile-support">
           <div className="aha-profile-support-head"><div className="aha-profile-section-heading"><div><span className="aha-profile-kicker">SUPPORT</span><h2>ติดต่อผู้ดูแลระบบ</h2><p>แจ้งปัญหาการใช้งานผ่าน AHA โดยไม่ต้องเปิดแอปอีเมล</p></div></div><button className="aha-profile-support-toggle" type="button" onClick={() => setSupportOpen((value) => !value)} aria-expanded={supportOpen}>{supportOpen ? 'ซ่อน' : 'แสดง'}</button></div>

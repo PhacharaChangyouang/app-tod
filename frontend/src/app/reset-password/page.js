@@ -57,7 +57,7 @@ export default function ResetPasswordPage() {
         {done ? (
           <>
             <p>เปลี่ยนรหัสผ่านเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที</p>
-            <button className="aha-reset-submit" onClick={() => router.push('/login')}>
+            <button className="aha-reset-submit" onClick={() => router.push('/')}>
               กลับไปเข้าสู่ระบบ
             </button>
           </>

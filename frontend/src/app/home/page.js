@@ -56,7 +56,7 @@ export default function HomePage() {
       }
       if (notificationResult.status === 'fulfilled') setNotifications(listOf(notificationResult.value, 'notifications'));
       if (dataResult.status === 'rejected' && notificationResult.status === 'rejected') setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
-    }).catch(() => { if (mounted) router.replace('/login'); }).finally(() => { if (mounted) setLoading(false); });
+    }).catch(() => { if (mounted) router.replace('/'); }).finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; window.removeEventListener('focus', syncAvatar); window.removeEventListener('storage', syncAvatar); };
   }, [router]);
 

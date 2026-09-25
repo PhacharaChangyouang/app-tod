@@ -41,15 +41,15 @@ function clientIp(req) {
   return req.ip || req.socket?.remoteAddress || 'unknown';
 }
 
-function keysFor(req, identifier) {
+function keysFor(req, identifier, { accountLimit = 10, networkLimit = 50 } = {}) {
   return [
-    { hash: digest('account', identifier), limit: 10 },
-    { hash: digest('network', clientIp(req)), limit: 50 },
+    { hash: digest('account', identifier), limit: accountLimit },
+    { hash: digest('network', clientIp(req)), limit: networkLimit },
   ];
 }
 
-async function isBlocked(req, identifier) {
-  const keys = keysFor(req, identifier);
+async function isBlocked(req, identifier, limits) {
+  const keys = keysFor(req, identifier, limits);
   const { rows } = await pool.query(
     `SELECT 1 FROM login_attempts
      WHERE key_hash = ANY($1::varchar[]) AND blocked_until > now()
@@ -59,8 +59,8 @@ async function isBlocked(req, identifier) {
   return rows.length > 0;
 }
 
-async function recordFailure(req, identifier) {
-  for (const item of keysFor(req, identifier)) {
+async function recordFailure(req, identifier, limits) {
+  for (const item of keysFor(req, identifier, limits)) {
     await pool.query(
       `INSERT INTO login_attempts (key_hash, attempts, first_attempt_at, blocked_until)
        VALUES ($1, 1, now(), NULL)

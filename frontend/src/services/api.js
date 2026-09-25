@@ -22,6 +22,7 @@ async function request(baseUrl, path, { method = 'GET', body } = {}) {
 }
 
 export const authApi = {
+  loginWithPin: (phone, pin) => request(AUTH_API_BASE, '/auth/login', { method: 'POST', body: { phone, pin } }),
   registerWithPassword: (payload) => request(AUTH_API_BASE, '/auth/register-password', { method: 'POST', body: payload }),
   loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
   requestPasswordReset: (email) => request(AUTH_API_BASE, '/auth/forgot-password', { method: 'POST', body: { email } }),
@@ -29,6 +30,7 @@ export const authApi = {
   logout: () => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: {} }),
   me: () => request(AUTH_API_BASE, '/auth/me', { auth: true }),
   updateMe: (payload) => request(AUTH_API_BASE, '/auth/me', { method: 'PATCH', body: payload, auth: true }),
+  changePin: (currentPin, newPin, confirmNewPin) => request(AUTH_API_BASE, '/auth/me/change-pin', { method: 'POST', body: { currentPin, newPin, confirmNewPin }, auth: true }),
 };
 
 export const reminderApi = {

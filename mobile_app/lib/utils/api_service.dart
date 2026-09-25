@@ -113,6 +113,20 @@ class ApiService {
     return _decode(res);
   }
 
+  static Future<Map<String, dynamic>> loginWithPin(
+    String phone,
+    String pin,
+  ) async {
+    final res = await http
+        .post(
+          Uri.parse('$_baseUrl/auth/login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'phone': phone, 'pin': pin}),
+        )
+        .timeout(const Duration(seconds: 8));
+    return _decode(res);
+  }
+
   static Future<void> logout() async {
     final token = await SecureStorage.getRefreshToken();
     try {

@@ -18,7 +18,7 @@ export default function EmergencyPage() {
 
   useEffect(() => {
     let active = true;
-    authApi.me().then((result) => { if (active && result?.user) saveSession({ user: result.user }); }).catch(() => { if (active) router.replace('/login'); });
+    authApi.me().then((result) => { if (active && result?.user) saveSession({ user: result.user }); }).catch(() => { if (active) router.replace('/'); });
     return () => { active = false; if (timer.current) clearTimeout(timer.current); };
   }, [router]);
 

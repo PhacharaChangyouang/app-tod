@@ -50,20 +50,37 @@ describe('security boundaries', () => {
     expect(res.statusCode).toBe(413);
   });
 
-  it('does not expose legacy OTP or PIN authentication endpoints', async () => {
+  it('does not expose legacy OTP authentication endpoints', async () => {
     const legacyEndpoints = [
       '/auth/request-otp',
       '/auth/verify-otp',
       '/auth/login-otp',
       '/auth/register',
-      '/auth/login',
-      '/auth/me/change-pin',
       '/auth/me/change-phone',
     ];
     for (const endpoint of legacyEndpoints) {
       const res = await request(app).post(endpoint).send({});
       expect(res.statusCode).toBe(404);
     }
+  });
+
+  it('keeps phone plus PIN login and protected PIN change routes available', async () => {
+    const login = await request(app).post('/auth/login').send({});
+    expect(login.statusCode).toBe(400);
+    const change = await request(app).post('/auth/me/change-pin').send({});
+    expect(change.statusCode).toBe(401);
+  });
+
+  it('rejects registration when PIN confirmation does not match', async () => {
+    const res = await request(app).post('/auth/register-password').send({
+      phone: '0812345678', firstName: 'Test', lastName: 'User',
+      username: 'testuser99', email: 'test99@example.com',
+      password: 'SecurePassword123', confirmPassword: 'SecurePassword123',
+      pin: '1234', confirmPin: '5678', role: 'elderly', age: 70,
+      termsAccepted: true,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/PIN/);
   });
 
   it('rate-limits repeated password login attempts', async () => {

@@ -42,9 +42,9 @@ export default function ForgotPasswordPage() {
           <div className="aha-auth-points"><div><AhaIcon name="activity" size={18}/><span>ลิงก์ใช้ได้ครั้งเดียว</span></div><div><AhaIcon name="heart" size={18}/><span>หมดอายุภายใน 15 นาที</span></div></div>
         </aside>
         <section className="aha-auth-form-panel">
-          <button className="aha-auth-back" type="button" onClick={() => router.push('/login')}>← กลับเข้าสู่ระบบ</button>
+          <button className="aha-auth-back" type="button" onClick={() => router.push('/')}>← กลับเข้าสู่ระบบ</button>
           <div className="aha-auth-heading"><div className="aha-auth-kicker">AHA ACCOUNT</div><h2>{sent ? 'ตรวจสอบอีเมลของคุณ' : 'ลืมรหัสผ่าน?'}</h2><p>{sent ? 'เราได้ดำเนินการคำขอเรียบร้อยแล้ว' : 'กรอกอีเมลที่ใช้สมัคร AHA เพื่อรับลิงก์ตั้งรหัสผ่านใหม่'}</p></div>
-          {sent ? <div className="aha-forgot-result"><div className="aha-forgot-success-icon">✓</div><h3>ส่งลิงก์เรียบร้อยแล้ว</h3><p>ถ้าอีเมลนี้มีบัญชี AHA ระบบได้ส่งลิงก์ตั้งรหัสผ่านใหม่ให้แล้ว กรุณาตรวจสอบ Inbox และ Spam</p><button className="aha-auth-submit" type="button" onClick={() => router.push('/login')}>กลับไปเข้าสู่ระบบ</button></div> :
+          {sent ? <div className="aha-forgot-result"><div className="aha-forgot-success-icon">✓</div><h3>ส่งลิงก์เรียบร้อยแล้ว</h3><p>ถ้าอีเมลนี้มีบัญชี AHA ระบบได้ส่งลิงก์ตั้งรหัสผ่านใหม่ให้แล้ว กรุณาตรวจสอบ Inbox และ Spam</p><button className="aha-auth-submit" type="button" onClick={() => router.push('/')}>กลับไปเข้าสู่ระบบ</button></div> :
           <form className="aha-forgot-form" onSubmit={submit}><div className="aha-auth-field"><label>อีเมล</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" required autoFocus /></div>{error&&<div className="aha-auth-error" role="alert"><strong>ไม่สามารถดำเนินการได้</strong><span>{error}</span></div>}<button className="aha-auth-submit" type="submit" disabled={busy}>{busy?'กำลังส่งลิงก์…':'ส่งลิงก์ตั้งรหัสผ่านใหม่'}</button></form>}
           <p className="aha-forgot-note">เพื่อความปลอดภัย ระบบจะไม่เปิดเผยว่าอีเมลใดมีบัญชีอยู่หรือไม่</p>
         </section>

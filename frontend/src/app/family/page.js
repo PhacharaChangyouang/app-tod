@@ -114,7 +114,7 @@ export default function FamilyPage() {
       if (!active || !result?.user) return;
       saveSession({ user: result.user });
       setUser(result.user);
-    }).catch(() => { if (active) router.replace('/login'); });
+    }).catch(() => { if (active) router.replace('/'); });
     return () => { active = false; };
   }, [router]);
   useEffect(() => { if (user) load(); }, [user, load]);

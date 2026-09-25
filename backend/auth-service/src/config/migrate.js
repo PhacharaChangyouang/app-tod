@@ -18,6 +18,7 @@ async function migrate({ closePool = true } = {}) {
         name VARCHAR(100),
         age INT,
         role VARCHAR(20) NOT NULL CHECK (role IN ('elderly', 'caregiver')),
+        pin_hash VARCHAR(255),
         phone_verified BOOLEAN NOT NULL DEFAULT false,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now()
       );
@@ -26,7 +27,22 @@ async function migrate({ closePool = true } = {}) {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
-    await pool.query(`ALTER TABLE users DROP COLUMN IF EXISTS pin_hash`);
+    // PIN authentication remains supported. Never silently recreate an empty
+    // column over an active production database because lost hashes require a
+    // backup restore, not a schema-only repair.
+    const pinColumn = await pool.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = current_schema() AND table_name = 'users' AND column_name = 'pin_hash'
+      ) AS present
+    `);
+    if (!pinColumn.rows[0]?.present) {
+      const userCount = await pool.query('SELECT COUNT(*)::int AS count FROM users');
+      if (process.env.NODE_ENV === 'production' && Number(userCount.rows[0]?.count || 0) > 0) {
+        throw new Error('PIN migration blocked: pin_hash is missing on a populated production database; restore the column and hashes from backup before deployment');
+      }
+      await pool.query(`ALTER TABLE users ADD COLUMN pin_hash VARCHAR(255)`);
+    }
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL`);
 

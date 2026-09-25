@@ -6,7 +6,7 @@
 > isolated staging deployment, but production approval still requires the environment,
 > backup/restore, monitoring, mobile build, E2E and independent penetration-test gates in the report.
 >
-> รายงานการถอด OTP/PIN และทบทวนความปลอดภัยล่าสุดอยู่ที่
+> รายงานการถอด OTP, การคงระบบ PIN และทบทวนความปลอดภัยล่าสุดอยู่ที่
 > [SECURITY_REVIEW_2026-09-25.md](SECURITY_REVIEW_2026-09-25.md)
 
 ระบบช่วยจัดการยาและการดูแลผู้สูงอายุ โดยมีสองเป้าหมายคู่ขนาน:
@@ -20,8 +20,10 @@
 
 ฟังก์ชันหลักของ Flutter app เชื่อมกับ backend และทดสอบ end-to-end บนเครื่องแล้ว:
 
-- สมัครสมาชิกและเข้าสู่ระบบด้วยชื่อผู้ใช้/อีเมลและรหัสผ่านเท่านั้น
-- ถอด OTP และการเข้าสู่ระบบด้วย PIN ออกจาก Web, Mobile และ Auth API แล้ว
+- สมัครสมาชิกด้วยบัญชี/รหัสผ่าน พร้อมตั้งและยืนยัน PIN 4 หลัก
+- เข้าสู่ระบบได้ 2 วิธี: ชื่อผู้ใช้/อีเมล+รหัสผ่าน หรือเบอร์โทรศัพท์+PIN 4 หลัก
+- หน้าเข้าสู่ระบบใช้ URL หลักของโดเมน (`/`) โดยตรง และ `/login` เดิม redirect กลับ `/` เพื่อรักษาลิงก์เก่า
+- ถอด OTP ออกจาก Web, Mobile และ Auth API แล้ว โดยคง PIN login สำหรับผู้ใช้เดิม
 - บัญชี `elderly` และ `caregiver`
 - เลือกอายุได้ช่วง 0-100 สำหรับทั้งสอง role
 - เพิ่ม, ดู และลบรายการยา/นัดหมาย
@@ -86,7 +88,7 @@ notification-service :3003 -> notification PostgreSQL
 
 บริการที่มีอยู่:
 
-- `auth-service`: password login/reset, JWT access/refresh token, user และ family connections
+- `auth-service`: password login/reset, phone+PIN login, JWT access/refresh token, user และ family connections
 - `reminder-service`: CRUD รายการยา, selected days, scheduler และ retry
 - `notification-service`: notification history, deduplication และ delivery audit timestamps
 - `nginx/`: public API gateway สำหรับ Flutter; strip internal-service headers และ rate limit ที่ขอบระบบ
@@ -112,9 +114,9 @@ scheduler ใช้เวลา `Asia/Bangkok` และตรวจทุก 15
 
 ## Authentication status
 
-ระบบใช้ password-only authentication ชั่วคราว และถอด OTP/PIN authentication ออกจาก code path ที่ใช้งานทั้งหมด รหัสผ่านใหม่และรหัสผ่านที่ reset ต้องยาว 12–72 UTF-8 bytes มีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข และ hash ด้วย bcrypt cost 12 Access token มีอายุ 15 นาที และ refresh token มีอายุ 7 วัน
+ระบบถอด OTP ออก แต่รองรับการเข้าสู่ระบบ 2 วิธี ได้แก่ ชื่อผู้ใช้/อีเมล+รหัสผ่าน และเบอร์โทรศัพท์+PIN 4 หลัก รหัสผ่านใหม่และรหัสผ่านที่ reset ต้องยาว 12–72 UTF-8 bytes มีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข และ hash ด้วย bcrypt cost 12 Access token มีอายุ 15 นาที และ refresh token มีอายุ 7 วัน
 
-บัญชีเก่าที่มีเฉพาะ OTP/PIN และไม่มี `password_hash` จะไม่สามารถเข้าสู่ระบบได้ ต้องผ่านกระบวนการกู้คืน/ตั้งรหัสผ่านโดยผู้ดูแลที่ตรวจสอบตัวตนแล้ว ห้ามเปิด PIN endpoint เดิมกลับมาเพื่อแก้ปัญหาชั่วคราว
+`pin_hash` ของบัญชีเดิมถูกเก็บไว้และยังใช้ได้ ระบบจะอัปเกรด legacy bcrypt PIN เป็นรูปแบบ versioned bcrypt+`PIN_PEPPER` หลัง login สำเร็จ หน้าสมัครและ API บังคับกรอก PIN กับยืนยัน PIN ให้ตรงกัน ห้ามเปลี่ยน `PIN_PEPPER` หลังเริ่มใช้งานโดยไม่มีแผน migration
 
 ## Database และ deployment plan
 
@@ -135,7 +137,7 @@ Vercel เหมาะกับ frontend แต่ไม่เหมาะกั
 
 | ด้าน | สถานะ | หมายเหตุ |
 |---|---|---|
-| Application code สำหรับ staging | พร้อมแบบมีเงื่อนไข | security regression 25/25, build/audit ผ่าน; ต้อง backup และ deploy integration |
+| Application code สำหรับ staging | พร้อมแบบมีเงื่อนไข | security regression 36/36, build/audit ผ่าน; ต้อง backup และ deploy integration |
 | Public production | รอ external gates | ต้องยืนยัน environment, monitoring, restore drill, PDPA และ independent penetration test |
 | Flutter app | รอ CI/device verification | เพิ่ม HTTPS/refresh แล้ว แต่ environment นี้ไม่มี Flutter SDK |
 | React web app | staging-ready | ใช้ BFF/CSP แล้วและมี flow หลักครบสำหรับ controlled pilot |
@@ -233,8 +235,8 @@ null is not an object (evaluating 'u.dosage.trim')
 - บังคับ PostCSS/Nanoid ไปยังรุ่นที่แก้ advisory แล้ว
 - อัปเดต Express/transitive dependencies ของ backend จน production dependency audit เป็นศูนย์
 - นำรหัสผ่าน PostgreSQL และ `INTERNAL_API_KEY` แบบตายตัวออกจาก `docker-compose.yml`; local environment ต้องกำหนดผ่าน `.env`
-- เพิ่ม production fail-fast: secret ต้องสุ่มอย่างน้อย 48 ตัวอักษร และ access/refresh/internal secret ต้องไม่ซ้ำ
-- ถอด OTP/PIN authentication และปิด endpoint เดิมทั้งหมด
+- เพิ่ม production fail-fast: access/refresh/internal secrets และ `PIN_PEPPER` ต้องสุ่มอย่างน้อย 48 ตัวอักษรและไม่ซ้ำกัน
+- ถอด OTP authentication แต่คง phone+PIN login และ PIN change ตามข้อกำหนดผู้ใช้เดิม
 - ป้องกันผู้ใช้เปลี่ยน `role` ของตัวเองผ่าน profile API
 - ลดอายุ access token เหลือ 15 นาทีและ refresh token เหลือ 7 วัน
 - ย้าย web session ออกจาก `localStorage` ไปยัง same-origin BFF และ `HttpOnly; Secure; SameSite=Strict` cookies
@@ -244,9 +246,10 @@ null is not an object (evaluating 'u.dosage.trim')
 - แก้ Nginx gateway routes, strip internal header และ bind พอร์ตฐานข้อมูลไว้ที่ localhost
 - บังคับ database TLS certificate verification ใน production และเพิ่ม query/pool timeout
 - เพิ่ม mobile automatic refresh, HTTPS-only release, disable cleartext/backup
-- ลบ `pin_hash` ออกจาก schema ใน migration นี้
+- รักษา `pin_hash` ด้วย additive migration และอัปเกรด hash เดิมหลังยืนยัน PIN สำเร็จ
+- production migration จะหยุดทันทีหากฐานข้อมูลมีผู้ใช้แต่คอลัมน์ `pin_hash` หาย เพื่อบังคับ restore จาก backup แทนการปล่อยบัญชี PIN ใช้งานไม่ได้
 
-> หลัง merge ต้องหมุนเวียน `INTERNAL_API_KEY`, `JWT_SECRET`, `JWT_REFRESH_SECRET` และรหัสผ่านฐานข้อมูลใน Railway/production เนื่องจากค่า development เก่าเคยปรากฏอยู่ใน Git history การลบออกจากไฟล์ล่าสุดไม่ทำให้ secret เก่าปลอดภัยอีกครั้ง
+> หลัง merge ต้องหมุนเวียน `INTERNAL_API_KEY`, `JWT_SECRET`, `JWT_REFRESH_SECRET` และรหัสผ่านฐานข้อมูลใน Railway/production พร้อมสร้าง `PIN_PEPPER` ใหม่ที่คงที่และไม่ซ้ำกับ secret อื่น เนื่องจากค่า development เก่าเคยปรากฏอยู่ใน Git history การลบออกจากไฟล์ล่าสุดไม่ทำให้ secret เก่าปลอดภัยอีกครั้ง
 
 ### ผลการทดสอบ
 
@@ -254,11 +257,13 @@ null is not an object (evaluating 'u.dosage.trim')
 |---|---|
 | Next.js production build (`npm run build`) | ผ่าน — 14 dynamic pages/routes พร้อม BFF และ CSP middleware |
 | Frontend lint | ผ่าน — ไม่มี error |
-| Auth automated tests | ผ่าน 13/13 |
+| Canonical login URL runtime | `/` ตอบ `200`; `/login` ตอบ `307` ไป `/`; unauthorized flow ส่งกลับ `/` |
+| Auth automated tests | ผ่าน 24/24 |
 | Reminder/Caregiver security tests | ผ่าน 7/7 |
 | Notification security tests | ผ่าน 5/5 |
 | CSP runtime | script ทุกตัวมี nonce ตรงกับ response CSP |
 | BFF runtime | CSRF/route allowlist/token stripping/cookie rotation ผ่าน |
+| Phone+PIN BFF runtime | login ผ่าน allowlist, token ไม่อยู่ใน JSON และออก Secure/HttpOnly/SameSite cookies |
 | BFF fail-safe | upstream config หายตอบ `503`; upstream ล่มตอบ JSON `502` โดยไม่เปิดเผย token/URL |
 | ไม่มี token เข้า Auth `/auth/me` | ปฏิเสธ `401` |
 | ไม่มี token เข้า Reminder API | ปฏิเสธ `401` |
@@ -302,11 +307,11 @@ Production health endpoints ของ Auth, Reminder และ Notification ต�
 ### Staging checklist ก่อนให้ผู้ใช้กลุ่มทดลองเข้าใช้
 
 - [ ] Deploy commit/revision นี้ครบทั้ง frontend และ 3 backend services
-- [ ] Backup ฐานข้อมูลก่อน migration และยืนยันการลบ `pin_hash` ตามแผน
-- [ ] ตรวจว่า OTP/PIN endpoint เดิมทั้งหมดตอบ `404` ผ่าน public gateway
+- [ ] Backup ฐานข้อมูลก่อน migration และยืนยันว่า `pin_hash` ของผู้ใช้เดิมไม่ถูกลบ
+- [ ] ตรวจว่า OTP endpoint เดิมตอบ `404` และ phone+PIN login ยังใช้งานได้ผ่าน public gateway
 - [ ] ตรวจว่า access token หมดอายุประมาณ 15 นาทีและ refresh token 7 วัน
 - [ ] ปิด `REGISTRATION_ENABLED` ใน production จนกว่าจะมี verified onboarding
-- [ ] เตรียมกระบวนการย้ายบัญชีเก่าที่ไม่มี `password_hash` โดยไม่เปิด PIN login กลับมา
+- [ ] ทดสอบบัญชีเดิมที่ไม่มี `password_hash` แต่มี `pin_hash` ว่ายังเข้าสู่ระบบด้วย PIN ได้
 - [ ] สร้าง secret แบบสุ่มอย่างน้อย 48 ตัวอักษรและไม่ซ้ำกัน แล้ว rotate ค่าเดิมทั้งหมด
 - [ ] ตรวจ web login ว่า response ไม่มี token, cookie เป็น `HttpOnly; Secure; SameSite=Strict` และ `localStorage` ไม่มี session
 - [ ] ตรวจ CSP console ไม่มี violation ที่ทำให้ login/dashboard/push ใช้งานไม่ได้

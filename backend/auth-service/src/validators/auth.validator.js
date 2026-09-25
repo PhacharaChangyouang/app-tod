@@ -1,8 +1,12 @@
 const { body, validationResult } = require('express-validator');
 
+const validatePhone = body('phone').exists().withMessage('กรุณากรอกเบอร์โทรศัพท์').bail().trim()
+  .matches(/^0\d{9}$/).withMessage('เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักและขึ้นต้นด้วย 0');
+const validatePin = body('pin').exists().withMessage('กรุณากรอก PIN').bail()
+  .matches(/^\d{4}$/).withMessage('PIN ต้องเป็นตัวเลข 4 หลัก');
+
 const validatePasswordRegister = [
-  body('phone').exists().withMessage('กรุณากรอกเบอร์โทรศัพท์').bail().trim()
-    .matches(/^0\d{9}$/).withMessage('เบอร์โทรศัพท์ต้องเป็นตัวเลข 10 หลักและขึ้นต้นด้วย 0'),
+  validatePhone,
   body('firstName').exists().withMessage('กรุณากรอกชื่อ').bail().trim()
     .isLength({ min: 1, max: 50 }).withMessage('ชื่อมีความยาวไม่ถูกต้อง'),
   body('lastName').exists().withMessage('กรุณากรอกนามสกุล').bail().trim()
@@ -17,6 +21,10 @@ const validatePasswordRegister = [
   body('confirmPassword').exists().withMessage('กรุณายืนยันรหัสผ่าน').bail()
     .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
     .withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง'),
+  validatePin,
+  body('confirmPin').exists().withMessage('กรุณายืนยัน PIN').bail()
+    .matches(/^\d{4}$/).withMessage('การยืนยัน PIN ต้องเป็นตัวเลข 4 หลัก')
+    .custom((value, { req }) => value === req.body.pin).withMessage('PIN และการยืนยัน PIN ไม่ตรงกัน'),
   body('role').exists().withMessage('กรุณาเลือกประเภทบัญชี').bail().trim()
     .isIn(['elderly', 'caregiver']).withMessage('ประเภทบัญชีไม่ถูกต้อง'),
   body('age').optional({ checkFalsy: true })
@@ -30,6 +38,14 @@ const validatePasswordLogin = [
     .isLength({ min: 1, max: 255 }),
   body('password').exists().withMessage('กรุณากรอกรหัสผ่าน').bail()
     .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 1 && Buffer.byteLength(String(value), 'utf8') <= 72),
+];
+
+const validatePinLogin = [validatePhone, validatePin];
+const validatePinChange = [
+  body('currentPin').exists().withMessage('กรุณากรอก PIN ปัจจุบัน').bail().matches(/^\d{4}$/).withMessage('PIN ปัจจุบันต้องเป็นตัวเลข 4 หลัก'),
+  body('newPin').exists().withMessage('กรุณากรอก PIN ใหม่').bail().matches(/^\d{4}$/).withMessage('PIN ใหม่ต้องเป็นตัวเลข 4 หลัก'),
+  body('confirmNewPin').exists().withMessage('กรุณายืนยัน PIN ใหม่').bail().matches(/^\d{4}$/).withMessage('การยืนยัน PIN ต้องเป็นตัวเลข 4 หลัก')
+    .custom((value, { req }) => value === req.body.newPin).withMessage('PIN ใหม่และการยืนยัน PIN ไม่ตรงกัน'),
 ];
 
 // Refresh token may be sent in the request body OR stored in the httpOnly cookie.
@@ -56,6 +72,8 @@ function handleValidationErrors(req, res, next) {
 }
 
 module.exports = {
+  validatePinLogin,
+  validatePinChange,
   validatePasswordRegister,
   validatePasswordLogin,
   validateRefreshToken,
