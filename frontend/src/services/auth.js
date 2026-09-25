@@ -1,55 +1,29 @@
-const SESSION_KEY = 'aha_session';
+let currentUser = null;
 
-export function saveSession(session) {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  } catch (err) {
-    console.error('Failed to save session', err);
+if (typeof window !== 'undefined') {
+  // Remove secrets written by releases that predated the HttpOnly BFF session.
+  for (const key of ['aha_session', 'accessToken', 'refreshToken', 'token']) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
   }
 }
 
-export function getSession() {
-  if (typeof window === 'undefined') return null;
-  try {
-    const json = localStorage.getItem(SESSION_KEY);
-    return json ? JSON.parse(json) : null;
-  } catch (err) {
-    console.error('Failed to read session', err);
-    return null;
-  }
+export function saveSession(session) {
+  currentUser = session?.user || null;
+  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('aha-auth-change'));
 }
 
 export function clearSession() {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(SESSION_KEY);
-}
-
-export function getAccessToken() {
-  const session = getSession();
-  return session?.accessToken || null;
-}
-
-export function getRefreshToken() {
-  const session = getSession();
-  return session?.refreshToken || null;
+  const userId = currentUser?.id;
+  currentUser = null;
+  if (typeof window !== 'undefined') {
+    if (userId) localStorage.removeItem(`aha_avatar_${userId}`);
+    localStorage.removeItem('aha_seen_medicine_notifications');
+    localStorage.removeItem('aha_push_enabled');
+    window.dispatchEvent(new CustomEvent('aha-auth-change'));
+  }
 }
 
 export function getUser() {
-  return getSession()?.user || null;
-}
-
-export function updateAccessToken(accessToken, refreshToken = null, user = null) {
-  const current = getSession();
-  if (!current || !accessToken) return null;
-
-  const next = {
-    ...current,
-    accessToken,
-    ...(refreshToken ? { refreshToken } : {}),
-    ...(user ? { user } : {}),
-  };
-
-  saveSession(next);
-  return next;
+  return currentUser;
 }

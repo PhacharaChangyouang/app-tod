@@ -1,15 +1,15 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useCallback,useEffect,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
-import {getSession} from '../../services/auth';
-import {notificationApi} from '../../services/api';
+import {saveSession} from '../../services/auth';
+import {authApi,notificationApi} from '../../services/api';
 const listOf=r=>Array.isArray(r)?r:Array.isArray(r?.data)?r.data:Array.isArray(r?.notifications)?r.notifications:[];
 const iconFor=t=>String(t).includes('emergency')||String(t).includes('sos')?'warning':String(t).includes('medicine')||String(t).includes('reminder')?'pill':'bell';
 export default function NotificationsPage(){
  const router=useRouter(),[items,setItems]=useState([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const load=async()=>{setLoading(true);try{setItems(listOf(await notificationApi.list()))}catch(e){if(e.status===401){router.replace('/login');return}setError(e.message||'โหลดแจ้งเตือนไม่สำเร็จ')}finally{setLoading(false)}};
- useEffect(()=>{if(!getSession()?.accessToken){router.replace('/login');return}load()},[router]);
+ const load=useCallback(async()=>{setLoading(true);try{setItems(listOf(await notificationApi.list()))}catch(e){if(e.status===401){router.replace('/');return}setError(e.message||'โหลดแจ้งเตือนไม่สำเร็จ')}finally{setLoading(false)}},[router]);
+ useEffect(()=>{let active=true;authApi.me().then(r=>{if(!active||!r?.user)return;saveSession({user:r.user});return load()}).catch(()=>{if(active)router.replace('/')});return()=>{active=false}},[router,load]);
  const read=async id=>{try{await notificationApi.markRead(id);setItems(xs=>xs.map(x=>x.id===id?{...x,is_read:true}:x))}catch(e){setError(e.message)}};
  const allRead=async()=>{try{await notificationApi.markAllRead();setItems(xs=>xs.map(x=>({...x,is_read:true})))}catch(e){setError(e.message)}};
  const remove=async id=>{try{await notificationApi.remove(id);setItems(xs=>xs.filter(x=>x.id!==id))}catch(e){setError(e.message)}};

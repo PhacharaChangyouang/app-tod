@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
-import { getSession } from '../../services/auth';
-import { reminderApi } from '../../services/api';
+import { saveSession } from '../../services/auth';
+import { authApi, reminderApi } from '../../services/api';
 
 function parseReminder(text) {
   const timeMatch = text.match(/(?:เวลา|ตอน)\s*(\d{1,2})(?:[:.](\d{2}))?/);
@@ -44,8 +44,9 @@ export default function VoicePage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!getSession()?.accessToken) router.replace('/login');
-    return () => recognitionRef.current?.abort?.();
+    let active = true;
+    authApi.me().then((result) => { if (active && result?.user) saveSession({ user: result.user }); }).catch(() => { if (active) router.replace('/'); });
+    return () => { active = false; recognitionRef.current?.abort?.(); };
   }, [router]);
 
   const handleCommand = async (text) => {

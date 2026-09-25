@@ -1,4 +1,13 @@
 const tokenService = require('../services/token.service');
+const crypto = require('crypto');
+
+function isInternalKeyValid(provided) {
+  const expected = process.env.INTERNAL_API_KEY;
+  if (typeof provided !== 'string' || typeof expected !== 'string' || expected.length < 32) return false;
+  const left = Buffer.from(provided);
+  const right = Buffer.from(expected);
+  return left.length === right.length && crypto.timingSafeEqual(left, right);
+}
 
 function parseCookies(cookieHeader) {
   const list = {};
@@ -9,7 +18,7 @@ function parseCookies(cookieHeader) {
     if (!name) return;
     const value = rest.join('=').trim();
     if (!value) return;
-    list[name] = decodeURIComponent(value);
+    try { list[name] = decodeURIComponent(value); } catch (_) { return; }
   });
   return list;
 }
@@ -19,8 +28,8 @@ module.exports = function authenticate(req, res, next) {
 
   // 1. Try to get token from Authorization header
   const authHeader = req.headers.authorization;
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    token = authHeader.split(' ')[1];
+  if (authHeader && /^Bearer [^\s]+$/.test(authHeader)) {
+    token = authHeader.slice(7);
   } 
   // 2. Try to get token from cookies
   else if (req.headers.cookie) {
@@ -32,7 +41,7 @@ module.exports = function authenticate(req, res, next) {
 
   // Allow internal service-to-service communication via Internal API Key
   const internalKey = req.headers['x-internal-api-key'];
-  if (internalKey && internalKey === process.env.INTERNAL_API_KEY) {
+  if (isInternalKeyValid(internalKey)) {
     req.user = { id: 'system', role: 'system' };
     return next();
   }

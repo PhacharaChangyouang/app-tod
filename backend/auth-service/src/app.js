@@ -10,6 +10,8 @@ const familyRoutes = require('./routes/family.routes');
 const errorHandler = require('./middlewares/errorHandler');
 
 const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 app.use(helmet());
 
 const allowedOrigins = [
@@ -30,7 +32,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.use(express.json());
+app.use(express.json({ limit: '32kb' }));
 
 const limiter = rateLimit({
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS || 900000),

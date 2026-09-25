@@ -19,6 +19,7 @@ export default function ResetPasswordPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setToken(params.get('token') || '');
+    window.history.replaceState({}, '', '/reset-password');
   }, []);
 
   const submit = async (event) => {
@@ -28,8 +29,8 @@ export default function ResetPasswordPage() {
       setError('ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง');
       return;
     }
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{8,72}$/.test(password)) {
-      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัว และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
+    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(password) || new TextEncoder().encode(password).length > 72) {
+      setError('รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
       return;
     }
     if (password !== confirm) {
@@ -56,7 +57,7 @@ export default function ResetPasswordPage() {
         {done ? (
           <>
             <p>เปลี่ยนรหัสผ่านเรียบร้อยแล้ว คุณสามารถเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันที</p>
-            <button className="aha-reset-submit" onClick={() => router.push('/login')}>
+            <button className="aha-reset-submit" onClick={() => router.push('/')}>
               กลับไปเข้าสู่ระบบ
             </button>
           </>

@@ -37,7 +37,7 @@ class _SplashScreenState extends State<SplashScreen>
       final route = user['role'] == 'caregiver' ? '/caregiver-home' : '/home';
       Navigator.pushReplacementNamed(context, route);
     } else {
-      Navigator.pushReplacementNamed(context, '/otp-request');
+      Navigator.pushReplacementNamed(context, '/login');
     }
   }
 

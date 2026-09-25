@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AhaIcon from '../../components/AhaIcon';
-import { getSession } from '../../services/auth';
-import { emergencyApi } from '../../services/api';
+import { saveSession } from '../../services/auth';
+import { authApi, emergencyApi } from '../../services/api';
 
 export default function EmergencyPage() {
   const router = useRouter();
@@ -17,8 +17,9 @@ export default function EmergencyPage() {
   const [phone, setPhone] = useState('1669');
 
   useEffect(() => {
-    if (!getSession()?.accessToken) router.replace('/login');
-    return () => timer.current && clearTimeout(timer.current);
+    let active = true;
+    authApi.me().then((result) => { if (active && result?.user) saveSession({ user: result.user }); }).catch(() => { if (active) router.replace('/'); });
+    return () => { active = false; if (timer.current) clearTimeout(timer.current); };
   }, [router]);
 
   const getLocation = () => new Promise((resolve, reject) => {
