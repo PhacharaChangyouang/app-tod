@@ -53,10 +53,12 @@ export default function AhaResponsiveFix() {
          without changing React handlers or authentication logic. */
       .aha-auth-form-panel form:has(.aha-auth-row) { display:flex !important; flex-direction:column !important; }
       .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-row { display:contents !important; }
-      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-row .aha-auth-link:first-child { order:2 !important; align-self:flex-end !important; margin:-5px 0 16px !important; }
-      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-submit { order:3 !important; }
-      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-row .aha-auth-link:last-child { order:4 !important; align-self:center !important; margin:12px 0 0 !important; }
+      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-row .aha-auth-link:first-child { order:1 !important; align-self:flex-end !important; margin:-5px 0 16px !important; }
       .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-error { order:2 !important; }
+      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-submit { order:3 !important; }
+      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-divider { order:4 !important; margin-top:2px !important; }
+      .aha-auth-form-panel form:has(.aha-auth-row) .aha-google-wrap { order:5 !important; }
+      .aha-auth-form-panel form:has(.aha-auth-row) .aha-auth-row .aha-auth-link:last-child { order:6 !important; align-self:center !important; margin:12px 0 0 !important; }
 
       .aha-auth-submit { width:100% !important; min-height:49px !important; border:0 !important; border-radius:11px !important; background:#2f6bff !important; color:#fff !important; font-size:15px !important; font-weight:700 !important; box-shadow:0 7px 16px rgba(47,107,255,.18) !important; }
       .aha-auth-submit:hover:not(:disabled) { background:#245be0 !important; }
