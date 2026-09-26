@@ -40,7 +40,7 @@ export default function HomePage() {
   useEffect(() => {
     let currentUser = null;
     let mounted = true;
-    const syncAvatar = () => { if (currentUser?.id) setAvatar(getAvatar(currentUser.id)); };
+    const syncAvatar = () => { if (currentUser?.id) setAvatar(getAvatar(currentUser.id) || currentUser.avatarUrl || ''); };
     window.addEventListener('focus', syncAvatar);
     window.addEventListener('storage', syncAvatar);
     window.addEventListener('aha-avatar-change', syncAvatar);

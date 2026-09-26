@@ -60,7 +60,7 @@ export default function ProfilePage() {
       setUser(fresh); setName(fresh.name || ''); setAge(fresh.age ?? ''); setRole(fresh.role || 'elderly'); setPhone(fresh.phone || '');
       setSupportName((value) => value || fresh.name || '');
       setSupportEmail((value) => value || fresh.email || '');
-      setAvatar(getAvatar(fresh.id));
+      setAvatar(getAvatar(fresh.id) || fresh.avatarUrl || '');
       saveSession({ user: fresh });
       return registerAhaServiceWorker().then(async () => {
         const status = await notificationApi.pushStatus();

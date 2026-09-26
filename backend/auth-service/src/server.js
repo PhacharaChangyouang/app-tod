@@ -26,6 +26,12 @@ function assertProductionSecurity() {
   if (!process.env.RESEND_API_KEY || !process.env.MAIL_FROM) {
     throw new Error('RESEND_API_KEY and MAIL_FROM are required for password recovery in production');
   }
+  if (process.env.GOOGLE_CLIENT_ID) {
+    const googleSignupSecret = process.env.GOOGLE_SIGNUP_SECRET || '';
+    if (weak(googleSignupSecret) || [accessSecret, refreshSecret, internalKey, pinPepper].includes(googleSignupSecret)) {
+      throw new Error('GOOGLE_SIGNUP_SECRET must be a distinct random value with at least 48 characters when Google Login is enabled');
+    }
+  }
 }
 
 assertProductionSecurity();

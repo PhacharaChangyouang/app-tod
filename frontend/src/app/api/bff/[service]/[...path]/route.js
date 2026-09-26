@@ -14,11 +14,13 @@ const PUBLIC_AUTH_PATHS = new Set([
   'auth/register-password',
   'auth/forgot-password',
   'auth/reset-password',
+  'auth/google',
+  'auth/google/complete',
 ]);
 
 const ROUTES = {
   auth: [
-    ['POST', /^auth\/(login|login-password|register-password|forgot-password|reset-password|logout|me\/change-pin)$/],
+    ['POST', /^auth\/(login|login-password|register-password|forgot-password|reset-password|google|google\/complete|logout|me\/change-pin)$/],
     ['GET', /^auth\/me$/],
     ['PATCH', /^auth\/me$/],
     ['GET', /^family\/(connections|linked-elderly)$/],
@@ -141,7 +143,7 @@ async function handler(request, context) {
     }
   }
 
-  const isLogin = service === 'auth' && ['auth/login', 'auth/login-password', 'auth/register-password'].includes(path);
+  const isLogin = service === 'auth' && ['auth/login', 'auth/login-password', 'auth/register-password', 'auth/google', 'auth/google/complete'].includes(path);
   const isLogout = service === 'auth' && path === 'auth/logout';
   const isPublic = service === 'auth' && PUBLIC_AUTH_PATHS.has(path);
   const query = new URL(request.url).search;

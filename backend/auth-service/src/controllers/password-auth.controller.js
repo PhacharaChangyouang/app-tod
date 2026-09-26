@@ -18,6 +18,8 @@ function publicUser(user) {
     role: user.role,
     username: user.username || null,
     email: user.email || null,
+    avatarUrl: user.avatar_url || null,
+    authProvider: user.google_sub ? 'google' : 'local',
   };
 }
 

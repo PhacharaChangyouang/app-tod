@@ -30,6 +30,8 @@ async function migrate({ closePool = true } = {}) {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version VARCHAR(20)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_version VARCHAR(20)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS google_sub VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT`);
     // PIN authentication remains supported. Never silently recreate an empty
     // column over an active production database because lost hashes require a
     // backup restore, not a schema-only repair.
@@ -48,6 +50,7 @@ async function migrate({ closePool = true } = {}) {
     }
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username_unique ON users (LOWER(username)) WHERE username IS NOT NULL`);
     await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (LOWER(email)) WHERE email IS NOT NULL`);
+    await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub_unique ON users (google_sub) WHERE google_sub IS NOT NULL`);
 
     await pool.query(`
       CREATE TABLE IF NOT EXISTS refresh_tokens (

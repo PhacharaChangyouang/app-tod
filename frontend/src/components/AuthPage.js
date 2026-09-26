@@ -51,6 +51,10 @@ export default function AuthPage() {
           age: data.age,
           termsAccepted: data.termsAccepted,
         });
+      } else if (mode === 'google') {
+        response = await authApi.loginWithGoogle(data.credential);
+      } else if (mode === 'googleComplete') {
+        response = await authApi.completeGoogleSignup(data);
       } else {
         throw new Error('ไม่พบวิธีเข้าสู่ระบบ');
       }
@@ -59,10 +63,13 @@ export default function AuthPage() {
         throw new Error(response?.message || 'ไม่สามารถดำเนินการได้');
       }
 
+      if (response.requiresCompletion) return response;
+
       saveSession({
         user: response.user,
       });
       router.push('/home');
+      return response;
     } catch (err) {
       setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
     }
