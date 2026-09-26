@@ -24,7 +24,7 @@ export default function AhaNavigation() {
   const router = useRouter();
   const [familyConnected, setFamilyConnected] = useState(null);
 
-  const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/privacy-policy', '/terms-of-service', '/cookies-policy'];
+  const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/privacy-policy', '/terms', '/terms-of-service', '/cookies-policy'];
   const isPublicRoute = !pathname || pathname === '/' || publicRoutes.some((path) => pathname.startsWith(path));
 
   useEffect(() => {
