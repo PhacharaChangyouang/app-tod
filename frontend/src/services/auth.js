@@ -1,10 +1,29 @@
 let currentUser = null;
 
+function safeStorage(storageName, action, fallback = null) {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const storage = window[storageName];
+    return action(storage);
+  } catch (_) {
+    return fallback;
+  }
+}
+
+function emit(name, detail) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.dispatchEvent(new CustomEvent(name, detail === undefined ? undefined : { detail }));
+  } catch (_) {
+    // Storage/session updates must not crash older or restricted WebViews.
+  }
+}
+
 if (typeof window !== 'undefined') {
   // Remove secrets written by releases that predated the HttpOnly BFF session.
   for (const key of ['aha_session', 'accessToken', 'refreshToken', 'token']) {
-    localStorage.removeItem(key);
-    sessionStorage.removeItem(key);
+    safeStorage('localStorage', (storage) => storage.removeItem(key));
+    safeStorage('sessionStorage', (storage) => storage.removeItem(key));
   }
 }
 
@@ -13,29 +32,30 @@ export function saveSession(session) {
   currentUser = nextUser && currentUser?.id === nextUser.id
     ? { ...currentUser, ...nextUser }
     : nextUser;
-  if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('aha-auth-change'));
+  emit('aha-auth-change');
 }
 
 export function getAvatar(userId) {
   if (typeof window === 'undefined' || !userId) return '';
-  return localStorage.getItem(`aha_avatar_${userId}`) || '';
+  return safeStorage('localStorage', (storage) => storage.getItem(`aha_avatar_${userId}`), '') || '';
 }
 
 export function saveAvatar(userId, value) {
   if (typeof window === 'undefined' || !userId) return;
-  if (value) localStorage.setItem(`aha_avatar_${userId}`, value);
-  else localStorage.removeItem(`aha_avatar_${userId}`);
-  window.dispatchEvent(new CustomEvent('aha-avatar-change', { detail: { userId } }));
+  safeStorage('localStorage', (storage) => value
+    ? storage.setItem(`aha_avatar_${userId}`, value)
+    : storage.removeItem(`aha_avatar_${userId}`));
+  emit('aha-avatar-change', { userId });
 }
 
 export function clearSession() {
   const userId = currentUser?.id;
   currentUser = null;
   if (typeof window !== 'undefined') {
-    if (userId) localStorage.removeItem(`aha_avatar_${userId}`);
-    localStorage.removeItem('aha_seen_medicine_notifications');
-    localStorage.removeItem('aha_push_enabled');
-    window.dispatchEvent(new CustomEvent('aha-auth-change'));
+    if (userId) safeStorage('localStorage', (storage) => storage.removeItem(`aha_avatar_${userId}`));
+    safeStorage('localStorage', (storage) => storage.removeItem('aha_seen_medicine_notifications'));
+    safeStorage('localStorage', (storage) => storage.removeItem('aha_push_enabled'));
+    emit('aha-auth-change');
   }
 }
 

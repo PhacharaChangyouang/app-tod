@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "description": "AHA — PWA frontend for elderly + caregiver",
   "private": true,
+  "browserslist": [
+    "Chrome >= 69",
+    "Android >= 8",
+    "and_chr >= 69"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",

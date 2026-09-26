@@ -51,7 +51,11 @@ export default function HomePage() {
       setUser(currentUser);
       syncAvatar();
       const dataPromise = currentUser.role === 'caregiver' ? caregiverApi.summary() : reminderApi.today();
-      const [dataResult, notificationResult, familyResult] = await Promise.allSettled([dataPromise, notificationApi.unread(), familyApi.connections()]);
+      const settle = (promise) => promise.then(
+        (value) => ({ status: 'fulfilled', value }),
+        (reason) => ({ status: 'rejected', reason })
+      );
+      const [dataResult, notificationResult, familyResult] = await Promise.all([settle(dataPromise), settle(notificationApi.unread()), settle(familyApi.connections())]);
       if (!mounted) return;
       if (dataResult.status === 'fulfilled') {
         if (currentUser.role === 'caregiver') setCaregiverSummary(dataResult.value?.data || { elderly: [], today: [], history: [] });

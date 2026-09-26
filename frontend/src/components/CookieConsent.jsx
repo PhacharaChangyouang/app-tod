@@ -10,19 +10,25 @@ export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const accepted = localStorage.getItem(CONSENT_KEY) === 'accepted';
-    const dismissed = sessionStorage.getItem(DISMISSED_KEY) === 'true';
-    setVisible(!accepted && !dismissed);
+    try {
+      const accepted = localStorage.getItem(CONSENT_KEY) === 'accepted';
+      const dismissed = sessionStorage.getItem(DISMISSED_KEY) === 'true';
+      setVisible(!accepted && !dismissed);
+    } catch (_) {
+      setVisible(true);
+    }
   }, []);
 
   const accept = () => {
-    localStorage.setItem(CONSENT_KEY, 'accepted');
-    localStorage.setItem(`${CONSENT_KEY}_at`, new Date().toISOString());
+    try {
+      localStorage.setItem(CONSENT_KEY, 'accepted');
+      localStorage.setItem(`${CONSENT_KEY}_at`, new Date().toISOString());
+    } catch (_) {}
     setVisible(false);
   };
 
   const dismiss = () => {
-    sessionStorage.setItem(DISMISSED_KEY, 'true');
+    try { sessionStorage.setItem(DISMISSED_KEY, 'true'); } catch (_) {}
     setVisible(false);
   };
 

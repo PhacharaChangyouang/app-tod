@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { getUser, saveSession } from '../services/auth';
-import { authApi, notificationApi, reminderApi } from '../services/api';
+import { getUser } from '../services/auth';
+import { notificationApi, reminderApi } from '../services/api';
 import {
   disableAhaPush,
   enableAhaPush,
@@ -21,7 +21,7 @@ function getSeenIds() {
 }
 function rememberId(id) {
   if (!id) return;
-  localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...getSeenIds(), id])].slice(-100)));
+  try { localStorage.setItem(SEEN_KEY, JSON.stringify([...new Set([...getSeenIds(), id])].slice(-100))); } catch (_) {}
 }
 function normalizeNotification(item) {
   if (!item) return null;
@@ -91,14 +91,9 @@ export default function MedicationNotificationManager() {
       setAuthenticated(Boolean(getUser()));
       if (typeof window !== 'undefined' && 'Notification' in window) setPermission(Notification.permission);
     };
-    const restoreAuth = async () => {
-      try {
-        const result = await authApi.me();
-        if (active && result?.user) saveSession({ user: result.user });
-      } catch (_) {}
-      syncAuth();
-    };
-    restoreAuth();
+    // AuthPage and protected pages own session restoration. Calling /me here
+    // as well caused two simultaneous session checks and refresh races.
+    syncAuth();
     window.addEventListener('aha-auth-change', syncAuth);
     return () => { active = false; window.removeEventListener('aha-auth-change', syncAuth); };
   }, []);
