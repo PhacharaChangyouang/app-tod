@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import AhaIcon from './AhaIcon';
+import { familyApi } from '../services/api';
 
 function Brand() {
   return (
@@ -20,9 +22,24 @@ function Brand() {
 export default function AhaNavigation() {
   const pathname = usePathname();
   const router = useRouter();
+  const [familyConnected, setFamilyConnected] = useState(null);
 
   const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/privacy-policy', '/terms-of-service', '/cookies-policy'];
-  if (!pathname || pathname === '/' || publicRoutes.some((path) => pathname.startsWith(path))) return null;
+  const isPublicRoute = !pathname || pathname === '/' || publicRoutes.some((path) => pathname.startsWith(path));
+
+  useEffect(() => {
+    let mounted = true;
+    if (isPublicRoute) return undefined;
+    familyApi.connections()
+      .then((result) => {
+        const rows = Array.isArray(result?.data) ? result.data : [];
+        if (mounted) setFamilyConnected(rows.some((item) => item.status === 'accepted'));
+      })
+      .catch(() => { if (mounted) setFamilyConnected('error'); });
+    return () => { mounted = false; };
+  }, [isPublicRoute]);
+
+  if (isPublicRoute) return null;
 
   // Keep the primary navigation at exactly five destinations.
   // Profile is intentionally handled from the top-right account control.
@@ -57,7 +74,7 @@ export default function AhaNavigation() {
       </nav>
 
       <div className="aha-v3-side-spacer" />
-      <div className="aha-v3-side-care"><AhaIcon name="users" size={25} /><div><strong>ผู้ดูแล</strong><span><i /> เชื่อมต่อแล้ว</span></div></div>
+      <div className={`aha-v3-side-care ${familyConnected === false ? 'disconnected' : ''}`}><AhaIcon name="users" size={25} /><div><strong>ครอบครัว</strong><span><i /> {familyConnected === null ? 'กำลังตรวจสอบ…' : familyConnected === 'error' ? 'ตรวจสอบสถานะไม่ได้' : familyConnected ? 'เชื่อมต่อแล้ว' : 'ยังไม่ได้เชื่อมต่อ'}</span></div></div>
       <div className="aha-v3-side-wellness"><AhaIcon name="heart" size={31} /><strong>สุขภาพดี<br />เริ่มได้ทุกวัน</strong><span className="aha-v3-wave">〰</span></div>
     </aside>
   );

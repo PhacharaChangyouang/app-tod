@@ -1794,6 +1794,12 @@ a {
   background: #22bb89;
   margin-right: 4px;
 }
+.aha-v3-side-care.disconnected span {
+  color: #9a6a25;
+}
+.aha-v3-side-care.disconnected i {
+  background: #e8ad38;
+}
 .aha-v3-side-wellness {
   margin-top: 12px;
   border-radius: 17px;
@@ -2381,6 +2387,22 @@ a {
   font-size: 11px;
   margin: 5px 0 0;
   color: #648b80;
+}
+.aha-v3-care-card.disconnected {
+  background: #fff8e7;
+  border-color: #f0d99c;
+  color: #8a6420;
+}
+.aha-v3-care-card.disconnected .aha-v3-care-icon {
+  background: #ffedbd;
+}
+.aha-v3-care-card.disconnected h2,
+.aha-v3-care-card.disconnected h2 span,
+.aha-v3-care-card.disconnected h2 i {
+  color: #93691d;
+}
+.aha-v3-care-card.disconnected p {
+  color: #8b7448;
 }
 .aha-v3-wellness {
   background: linear-gradient(105deg, #e9f8fd, #d8f1fa);

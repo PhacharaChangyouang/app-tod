@@ -161,6 +161,12 @@ export default function AhaResponsiveFix() {
       }
       html[data-aha-appearance="dark"] .aha-v3-care-card h2 { color:#fff !important; }
       html[data-aha-appearance="dark"] .aha-v3-care-card p { color:#b8b8bd !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected { background:#352a18 !important; border-color:#5e4928 !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected .aha-v3-care-icon { background:#4a371a !important; color:#ffd080 !important; }
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected h2,
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected h2 span,
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected h2 i,
+      html[data-aha-appearance="dark"] .aha-v3-care-card.disconnected p { color:#ffd080 !important; }
       html[data-aha-appearance="dark"] .aha-v3-wellness {
         background:#171719 !important; border:1px solid #343438 !important; color:#fff !important;
       }
