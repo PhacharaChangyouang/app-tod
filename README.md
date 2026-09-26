@@ -1,5 +1,10 @@
 # AHA - AI Health Assistant
 
+> **Membership/legal readiness update — 26 September 2026:** ตรวจฐานข้อมูลและ
+> routes, เสริม registration validation, เพิ่มหลักฐานการยอมรับข้อกำหนด,
+> Privacy/Terms/Cookies pages และ Cookie Consent แล้ว ดูผลตรวจและ launch gates ที่
+> [SYSTEM_READINESS_2026-09-26.md](SYSTEM_READINESS_2026-09-26.md)
+
 > **Production recovery update — 26 September 2026:** แก้เหตุ login แบบรหัสผ่านและ PIN ตอบ `503` แล้ว สาเหตุคือ Railway frontend ขาด server-only BFF upstream URLs ไม่ใช่บัญชีหรือ `pin_hash` สูญหาย หลังแก้ configuration, rotate production secrets และเปิด production guards ระบบ Railway แสดง `7/7 services online`; health checks ทั้งสาม backend ตอบ `200`, login probes ผ่าน BFF ตอบ generic `401` ตามคาด และ PIN throttle ตอบ `429` เมื่อถึงเกณฑ์ รายละเอียดและข้อจำกัดอยู่ในหัวข้อ 11 ของ [SECURITY_REVIEW_2026-09-25.md](SECURITY_REVIEW_2026-09-25.md)
 
 > **Security/readiness update — 25 September 2026:** the codebase has passed the
@@ -27,7 +32,7 @@
 - หน้าเข้าสู่ระบบใช้ URL หลักของโดเมน (`/`) โดยตรง และ `/login` เดิม redirect กลับ `/` เพื่อรักษาลิงก์เก่า
 - ถอด OTP ออกจาก Web, Mobile และ Auth API แล้ว โดยคง PIN login สำหรับผู้ใช้เดิม
 - บัญชี `elderly` และ `caregiver`
-- เลือกอายุได้ช่วง 0-100 สำหรับทั้งสอง role
+- บัญชีผู้สูงอายุต้องระบุอายุ 1–120 ปี; บัญชีผู้ดูแลไม่บังคับอายุ แต่ตรวจช่วงเดียวกันเมื่อกรอก
 - เพิ่ม, ดู และลบรายการยา/นัดหมาย
 - บันทึกวันและเวลาที่ต้องเตือน
 - เชื่อมสมาชิกครอบครัวด้วยเบอร์โทร และยอมรับ/ปฏิเสธคำขอ

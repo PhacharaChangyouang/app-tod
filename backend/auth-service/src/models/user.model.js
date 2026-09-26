@@ -11,8 +11,8 @@ async function findByEmail(email) {
   const { rows } = await pool.query('SELECT * FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1', [email]);
   return rows[0] || null;
 }
-async function createWithPassword({ phone, name, age, role, username, email, passwordHash, pinHash }) {
-  const { rows } = await pool.query(`INSERT INTO users (phone, name, age, role, username, email, password_hash, pin_hash, phone_verified) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false) RETURNING *`, [phone, name || null, age || null, role, username, email || null, passwordHash, pinHash]);
+async function createWithPassword({ phone, name, age, role, username, email, passwordHash, pinHash, legalVersion }) {
+  const { rows } = await pool.query(`INSERT INTO users (phone, name, age, role, username, email, password_hash, pin_hash, phone_verified, terms_accepted_at, terms_version, privacy_version) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, false, now(), $9, $9) RETURNING *`, [phone, name || null, age || null, role, username, email || null, passwordHash, pinHash, legalVersion]);
   return rows[0];
 }
 async function updatePin(userId, pinHash) { const { rows } = await pool.query('UPDATE users SET pin_hash = $1 WHERE id = $2 RETURNING *', [pinHash, userId]); return rows[0] || null; }

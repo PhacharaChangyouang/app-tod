@@ -21,7 +21,8 @@ export default function AhaNavigation() {
   const pathname = usePathname();
   const router = useRouter();
 
-  if (!pathname || pathname === '/' || pathname.startsWith('/login') || pathname.startsWith('/forgot-password') || pathname.startsWith('/reset-password')) return null;
+  const publicRoutes = ['/login', '/forgot-password', '/reset-password', '/privacy-policy', '/terms-of-service', '/cookies-policy'];
+  if (!pathname || pathname === '/' || publicRoutes.some((path) => pathname.startsWith(path))) return null;
 
   // Keep the primary navigation at exactly five destinations.
   // Profile is intentionally handled from the top-right account control.

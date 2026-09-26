@@ -27,6 +27,9 @@ async function migrate({ closePool = true } = {}) {
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS username VARCHAR(50)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS email VARCHAR(255)`);
     await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_accepted_at TIMESTAMPTZ`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS terms_version VARCHAR(20)`);
+    await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS privacy_version VARCHAR(20)`);
     // PIN authentication remains supported. Never silently recreate an empty
     // column over an active production database because lost hashes require a
     // backup restore, not a schema-only repair.
@@ -106,6 +109,12 @@ async function migrate({ closePool = true } = {}) {
     `);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_audit_user_created ON auth_audit_events(user_id, created_at DESC)`);
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_auth_audit_event_created ON auth_audit_events(event_type, created_at DESC)`);
+
+    // Remove only expired operational records. User accounts, active sessions,
+    // family links and security evidence are intentionally preserved.
+    await pool.query(`DELETE FROM password_reset_tokens WHERE expires_at <= now() OR used_at IS NOT NULL`);
+    await pool.query(`DELETE FROM refresh_tokens WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '30 days'`);
+    await pool.query(`DELETE FROM login_attempts WHERE first_attempt_at < now() - interval '24 hours'`);
 
     logger.info('Migration completed successfully');
   } catch (err) {

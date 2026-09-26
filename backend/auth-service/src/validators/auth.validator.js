@@ -8,27 +8,36 @@ const validatePin = body('pin').exists().withMessage('กรุณากรอ�
 const validatePasswordRegister = [
   validatePhone,
   body('firstName').exists().withMessage('กรุณากรอกชื่อ').bail().trim()
-    .isLength({ min: 1, max: 50 }).withMessage('ชื่อมีความยาวไม่ถูกต้อง'),
+    .isLength({ min: 1, max: 50 }).withMessage('ชื่อต้องมี 1–50 ตัวอักษร')
+    .matches(/^[^\u0000-\u001F\u007F<>]+$/u).withMessage('ชื่อมีอักขระที่ไม่อนุญาต'),
   body('lastName').exists().withMessage('กรุณากรอกนามสกุล').bail().trim()
-    .isLength({ min: 1, max: 50 }).withMessage('นามสกุลมีความยาวไม่ถูกต้อง'),
+    .isLength({ min: 1, max: 50 }).withMessage('นามสกุลต้องมี 1–50 ตัวอักษร')
+    .matches(/^[^\u0000-\u001F\u007F<>]+$/u).withMessage('นามสกุลมีอักขระที่ไม่อนุญาต'),
   body('username').exists().withMessage('กรุณากรอกชื่อผู้ใช้').bail().trim()
     .matches(/^[A-Za-z0-9]{4,30}$/).withMessage('ชื่อผู้ใช้ต้องมี 4–30 ตัว และใช้ภาษาอังกฤษหรือตัวเลขเท่านั้น'),
   body('email').exists().withMessage('กรุณากรอกอีเมล').bail().trim()
-    .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง'),
+    .isLength({ max: 254 }).withMessage('อีเมลยาวเกิน 254 ตัวอักษร')
+    .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง')
+    .normalizeEmail(),
   body('password').exists().withMessage('กรุณากรอกรหัสผ่าน').bail()
     .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
-    .withMessage('รหัสผ่านต้องมีขนาด 12–72 ไบต์'),
+    .withMessage('รหัสผ่านต้องมีขนาด 12–72 ไบต์')
+    .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/s).withMessage('รหัสผ่านต้องมีทั้งตัวอักษรภาษาอังกฤษและตัวเลข'),
   body('confirmPassword').exists().withMessage('กรุณายืนยันรหัสผ่าน').bail()
     .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
-    .withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง'),
+    .withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง')
+    .custom((value, { req }) => value === req.body.password).withMessage('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน'),
   validatePin,
   body('confirmPin').exists().withMessage('กรุณายืนยัน PIN').bail()
     .matches(/^\d{4}$/).withMessage('การยืนยัน PIN ต้องเป็นตัวเลข 4 หลัก')
     .custom((value, { req }) => value === req.body.pin).withMessage('PIN และการยืนยัน PIN ไม่ตรงกัน'),
   body('role').exists().withMessage('กรุณาเลือกประเภทบัญชี').bail().trim()
     .isIn(['elderly', 'caregiver']).withMessage('ประเภทบัญชีไม่ถูกต้อง'),
-  body('age').optional({ checkFalsy: true })
-    .isInt({ min: 1, max: 120 }).withMessage('อายุต้องอยู่ระหว่าง 1–120 ปี'),
+  body('age').custom((value, { req }) => {
+    if (req.body.role === 'elderly' && (value === undefined || value === null || value === '')) return false;
+    if (value === undefined || value === null || value === '') return true;
+    return Number.isInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 120;
+  }).withMessage('ผู้สูงอายุต้องระบุอายุเป็นจำนวนเต็ม 1–120 ปี'),
   body('termsAccepted').custom((value) => value === true || value === 'true')
     .withMessage('กรุณายอมรับเงื่อนไขการใช้งานและนโยบายข้อมูลส่วนบุคคล'),
 ];

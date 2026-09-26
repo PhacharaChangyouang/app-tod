@@ -7,6 +7,7 @@ import AhaVisualPolish from '../components/AhaVisualPolish';
 import AhaResponsiveFix from '../components/AhaResponsiveFix';
 import AhaCaregiverEnhancements from '../components/AhaCaregiverEnhancements';
 import FamilyHomeShortcut from '../components/FamilyHomeShortcut';
+import CookieConsent from '../components/CookieConsent';
 
 export const metadata = {
   title: 'AHA — AI Health Assistant',
@@ -45,6 +46,7 @@ export default async function RootLayout({ children }) {
         <AhaCaregiverEnhancements />
         <FamilyHomeShortcut />
         <MedicationNotificationManager />
+        <CookieConsent />
       </body>
     </html>
   );

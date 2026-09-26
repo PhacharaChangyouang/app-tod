@@ -83,6 +83,42 @@ describe('security boundaries', () => {
     expect(res.body.message).toMatch(/PIN/);
   });
 
+  it('rejects registration when password confirmation does not match', async () => {
+    const res = await request(app).post('/auth/register-password').send({
+      phone: '0812345678', firstName: 'Test', lastName: 'User',
+      username: 'testuser99', email: 'test99@example.com',
+      password: 'SecurePassword123', confirmPassword: 'DifferentPassword123',
+      pin: '1234', confirmPin: '1234', role: 'elderly', age: 70,
+      termsAccepted: true,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/รหัสผ่าน/);
+  });
+
+  it('requires an age for an elderly account', async () => {
+    const res = await request(app).post('/auth/register-password').send({
+      phone: '0812345678', firstName: 'Test', lastName: 'User',
+      username: 'testuser99', email: 'test99@example.com',
+      password: 'SecurePassword123', confirmPassword: 'SecurePassword123',
+      pin: '1234', confirmPin: '1234', role: 'elderly',
+      termsAccepted: true,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/อายุ/);
+  });
+
+  it('requires explicit acceptance of the legal terms', async () => {
+    const res = await request(app).post('/auth/register-password').send({
+      phone: '0812345678', firstName: 'Test', lastName: 'User',
+      username: 'testuser99', email: 'test99@example.com',
+      password: 'SecurePassword123', confirmPassword: 'SecurePassword123',
+      pin: '1234', confirmPin: '1234', role: 'elderly', age: 70,
+      termsAccepted: false,
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.body.message).toMatch(/ยอมรับ/);
+  });
+
   it('rate-limits repeated password login attempts', async () => {
     const statuses = [];
     for (let attempt = 0; attempt < 11; attempt += 1) {

@@ -6,6 +6,7 @@ const loginSecurity = require('../services/login-security.service');
 const pinService = require('../services/pin.service');
 
 const SALT_ROUNDS = 12;
+const LEGAL_VERSION = '2026-09-26';
 const DUMMY_PASSWORD_HASH = bcrypt.hashSync('AHA-dummy-password-not-an-account-2026', SALT_ROUNDS);
 
 function publicUser(user) {
@@ -94,6 +95,7 @@ async function registerWithPassword(req, res, next) {
       email: email ? String(email).trim().toLowerCase() : null,
       passwordHash,
       pinHash,
+      legalVersion: LEGAL_VERSION,
     });
 
     const { accessToken, refreshToken } = await issueSession(res, user);
