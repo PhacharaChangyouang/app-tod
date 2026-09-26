@@ -13,6 +13,8 @@ import {
 } from '../services/push';
 
 const SEEN_KEY = 'aha_seen_medicine_notifications';
+const POLL_INTERVAL_MS = 30_000;
+const RATE_LIMIT_BACKOFF_MS = 60_000;
 
 function getSeenIds() {
   try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch { return []; }
@@ -131,14 +133,16 @@ export default function MedicationNotificationManager() {
   }, []);
 
   const pollUnread = useCallback(async () => {
-    if (!getUser()) return;
+    if (!getUser()) return POLL_INTERVAL_MS;
     try {
       const result = await notificationApi.unread();
       const notifications = Array.isArray(result?.data) ? result.data : [];
       const medicine = notifications.find(isMedicineNotification);
       if (medicine) showAlert(medicine);
+      return POLL_INTERVAL_MS;
     } catch (err) {
       if (err?.status !== 401) console.warn('AHA notification polling failed:', err);
+      return err?.status === 429 ? RATE_LIMIT_BACKOFF_MS : POLL_INTERVAL_MS;
     }
   }, [showAlert]);
 
@@ -193,11 +197,38 @@ export default function MedicationNotificationManager() {
   }, [authenticated, handleServiceWorkerMessage, syncPushState]);
 
   useEffect(() => {
-    if (!ready) return undefined;
-    pollUnread();
-    const timer = window.setInterval(pollUnread, 3000);
-    return () => window.clearInterval(timer);
-  }, [ready, pollUnread]);
+    if (!ready || !authenticated) return undefined;
+    let stopped = false;
+    let running = false;
+    let timer = null;
+
+    const schedule = (delay) => {
+      if (stopped || document.hidden) return;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(run, delay);
+    };
+
+    const run = async () => {
+      if (stopped || running || document.hidden) return;
+      running = true;
+      const nextDelay = await pollUnread();
+      running = false;
+      schedule(nextDelay);
+    };
+
+    const handleVisibilityChange = () => {
+      window.clearTimeout(timer);
+      if (!document.hidden) run();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    run();
+    return () => {
+      stopped = true;
+      window.clearTimeout(timer);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [authenticated, ready, pollUnread]);
 
   useEffect(() => {
     if (!authenticated) return undefined;
