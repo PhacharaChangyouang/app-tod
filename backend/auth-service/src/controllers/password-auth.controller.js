@@ -67,8 +67,8 @@ async function registerWithPassword(req, res, next) {
       return res.status(400).json({ success: false, message: 'PIN ต้องเป็นตัวเลข 4 หลัก' });
     }
 
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || '')) || Buffer.byteLength(String(password), 'utf8') > 72) {
-      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/.test(String(password || '')) || Buffer.byteLength(String(password), 'utf8') > 72) {
+      return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 8–72 ไบต์ และมีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข' });
     }
 
     const phoneUser = await userModel.findByPhone(phone);

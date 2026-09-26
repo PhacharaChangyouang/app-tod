@@ -168,6 +168,13 @@ export default function MedicationNotificationManager() {
         setAlert(null);
       }
     } catch (err) {
+      if (err?.status === 404) {
+        setAlert(null);
+        setError('รายการยานี้ถูกลบหรือปิดใช้งานแล้ว ระบบอัปเดตข้อมูลล่าสุดให้แล้ว');
+        try { await notificationApi.markRead(notification.id); } catch (_) {}
+        window.dispatchEvent(new CustomEvent('aha-reminders-refresh'));
+        return;
+      }
       handledActions.current.delete(actionKey);
       setError(err?.message || 'ไม่สามารถบันทึกการตอบสนองได้');
     } finally {
@@ -293,7 +300,8 @@ export default function MedicationNotificationManager() {
 
       {alert && (
         <div role="dialog" aria-modal="true" aria-labelledby="aha-medicine-alert-title" style={{ position: 'fixed', inset: 0, zIndex: 10003, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15,23,42,.62)', backdropFilter: 'blur(5px)' }}>
-          <div style={{ width: 'min(520px, 100%)', background: '#fff', borderRadius: 26, padding: '26px 22px 22px', boxShadow: '0 24px 70px rgba(0,0,0,.3)', textAlign: 'center', border: `4px solid ${alert.title?.includes('เลยเวลา') ? '#f59e0b' : '#0ea981'}` }}>
+          <div style={{ position: 'relative', width: 'min(520px, 100%)', background: '#fff', borderRadius: 26, padding: '26px 22px 22px', boxShadow: '0 24px 70px rgba(0,0,0,.3)', textAlign: 'center', border: `4px solid ${alert.title?.includes('เลยเวลา') ? '#f59e0b' : '#0ea981'}` }}>
+            <button type="button" onClick={() => { setAlert(null); setError(''); }} aria-label="ปิดการแจ้งเตือนยา" title="ปิด" style={{ position:'absolute', right:12, top:10, width:42, height:42, border:'1px solid #d9e1e8', borderRadius:'50%', background:'#fff', color:'#334155', fontSize:28, lineHeight:1, cursor:'pointer', display:'grid', placeItems:'center' }}>×</button>
             <Image src="/icons/aha-icon.svg" alt="AHA" width={70} height={70} style={{ display: 'block', margin: '0 auto 12px', borderRadius: 18 }} />
             <div style={{ fontSize: 18, color: alert.title?.includes('เลยเวลา') ? '#b45309' : '#0b7d63', fontWeight: 800, marginBottom: 7 }}>{alert.title || 'AHA แจ้งเตือน'}</div>
             <h2 id="aha-medicine-alert-title" style={{ margin: 0, fontSize: 'clamp(28px, 6vw, 36px)', lineHeight: 1.2, color: '#0f172a', fontWeight: 900 }}>{alert.title?.includes('เลยเวลา') ? 'เลยเวลาทานยาแล้ว' : 'ถึงเวลาทานยาแล้ว'}</h2>

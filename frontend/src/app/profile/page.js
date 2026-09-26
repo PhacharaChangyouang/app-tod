@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import AhaIcon from '../../components/AhaIcon';
 import { authApi } from '../../services/api';
-import { clearSession, saveSession } from '../../services/auth';
+import { clearSession, getAvatar, saveAvatar, saveSession } from '../../services/auth';
 import { disableAhaPush, enableAhaPush, getAhaPushSubscription, registerAhaServiceWorker } from '../../services/push';
 import { notificationApi } from '../../services/api';
 
@@ -60,7 +60,7 @@ export default function ProfilePage() {
       setUser(fresh); setName(fresh.name || ''); setAge(fresh.age ?? ''); setRole(fresh.role || 'elderly'); setPhone(fresh.phone || '');
       setSupportName((value) => value || fresh.name || '');
       setSupportEmail((value) => value || fresh.email || '');
-      setAvatar(localStorage.getItem(`aha_avatar_${fresh.id}`) || '');
+      setAvatar(getAvatar(fresh.id));
       saveSession({ user: fresh });
       return registerAhaServiceWorker().then(async () => {
         const status = await notificationApi.pushStatus();
@@ -114,7 +114,7 @@ export default function ProfilePage() {
     reader.onload = () => {
       const value = String(reader.result || '');
       setAvatar(value);
-      if (user?.id) localStorage.setItem(`aha_avatar_${user.id}`, value);
+      if (user?.id) saveAvatar(user.id, value);
       flash(true, 'เปลี่ยนรูปโปรไฟล์แล้ว');
     };
     reader.readAsDataURL(file);
@@ -123,7 +123,7 @@ export default function ProfilePage() {
 
   const removeAvatar = () => {
     setAvatar('');
-    if (user?.id) localStorage.removeItem(`aha_avatar_${user.id}`);
+    if (user?.id) saveAvatar(user.id, '');
     flash(true, 'ลบรูปโปรไฟล์แล้ว');
   };
 

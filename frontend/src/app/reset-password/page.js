@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authApi } from '../../services/api';
+import PasswordRequirements, { isValidPassword } from '../../components/PasswordRequirements';
 
 // Reset-password page intentionally reads the token from window.location in useEffect.
 // This keeps the page compatible with Next.js static generation and avoids useSearchParams()
@@ -29,8 +30,8 @@ export default function ResetPasswordPage() {
       setError('ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง');
       return;
     }
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(password) || new TextEncoder().encode(password).length > 72) {
-      setError('รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข');
+    if (!isValidPassword(password)) {
+      setError('รหัสผ่านต้องมีอย่างน้อย 8 ตัว พร้อมตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข');
       return;
     }
     if (password !== confirm) {
@@ -74,6 +75,7 @@ export default function ResetPasswordPage() {
                 required
               />
             </label>
+            <PasswordRequirements value={password} />
             <label>
               ยืนยันรหัสผ่าน
               <input

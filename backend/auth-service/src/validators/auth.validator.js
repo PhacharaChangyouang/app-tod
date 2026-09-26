@@ -20,11 +20,11 @@ const validatePasswordRegister = [
     .isEmail().withMessage('รูปแบบอีเมลไม่ถูกต้อง')
     .normalizeEmail(),
   body('password').exists().withMessage('กรุณากรอกรหัสผ่าน').bail()
-    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
-    .withMessage('รหัสผ่านต้องมีขนาด 12–72 ไบต์')
-    .matches(/^(?=.*[A-Za-z])(?=.*\d).+$/s).withMessage('รหัสผ่านต้องมีทั้งตัวอักษรภาษาอังกฤษและตัวเลข'),
+    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 8 && Buffer.byteLength(String(value), 'utf8') <= 72)
+    .withMessage('รหัสผ่านต้องมีขนาด 8–72 ไบต์')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/s).withMessage('รหัสผ่านต้องมีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข'),
   body('confirmPassword').exists().withMessage('กรุณายืนยันรหัสผ่าน').bail()
-    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 12 && Buffer.byteLength(String(value), 'utf8') <= 72)
+    .custom((value) => Buffer.byteLength(String(value), 'utf8') >= 8 && Buffer.byteLength(String(value), 'utf8') <= 72)
     .withMessage('การยืนยันรหัสผ่านไม่ถูกต้อง')
     .custom((value, { req }) => value === req.body.password).withMessage('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน'),
   validatePin,

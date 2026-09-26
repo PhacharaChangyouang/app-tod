@@ -9,8 +9,23 @@ if (typeof window !== 'undefined') {
 }
 
 export function saveSession(session) {
-  currentUser = session?.user || null;
+  const nextUser = session?.user || null;
+  currentUser = nextUser && currentUser?.id === nextUser.id
+    ? { ...currentUser, ...nextUser }
+    : nextUser;
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('aha-auth-change'));
+}
+
+export function getAvatar(userId) {
+  if (typeof window === 'undefined' || !userId) return '';
+  return localStorage.getItem(`aha_avatar_${userId}`) || '';
+}
+
+export function saveAvatar(userId, value) {
+  if (typeof window === 'undefined' || !userId) return;
+  if (value) localStorage.setItem(`aha_avatar_${userId}`, value);
+  else localStorage.removeItem(`aha_avatar_${userId}`);
+  window.dispatchEvent(new CustomEvent('aha-avatar-change', { detail: { userId } }));
 }
 
 export function clearSession() {

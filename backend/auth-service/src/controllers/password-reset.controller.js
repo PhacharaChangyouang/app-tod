@@ -56,7 +56,7 @@ async function resetPassword(req, res, next) {
     const { token, password, confirmPassword } = req.body;
     if (!/^[0-9a-f]{64}$/i.test(String(token || ''))) return res.status(400).json({ success: false, message: 'ลิงก์ตั้งรหัสผ่านไม่ถูกต้อง' });
     if (password !== confirmPassword) return res.status(400).json({ success: false, message: 'รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน' });
-    if (!/^(?=.*[A-Za-z])(?=.*\d).{12,72}$/.test(String(password || '')) || Buffer.byteLength(String(password || ''), 'utf8') > 72) return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 12–72 ไบต์ และมีทั้งตัวอักษรภาษาอังกฤษกับตัวเลข' });
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,72}$/.test(String(password || '')) || Buffer.byteLength(String(password || ''), 'utf8') > 72) return res.status(400).json({ success: false, message: 'รหัสผ่านต้องมี 8–72 ไบต์ และมีตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข' });
 
     const tokenHash = hashResetToken(String(token));
     const { rows } = await pool.query(`

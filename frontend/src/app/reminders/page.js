@@ -71,6 +71,11 @@ export default function RemindersPage() {
     return () => { active = false; };
   }, [router, load]);
 
+  useEffect(() => {
+    window.addEventListener('aha-reminders-refresh', load);
+    return () => window.removeEventListener('aha-reminders-refresh', load);
+  }, [load]);
+
   const sorted = useMemo(
     () =>
       [...items].sort((a, b) =>

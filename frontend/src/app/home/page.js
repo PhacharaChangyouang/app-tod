@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import AhaIcon from '../../components/AhaIcon';
-import { saveSession } from '../../services/auth';
+import FloodEmergencyPopup from '../../components/FloodEmergencyPopup';
+import { getAvatar, saveSession } from '../../services/auth';
 import { authApi, caregiverApi, familyApi, reminderApi, notificationApi } from '../../services/api';
 
 function listOf(response, key) {
@@ -39,9 +40,10 @@ export default function HomePage() {
   useEffect(() => {
     let currentUser = null;
     let mounted = true;
-    const syncAvatar = () => { if (currentUser?.id) setAvatar(localStorage.getItem(`aha_avatar_${currentUser.id}`) || ''); };
+    const syncAvatar = () => { if (currentUser?.id) setAvatar(getAvatar(currentUser.id)); };
     window.addEventListener('focus', syncAvatar);
     window.addEventListener('storage', syncAvatar);
+    window.addEventListener('aha-avatar-change', syncAvatar);
     authApi.me().then(async (result) => {
       currentUser = result?.user || null;
       if (!mounted || !currentUser) return;
@@ -60,8 +62,20 @@ export default function HomePage() {
       else setFamilyConnections(undefined);
       if (dataResult.status === 'rejected' && notificationResult.status === 'rejected' && familyResult.status === 'rejected') setError('ยังเชื่อมต่อข้อมูลล่าสุดไม่ได้');
     }).catch(() => { if (mounted) router.replace('/'); }).finally(() => { if (mounted) setLoading(false); });
-    return () => { mounted = false; window.removeEventListener('focus', syncAvatar); window.removeEventListener('storage', syncAvatar); };
+    return () => { mounted = false; window.removeEventListener('focus', syncAvatar); window.removeEventListener('storage', syncAvatar); window.removeEventListener('aha-avatar-change', syncAvatar); };
   }, [router]);
+
+  useEffect(() => {
+    if (!user || user.role === 'caregiver') return undefined;
+    const refreshReminders = async () => {
+      try {
+        const result = await reminderApi.today();
+        setReminders(listOf(result, 'reminders'));
+      } catch (_) {}
+    };
+    window.addEventListener('aha-reminders-refresh', refreshReminders);
+    return () => window.removeEventListener('aha-reminders-refresh', refreshReminders);
+  }, [user]);
 
   const isCaregiver = user?.role === 'caregiver';
   const activeReminders = useMemo(() => reminders.filter((item) => item.is_active !== false).sort((a, b) => String(a.reminder_time || '').localeCompare(String(b.reminder_time || ''))), [reminders]);
@@ -93,7 +107,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="aha-v3-page"><div className="aha-v3-layout"><div className="aha-v3-main">
+    <div className="aha-v3-page"><FloodEmergencyPopup/><div className="aha-v3-layout"><div className="aha-v3-main">
       <header className="aha-v3-topbar">
         <Brand />
         <button className={`aha-v3-voice-pill ${voice ? 'listening' : ''}`} onClick={startVoice} type="button"><span><AhaIcon name="mic" size={23} /></span><strong>{voice ? 'กำลังฟัง…' : 'พูดกับ AHA'}</strong></button>
