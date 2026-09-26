@@ -28,7 +28,7 @@ function setAuthCookies(res, accessToken, refreshToken) {
     priority: 'high',
   };
   res.cookie('accessToken', accessToken, { ...options, maxAge: 15 * 60 * 1000 });
-  res.cookie('refreshToken', refreshToken, { ...options, maxAge: 7 * 24 * 60 * 60 * 1000 });
+  res.cookie('refreshToken', refreshToken, { ...options, maxAge: 30 * 24 * 60 * 60 * 1000 });
 }
 
 async function issueSession(res, user) {

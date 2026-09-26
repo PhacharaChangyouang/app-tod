@@ -46,7 +46,7 @@ async function generateRefreshToken(user) {
       algorithm: 'HS256',
       issuer: 'aha-auth-service',
       audience: 'aha-refresh',
-      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+      expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '30d',
     }
   );
 

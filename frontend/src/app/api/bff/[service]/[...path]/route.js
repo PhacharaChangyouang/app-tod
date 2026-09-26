@@ -82,7 +82,7 @@ function safeResponse(payload, status, session = null, clear = false) {
   const response = NextResponse.json(payload, { status });
   response.headers.set('Cache-Control', 'no-store');
   if (session?.accessToken) response.cookies.set(accessCookie, session.accessToken, cookieOptions(15 * 60));
-  if (session?.refreshToken) response.cookies.set(refreshCookie, session.refreshToken, cookieOptions(7 * 24 * 60 * 60));
+  if (session?.refreshToken) response.cookies.set(refreshCookie, session.refreshToken, cookieOptions(30 * 24 * 60 * 60));
   if (clear) {
     response.cookies.set(accessCookie, '', cookieOptions(0));
     response.cookies.set(refreshCookie, '', cookieOptions(0));
