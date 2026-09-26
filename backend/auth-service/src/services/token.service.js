@@ -84,7 +84,20 @@ function verifyRefreshToken(token) {
   return verifyToken(token, process.env.JWT_REFRESH_SECRET, 'aha-refresh');
 }
 
-// ยังไม่หมดอายุ และยังไม่ถูก revoke (logout/ใช้ไปแล้ว)
+// Atomically consume a refresh token. Only one concurrent request can win.
+// The expiry predicate is part of the UPDATE so validity and revocation cannot race.
+async function consumeRefreshToken(token) {
+  const { rows } = await pool.query(
+    `UPDATE refresh_tokens
+     SET revoked_at = now()
+     WHERE token_hash = $1 AND revoked_at IS NULL AND expires_at > now()
+     RETURNING user_id`,
+    [hashToken(token)]
+  );
+  return rows[0] || null;
+}
+
+// Kept for non-consuming checks when needed; refresh must use consumeRefreshToken.
 async function isRefreshTokenValid(token) {
   const { rows } = await pool.query(
     `SELECT id FROM refresh_tokens
@@ -117,6 +130,7 @@ module.exports = {
   verifyAccessToken,
   verifyRefreshToken,
   isRefreshTokenValid,
+  consumeRefreshToken,
   revokeRefreshToken,
   revokeAllForUser,
 };
