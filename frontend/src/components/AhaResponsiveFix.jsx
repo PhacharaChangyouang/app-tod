@@ -10,7 +10,7 @@ export default function AhaResponsiveFix() {
          ========================================================= */
 
       /* ---------- AUTH / LOGIN ---------- */
-      .aha-auth-page { min-height:100svh !important; padding:28px 20px !important; background:#fff !important; color:#202b35 !important; font-family:Arial,"Noto Sans Thai",sans-serif !important; }
+      .aha-auth-page { min-height:100svh !important; padding:28px 20px !important; background:#fff !important; color:#202b35 !important; font-family:var(--font-trirong),"Trirong",serif !important; }
       .aha-auth-card { position:relative !important; width:min(920px,100%) !important; grid-template-columns:40% 60% !important; border:1px solid #e1e7ee !important; border-radius:22px !important; background:#fff !important; box-shadow:0 16px 45px rgba(25,54,82,.10) !important; overflow:hidden !important; }
       .aha-auth-brand-panel { position:relative !important; isolation:isolate !important; min-height:570px !important; padding:34px 30px !important; background:#2f6bff !important; border-right:0 !important; overflow:hidden !important; color:#fff !important; }
       .aha-auth-brand-panel::before { content:"" !important; position:absolute !important; z-index:-1 !important; width:390px !important; height:260px !important; left:-135px !important; bottom:-120px !important; border-radius:50% !important; background:#ffb84d !important; opacity:.92 !important; }

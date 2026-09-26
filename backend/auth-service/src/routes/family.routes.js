@@ -24,6 +24,7 @@ router.use(authenticate);
 router.get('/connections', familyController.listConnections);
 router.post('/connections', familyController.createConnection);
 router.patch('/connections/:id', familyController.updateConnection);
+router.delete('/connections/:id', familyController.deleteConnection);
 router.get('/linked-elderly', familyController.listLinkedElderly);
 
 module.exports = router;

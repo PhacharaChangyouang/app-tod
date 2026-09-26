@@ -73,6 +73,7 @@ export const familyApi = {
   connections: () => request(AUTH_API_BASE, '/family/connections', { auth: true }),
   connect: (phone) => request(AUTH_API_BASE, '/family/connections', { method: 'POST', body: { phone }, auth: true }),
   updateConnection: (id, status) => request(AUTH_API_BASE, `/family/connections/${id}`, { method: 'PATCH', body: { status }, auth: true }),
+  deleteConnection: (id) => request(AUTH_API_BASE, `/family/connections/${id}`, { method: 'DELETE', auth: true }),
   linkedElderly: () => request(AUTH_API_BASE, '/family/linked-elderly', { auth: true }),
 };
 

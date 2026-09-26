@@ -90,6 +90,7 @@ export default function FamilyPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [connectionToRemove, setConnectionToRemove] = useState(null);
   const isCaregiver = user?.role === 'caregiver';
 
   const load = useCallback(async () => {
@@ -99,7 +100,7 @@ export default function FamilyPage() {
       setConnections(listOf(connectionResponse));
       const elderly = listOf(elderlyResponse);
       setLinkedElderly(elderly);
-      setSelectedElderly((current) => current || elderly[0]?.user_id || '');
+      setSelectedElderly((current) => elderly.some((person) => String(person.user_id) === String(current)) ? current : elderly[0]?.user_id || '');
       if (isCaregiver) {
         const summary = await caregiverApi.summary();
         setDashboard(summary?.data || { elderly: [], today: [], history: [] });
@@ -118,6 +119,12 @@ export default function FamilyPage() {
     return () => { active = false; };
   }, [router]);
   useEffect(() => { if (user) load(); }, [user, load]);
+  useEffect(() => {
+    if (!connectionToRemove) return undefined;
+    const closeOnEscape = (event) => { if (event.key === 'Escape' && !busy) setConnectionToRemove(null); };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [connectionToRemove, busy]);
 
   const incoming = useMemo(() => connections.filter((item) => item.status === 'pending' && item.direction === 'incoming'), [connections]);
   const outgoing = useMemo(() => connections.filter((item) => item.status === 'pending' && item.direction === 'outgoing'), [connections]);
@@ -147,6 +154,18 @@ export default function FamilyPage() {
     setError(''); setSuccess(''); setBusy(true);
     try { await familyApi.updateConnection(id, status); setSuccess(status === 'accepted' ? 'เชื่อมต่อสำเร็จแล้ว' : 'ปฏิเสธคำขอแล้ว'); await load(); }
     catch (err) { setError(err.message || 'ดำเนินการกับคำขอไม่สำเร็จ'); }
+    finally { setBusy(false); }
+  };
+
+  const confirmRemoveConnection = async () => {
+    if (!connectionToRemove) return;
+    setError(''); setSuccess(''); setBusy(true);
+    try {
+      await familyApi.deleteConnection(connectionToRemove.id);
+      setConnectionToRemove(null);
+      setSuccess(connectionToRemove.status === 'pending' ? 'ยกเลิกคำขอเชื่อมต่อแล้ว' : 'ยกเลิกการเชื่อมต่อแล้ว');
+      await load();
+    } catch (err) { setError(err.message || 'ยกเลิกการเชื่อมต่อไม่สำเร็จ'); }
     finally { setBusy(false); }
   };
 
@@ -204,9 +223,21 @@ export default function FamilyPage() {
         <section className="aha-family-connect-card"><div className="aha-family-card-icon"><AhaIcon name="users" size={32} /></div><div className="aha-family-card-copy"><h2>{isCaregiver ? 'เพิ่มผู้สูงอายุที่คุณดูแล' : 'เพิ่มผู้ดูแลของคุณ'}</h2><p>กรอกเบอร์โทรศัพท์ที่อีกฝ่ายใช้สมัคร AHA แล้วส่งคำขอเชื่อมต่อ</p><form onSubmit={submitConnect} className="aha-family-connect-form"><input value={phone} onChange={(event) => setPhone(event.target.value.replace(/\D/g, '').slice(0, 10))} inputMode="numeric" type="tel" placeholder="0XXXXXXXXX" aria-label="เบอร์โทรศัพท์" maxLength={10} /><button type="submit" disabled={busy}>ส่งคำขอ</button></form></div></section>
 
         {incoming.length > 0 && <section className="aha-family-section"><div className="aha-family-section-title"><h2>คำขอที่รอคุณยืนยัน</h2><span>{incoming.length}</span></div>{incoming.map((item) => <article className="aha-family-person-card pending" key={item.id}><div className="aha-family-avatar">{(item.name || '?').slice(0,1)}</div><div className="aha-family-person-main"><strong>{item.name || 'ผู้ใช้ AHA'}</strong><span>{item.phone} · {item.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'}</span><small>ต้องการเชื่อมต่อกับคุณ</small></div><div className="aha-family-actions"><button className="primary" onClick={() => respond(item.id, 'accepted')} disabled={busy}>ยอมรับ</button><button className="secondary" onClick={() => respond(item.id, 'rejected')} disabled={busy}>ปฏิเสธ</button></div></article>)}</section>}
-        {outgoing.length > 0 && <section className="aha-family-section"><div className="aha-family-section-title"><h2>คำขอที่ส่งไป</h2><span>{outgoing.length}</span></div>{outgoing.map((item) => <article className="aha-family-person-card" key={item.id}><div className="aha-family-avatar">{(item.name || '?').slice(0,1)}</div><div className="aha-family-person-main"><strong>{item.name || 'ผู้ใช้ AHA'}</strong><span>{item.phone} · {item.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'}</span><small>รอการยืนยันจากอีกฝ่าย</small></div><span className="aha-family-status waiting">รอการยืนยัน</span></article>)}</section>}
-        <section className="aha-family-section"><div className="aha-family-section-title"><h2>เชื่อมต่อแล้ว</h2><span>{accepted.length}</span></div>{accepted.length === 0 ? <div className="aha-family-empty">ยังไม่มีบัญชีที่เชื่อมต่อกัน</div> : accepted.map((item) => <article className="aha-family-person-card connected" key={item.id}><div className="aha-family-avatar">{(item.name || '?').slice(0,1)}</div><div className="aha-family-person-main"><strong>{item.name || 'ผู้ใช้ AHA'}</strong><span>{item.phone} · {item.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'}</span><small>{isCaregiver && item.role === 'elderly' ? 'พร้อมติดตามยาและสถานะการทานยา' : 'เชื่อมต่อแล้ว'}</small></div><span className="aha-family-status connected">เชื่อมต่อแล้ว</span></article>)}</section>
+        {outgoing.length > 0 && <section className="aha-family-section"><div className="aha-family-section-title"><h2>คำขอที่ส่งไป</h2><span>{outgoing.length}</span></div>{outgoing.map((item) => <article className="aha-family-person-card" key={item.id}><div className="aha-family-avatar">{(item.name || '?').slice(0,1)}</div><div className="aha-family-person-main"><strong>{item.name || 'ผู้ใช้ AHA'}</strong><span>{item.phone} · {item.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'}</span><small>รอการยืนยันจากอีกฝ่าย</small></div><span className="aha-family-status waiting">รอการยืนยัน</span><button type="button" className="aha-family-remove-button" onClick={() => setConnectionToRemove(item)} disabled={busy}>ยกเลิกคำขอ</button></article>)}</section>}
+        <section className="aha-family-section"><div className="aha-family-section-title"><h2>เชื่อมต่อแล้ว</h2><span>{accepted.length}</span></div>{accepted.length === 0 ? <div className="aha-family-empty">ยังไม่มีบัญชีที่เชื่อมต่อกัน</div> : accepted.map((item) => <article className="aha-family-person-card connected" key={item.id}><div className="aha-family-avatar">{(item.name || '?').slice(0,1)}</div><div className="aha-family-person-main"><strong>{item.name || 'ผู้ใช้ AHA'}</strong><span>{item.phone} · {item.role === 'caregiver' ? 'ผู้ดูแล' : 'ผู้สูงอายุ'}</span><small>{isCaregiver && item.role === 'elderly' ? 'พร้อมติดตามยาและสถานะการทานยา' : 'เชื่อมต่อแล้ว'}</small></div><span className="aha-family-status connected">เชื่อมต่อแล้ว</span><button type="button" className="aha-family-remove-button" onClick={() => setConnectionToRemove(item)} disabled={busy}>ยกเลิกการเชื่อมต่อ</button></article>)}</section>
       </main>
+
+      {connectionToRemove && <div className="aha-family-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) setConnectionToRemove(null); }}>
+        <section className="aha-family-modal" role="dialog" aria-modal="true" aria-labelledby="remove-connection-title" aria-describedby="remove-connection-description">
+          <div className="aha-family-modal-icon" aria-hidden="true">!</div>
+          <h2 id="remove-connection-title">ต้องการลบจริงหรือไม่?</h2>
+          <p id="remove-connection-description">{connectionToRemove.status === 'pending' ? `คำขอที่ส่งถึง ${connectionToRemove.name || 'ผู้ใช้ AHA'} จะถูกยกเลิก` : `คุณและ ${connectionToRemove.name || 'ผู้ใช้ AHA'} จะไม่สามารถติดตามข้อมูลการดูแลของกันและกันได้`}</p>
+          <div className="aha-family-modal-actions">
+            <button type="button" className="cancel" onClick={() => setConnectionToRemove(null)} disabled={busy} autoFocus>กลับไปก่อน</button>
+            <button type="button" className="confirm" onClick={confirmRemoveConnection} disabled={busy}>{busy ? 'กำลังลบ…' : 'ยืนยัน'}</button>
+          </div>
+        </section>
+      </div>}
 
     </div>
   );

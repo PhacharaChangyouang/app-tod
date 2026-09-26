@@ -23,6 +23,10 @@ export function middleware(request) {
   requestHeaders.set('Content-Security-Policy', csp);
   const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set('Content-Security-Policy', csp);
+  // Google Identity Services opens a cross-origin account chooser. This keeps
+  // the main page isolated while allowing that popup to return its credential.
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  response.headers.set('Cross-Origin-Embedder-Policy', 'unsafe-none');
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
   return response;
 }

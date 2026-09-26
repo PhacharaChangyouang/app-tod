@@ -6,13 +6,14 @@ html {
 }
 body {
   margin: 0;
-  font-family: Arial, "Noto Sans Thai", sans-serif;
+  font-family: var(--font-trirong), "Trirong", serif;
   background: #f5faff;
   color: #1a2a3a;
 }
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 button {

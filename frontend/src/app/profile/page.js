@@ -275,7 +275,7 @@ export default function ProfilePage() {
 
       <style jsx>{`
         .aha-profile-page,.aha-profile-page *{box-sizing:border-box}
-        .aha-profile-page{min-height:100dvh;background:var(--aha-bg,#f7f7f5);color:var(--aha-text,#111);padding:0 0 calc(112px + env(safe-area-inset-bottom,0px));font-family:Arial,"Noto Sans Thai",sans-serif;overflow-x:hidden}
+        .aha-profile-page{min-height:100dvh;background:var(--aha-bg,#f7f7f5);color:var(--aha-text,#111);padding:0 0 calc(112px + env(safe-area-inset-bottom,0px));font-family:var(--font-trirong),"Trirong",serif;overflow-x:hidden}
         .aha-profile-header{height:72px;width:min(920px,calc(100% - 32px));margin:auto;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:12px}
         .aha-profile-icon-button,.aha-profile-home-button{min-height:44px;border:1px solid var(--aha-border,#e2e3e6);background:var(--aha-surface,#fff);color:var(--aha-text,#111);border-radius:14px;display:flex;align-items:center;justify-content:center;gap:7px;font-weight:800}.aha-profile-icon-button{width:44px}.aha-profile-home-button{padding:0 14px}
         .aha-profile-title strong{display:block;color:var(--aha-text,#111);font-size:22px}.aha-profile-title span{display:block;color:var(--aha-text-secondary,#62666d);font-size:12px;margin-top:2px}

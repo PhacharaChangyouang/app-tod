@@ -27,6 +27,7 @@ const ROUTES = {
     ['GET', /^family\/(connections|linked-elderly)$/],
     ['POST', /^family\/connections$/],
     ['PATCH', /^family\/connections\/[0-9a-f-]{36}$/i],
+    ['DELETE', /^family\/connections\/[0-9a-f-]{36}$/i],
   ],
   reminder: [
     ['GET', /^api\/reminders(?:\/today|\/[0-9a-f-]{36})?$/i],

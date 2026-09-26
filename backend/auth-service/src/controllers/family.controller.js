@@ -99,6 +99,26 @@ async function updateConnection(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function deleteConnection(req, res, next) {
+  try {
+    const result = await pool.query(`
+      DELETE FROM family_connections
+      WHERE id = $1
+        AND (requester_id = $2 OR requested_id = $2)
+      RETURNING id, requester_id, requested_id, status
+    `, [req.params.id, req.user.id]);
+
+    if (!result.rowCount) {
+      return res.status(404).json({
+        success: false,
+        message: 'ไม่พบการเชื่อมต่อ หรือคุณไม่มีสิทธิ์ลบการเชื่อมต่อนี้',
+      });
+    }
+
+    return res.json({ success: true, data: result.rows[0] });
+  } catch (error) { return next(error); }
+}
+
 async function listRecipientIds(req, res, next) {
   try {
     const targetUserId = req.user?.role === 'system' ? req.params.userId : req.user.id;
@@ -137,4 +157,4 @@ async function listLinkedElderly(req, res, next) {
   } catch (error) { next(error); }
 }
 
-module.exports = { listConnections, createConnection, updateConnection, listRecipientIds, listLinkedElderly };
+module.exports = { listConnections, createConnection, updateConnection, deleteConnection, listRecipientIds, listLinkedElderly };

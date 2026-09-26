@@ -1,5 +1,6 @@
 import './globals.css';
 import Script from 'next/script';
+import { Trirong } from 'next/font/google';
 import { headers } from 'next/headers';
 import AhaNavigation from '../components/AhaNavigation';
 import MedicationNotificationManager from '../components/MedicationNotificationManager';
@@ -8,6 +9,14 @@ import AhaResponsiveFix from '../components/AhaResponsiveFix';
 import AhaCaregiverEnhancements from '../components/AhaCaregiverEnhancements';
 import FamilyHomeShortcut from '../components/FamilyHomeShortcut';
 import CookieConsent from '../components/CookieConsent';
+
+const trirong = Trirong({
+  subsets: ['latin', 'thai'],
+  weight: ['400', '600', '700', '800'],
+  style: 'normal',
+  display: 'swap',
+  variable: '--font-trirong',
+});
 
 export const metadata = {
   title: 'AHA — AI Health Assistant',
@@ -29,8 +38,8 @@ export const viewport = {
 export default async function RootLayout({ children }) {
   const nonce = (await headers()).get('x-nonce') || undefined;
   return (
-    <html lang="th">
-      <body>
+    <html lang="th" className={trirong.variable}>
+      <body className={trirong.className}>
         <Script id="aha-appearance-init" nonce={nonce} strategy="beforeInteractive">{`
           try {
             var mode = localStorage.getItem('aha_appearance') || 'light';
