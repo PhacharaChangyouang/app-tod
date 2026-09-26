@@ -27,6 +27,7 @@ export const authApi = {
   loginWithPassword: (identifier, password) => request(AUTH_API_BASE, '/auth/login-password', { method: 'POST', body: { identifier, password } }),
   loginWithGoogle: (credential) => request(AUTH_API_BASE, '/auth/google', { method: 'POST', body: { credential } }),
   completeGoogleSignup: (payload) => request(AUTH_API_BASE, '/auth/google/complete', { method: 'POST', body: payload }),
+  session: () => request(AUTH_API_BASE, '/auth/session'),
   requestPasswordReset: (email) => request(AUTH_API_BASE, '/auth/forgot-password', { method: 'POST', body: { email } }),
   resetPassword: (token, password, confirmPassword) => request(AUTH_API_BASE, '/auth/reset-password', { method: 'POST', body: { token, password, confirmPassword } }),
   logout: () => request(AUTH_API_BASE, '/auth/logout', { method: 'POST', body: {} }),

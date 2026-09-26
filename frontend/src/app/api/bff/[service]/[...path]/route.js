@@ -22,6 +22,7 @@ const ROUTES = {
   auth: [
     ['POST', /^auth\/(login|login-password|register-password|forgot-password|reset-password|google|google\/complete|logout|me\/change-pin)$/],
     ['GET', /^auth\/me$/],
+    ['GET', /^auth\/session$/],
     ['PATCH', /^auth\/me$/],
     ['GET', /^family\/(connections|linked-elderly)$/],
     ['POST', /^family\/connections$/],
@@ -145,10 +146,39 @@ async function handler(request, context) {
 
   const isLogin = service === 'auth' && ['auth/login', 'auth/login-password', 'auth/register-password', 'auth/google', 'auth/google/complete'].includes(path);
   const isLogout = service === 'auth' && path === 'auth/logout';
+  const isSessionCheck = service === 'auth' && path === 'auth/session' && request.method === 'GET';
   const isPublic = service === 'auth' && PUBLIC_AUTH_PATHS.has(path);
   const query = new URL(request.url).search;
-  const upstreamUrl = `${SERVICE_URLS[service].replace(/\/$/, '')}/${path}${query}`;
+  const upstreamPath = isSessionCheck ? 'auth/me' : path;
+  const upstreamUrl = `${SERVICE_URLS[service].replace(/\/$/, '')}/${upstreamPath}${query}`;
   let accessToken = request.cookies.get(accessCookie)?.value || null;
+
+  if (isSessionCheck) {
+    const hasRefreshToken = Boolean(request.cookies.get(refreshCookie)?.value);
+    if (!accessToken && !hasRefreshToken) {
+      return safeResponse({ success: true, authenticated: false }, 200);
+    }
+
+    let rotatedSession = null;
+    if (!accessToken) {
+      rotatedSession = await refreshSession(request);
+      accessToken = rotatedSession?.accessToken || null;
+    }
+    if (!accessToken) {
+      return safeResponse({ success: true, authenticated: false }, 200, null, true);
+    }
+
+    let upstream = await callUpstream(upstreamUrl, 'GET', undefined, accessToken);
+    if (upstream.status === 401 && !rotatedSession && hasRefreshToken) {
+      rotatedSession = await refreshSession(request);
+      if (rotatedSession?.accessToken) upstream = await callUpstream(upstreamUrl, 'GET', undefined, rotatedSession.accessToken);
+    }
+    if (!upstream.ok) {
+      return safeResponse({ success: true, authenticated: false }, 200, null, true);
+    }
+    const payload = await readJson(upstream);
+    return safeResponse({ success: true, authenticated: true, user: payload.user || null }, 200, rotatedSession);
+  }
 
   if (isLogout) {
     body = { refreshToken: request.cookies.get(refreshCookie)?.value || null };

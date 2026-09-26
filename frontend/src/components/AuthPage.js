@@ -16,9 +16,9 @@ export default function AuthPage() {
     const timeout = new Promise((_, reject) => {
       timeoutId = window.setTimeout(() => reject(new Error('SESSION_CHECK_TIMEOUT')), 12000);
     });
-    Promise.race([authApi.me(), timeout]).then((result) => {
+    Promise.race([authApi.session(), timeout]).then((result) => {
       if (!active) return;
-      if (!result?.user) {
+      if (!result?.authenticated || !result?.user) {
         setCheckingSession(false);
         return;
       }

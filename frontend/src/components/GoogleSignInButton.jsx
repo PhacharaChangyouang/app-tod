@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 const SCRIPT_ID = 'aha-google-identity-script';
+const GOOGLE_STATE_KEY = '__ahaGoogleIdentityState';
 
 export default function GoogleSignInButton({ onCredential, disabled = false }) {
   const buttonRef = useRef(null);
@@ -18,14 +19,21 @@ export default function GoogleSignInButton({ onCredential, disabled = false }) {
     const render = () => {
       if (!active || !window.google?.accounts?.id || !buttonRef.current) return;
       buttonRef.current.replaceChildren();
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (response) => {
-          if (response?.credential) callbackRef.current?.(response.credential);
-          else setError('Google ไม่ได้ส่งข้อมูลยืนยันตัวตนกลับมา');
-        },
-        cancel_on_tap_outside: true,
-      });
+      const state = window[GOOGLE_STATE_KEY] || { initialized: false, clientId: null, callback: null };
+      state.callback = (response) => {
+        if (response?.credential) callbackRef.current?.(response.credential);
+        else setError('Google ไม่ได้ส่งข้อมูลยืนยันตัวตนกลับมา');
+      };
+      if (!state.initialized || state.clientId !== clientId) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (response) => window[GOOGLE_STATE_KEY]?.callback?.(response),
+          cancel_on_tap_outside: true,
+        });
+        state.initialized = true;
+        state.clientId = clientId;
+      }
+      window[GOOGLE_STATE_KEY] = state;
       window.google.accounts.id.renderButton(buttonRef.current, {
         type: 'standard', theme: 'outline', size: 'large', text: 'continue_with',
         shape: 'rectangular', width: Math.min(400, buttonRef.current.clientWidth || 400),
