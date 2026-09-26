@@ -90,6 +90,16 @@ async function migrate({ closePool = true } = {}) {
     await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expiry ON password_reset_tokens(expires_at)`);
 
     await pool.query(`
+      CREATE TABLE IF NOT EXISTS password_reset_attempts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        key_type VARCHAR(10) NOT NULL CHECK (key_type IN ('email', 'ip')),
+        key_hash VARCHAR(64) NOT NULL,
+        requested_at TIMESTAMPTZ NOT NULL DEFAULT now()
+      );
+    `);
+    await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_reset_attempts_lookup ON password_reset_attempts(key_type, key_hash, requested_at DESC)`);
+
+    await pool.query(`
       CREATE TABLE IF NOT EXISTS login_attempts (
         key_hash VARCHAR(64) PRIMARY KEY,
         attempts INT NOT NULL DEFAULT 0,
@@ -116,6 +126,7 @@ async function migrate({ closePool = true } = {}) {
     // Remove only expired operational records. User accounts, active sessions,
     // family links and security evidence are intentionally preserved.
     await pool.query(`DELETE FROM password_reset_tokens WHERE expires_at <= now() OR used_at IS NOT NULL`);
+    await pool.query(`DELETE FROM password_reset_attempts WHERE requested_at < now() - interval '2 days'`);
     await pool.query(`DELETE FROM refresh_tokens WHERE expires_at < now() - interval '7 days' OR revoked_at < now() - interval '30 days'`);
     await pool.query(`DELETE FROM login_attempts WHERE first_attempt_at < now() - interval '24 hours'`);
 

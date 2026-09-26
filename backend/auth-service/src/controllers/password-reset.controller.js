@@ -4,6 +4,7 @@ const pool = require('../config/db');
 const userModel = require('../models/user.model');
 const tokenService = require('../services/token.service');
 const emailService = require('../services/email.service');
+const resetRateLimit = require('../services/password-reset-rate-limit.service');
 
 const SALT_ROUNDS = 12;
 const RESET_MINUTES = 15;
@@ -20,21 +21,16 @@ async function requestReset(req, res, next) {
   try {
     const email = String(req.body.email || '').trim().toLowerCase();
     if (!/^\S+@\S+\.\S+$/.test(email)) return res.status(400).json({ success: false, message: 'กรุณากรอกอีเมลให้ถูกต้อง' });
+    const rateLimit = await resetRateLimit.consume(req, email);
     const user = await userModel.findByEmail(email);
     if (!user) {
       await uniformResetDelay(startedAt);
-      return res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้' });
+      return res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้', cooldownSeconds: rateLimit.cooldownSeconds });
     }
 
-    const recent = await pool.query(
-      'SELECT 1 FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL AND expires_at > now() LIMIT 1',
-      [user.id]
-    );
-    if (recent.rowCount) {
-      await uniformResetDelay(startedAt);
-      return res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้' });
-    }
     await pool.query('DELETE FROM password_reset_tokens WHERE expires_at <= now() OR used_at IS NOT NULL');
+    // A resend invalidates the previous link so only the latest email works.
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1 AND used_at IS NULL', [user.id]);
     const rawToken = crypto.randomBytes(32).toString('hex');
     const tokenHash = hashResetToken(rawToken);
     await pool.query(`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + ($3 * interval '1 minute'))`, [user.id, tokenHash, RESET_MINUTES]);
@@ -47,8 +43,14 @@ async function requestReset(req, res, next) {
     }
 
     await uniformResetDelay(startedAt);
-    res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้' });
-  } catch (err) { next(err); }
+    res.json({ success: true, message: 'ถ้าอีเมลนี้มีบัญชี AHA ระบบจะส่งลิงก์ให้', cooldownSeconds: rateLimit.cooldownSeconds });
+  } catch (err) {
+    if (err.status === 429) {
+      res.set('Retry-After', String(err.retryAfterSeconds));
+      return res.status(429).json({ success: false, message: err.message, retryAfterSeconds: err.retryAfterSeconds });
+    }
+    next(err);
+  }
 }
 
 async function resetPassword(req, res, next) {
