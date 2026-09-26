@@ -77,7 +77,11 @@ export default function AuthPage() {
       router.push('/home');
       return response;
     } catch (err) {
-      setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      if (err?.data?.error === 'OAUTH_ACCOUNT') {
+        setError('อีเมลนี้เชื่อมต่อกับบัญชี Google กรุณาเข้าสู่ระบบด้วยปุ่ม Sign in with Google ด้านล่าง');
+      } else {
+        setError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
+      }
     }
   };
 

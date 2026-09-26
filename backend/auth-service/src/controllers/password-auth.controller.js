@@ -118,6 +118,16 @@ async function loginWithPassword(req, res, next) {
     }
 
     const user = await userModel.findByCredentials(normalizedIdentifier);
+    if (user?.google_sub && !user.password_hash) {
+      await bcrypt.compare(String(password || ''), DUMMY_PASSWORD_HASH);
+      await loginSecurity.audit('password_login_oauth_account', { userId: user.id, success: false, req, identifier: normalizedIdentifier });
+      return res.status(401).json({
+        success: false,
+        error: 'OAUTH_ACCOUNT',
+        message: 'อีเมลนี้เชื่อมต่อกับบัญชี Google กรุณาเข้าสู่ระบบด้วยปุ่ม Sign in with Google ด้านล่าง',
+      });
+    }
+
     if (!user || !user.password_hash) {
       await bcrypt.compare(String(password || ''), DUMMY_PASSWORD_HASH);
       await loginSecurity.recordFailure(req, normalizedIdentifier);
